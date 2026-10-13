@@ -234,4 +234,43 @@ and the full suite plus `-race` passes. Recorded as DECISIONS.md Decision 5.
 Full matrix after the pass: `make conformance` green end to end — 37 tests + 3 fuzz targets
 across 8 packages, race clean, govulncheck clean, NEF hashes recorded.
 
+## Addendum 2: governance v2 (13 October 2026)
+
+**New subjects:** `contracts/bondvault` (listing bonds, new contract) and
+`contracts/registry` v2 (proposals board: bonded submission, close-with-refund-or-keep).
+Doctrine: `GOVERNANCE.md`. Same standing rule applies — reference implementations pending
+external audit; the launch gate is unmoved.
+
+**Article spot-checks (Go canon):**
+
+- **1 — gates.** `make conformance` green end to end with both new artifacts: 9 packages,
+  race clean, govulncheck clean, NEF hashes recorded (`bondvault.nef`, `registry.nef`).
+- **4 — weight.** Single-byte storage prefixes, no on-chain iteration anywhere (the board
+  is read by id; tallies and states are O(1) reads), open flags deleted on close, zero-amount
+  payouts skipped. Committee and committee-only paths are bounded by a small multisig.
+- **5 — stones.** Every guarded revert has a named negative test: foreign token (native GAS
+  used as the well-behaved stranger), exact-bond under/overpay, kind whitelist, meta length
+  bounds, bond-not-configured, write-once configure, only-owner, only-committee, double
+  slash, double close, re-bond after delist, unknown id. 7 new bondvault cases, 3 new
+  registry cases, all green.
+- **6 — visible.** Bonds, escrow, vault/liquidity halves, and every state are public safe
+  views; every act emits an event; the escrow view lets anyone check the registry's solvency
+  against its actual FTB balance. The one deliberate simplification is documented in the
+  code, not smoothed: the liquidity half waits in the vault until the AMM exists.
+- **8 — seams.** Board, vault, and ballot are three contracts with three duties; the vault
+  and board never call each other; the bond token resolves through the timelocked `token`
+  module binding and fails closed when unbound. No runtime negotiation added.
+
+**Annex B spot-checks:** forgery — committee/owner witnesses plus caller-hash checks on
+every money path; transcript — write-once configure on both contracts; replay — monotonic
+proposal ids, and a delisted token can never bond again; downgrade — none introduced;
+LangSec — every input length-checked (20-byte hashes, 1..1024-byte meta); DoS — caller-paid
+gas, no loops; honesty — deltas table in GOVERNANCE.md distinguishes built vs v2/v3.
+
+**QRN class A note:** no new retained authority is created. The committee multisig that
+executes slash/delist/close is the same trusted-window authority already recorded for the
+registry and oracle; bonds sit in escrow with an explicit, evented disposition (refund or
+keep). Class B: submission is permissionless and the board is replicated chain state —
+no one hosts the vote page.
+
 (c) 2026 — internal audit lineage; reference implementation pending external audit.
