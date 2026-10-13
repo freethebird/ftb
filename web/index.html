@@ -417,6 +417,7 @@ body{font-size:15px}
   <div class="date2" id="dateline">// CONNECTING //</div>
   <nav aria-label="sections">
     <a href="#vote">vote</a>
+    <a href="#board">board</a>
     <a href="#market">market</a>
     <a href="#swap">swap</a>
     <a href="#claim">claim</a>
@@ -443,6 +444,35 @@ body{font-size:15px}
     <p class="hero2-hint" id="govHint">one vote per snapshot address — weight is your snapshot
       balance, your proof is the same one you claim with. every node counts the same chain state.</p>
     <div id="govBody"></div>
+  </section>
+
+  <!-- ============ PROPOSALS BOARD ============ -->
+  <section class="act2" id="board">
+    <div class="col-h"><span class="no">BOARD</span>
+      <span class="lede">proposals cost a bond — spam pays, the record stays</span>
+      <button class="linkish" id="boardRefresh">refresh -&gt;</button></div>
+    <div id="boardBody">
+      <div class="entry">
+        <span class="idx">//</span>
+        <div><span class="ttl">standby — the board loads when the registry is configured for this network</span></div>
+        <div class="meta"><span class="tag">standby</span></div>
+      </div>
+    </div>
+    <div class="ticket" style="margin-top:12px">
+      <div class="trow">
+        <label for="pMeta">proposal</label>
+        <input id="pMeta" maxlength="1024" autocomplete="off" placeholder="what should the community decide?">
+        <div class="tsel" id="pKindSel" role="group" aria-label="proposal kind"></div>
+      </div>
+      <div class="trow">
+        <label for="pRef">reference</label>
+        <input id="pRef" autocomplete="off" spellcheck="false" placeholder="0x… ballot contract hash, or the token hash for a listing">
+      </div>
+      <div class="tmeta" id="pMetaHint">bond: — FTB · exact, escrowed — refunded on a legitimate close, kept against spam</div>
+      <button class="go" id="pGo">review &amp; sign -&gt;</button>
+    </div>
+    <p class="small muted">the board is chain state — every node serves the same list.
+      votes happen in per-proposal ballot contracts; listing bonds sit in the bond vault.</p>
   </section>
 
   <!-- ============ STAT TILES ============ -->
@@ -538,6 +568,7 @@ body{font-size:15px}
       <dt>migrator</dt><dd id="vMigrator">—</dd>
       <dt>registry</dt><dd id="vRegistry">—</dd>
       <dt>ballot</dt><dd id="vBallot">—</dd>
+      <dt>bond vault</dt><dd id="vBondvault">—</dd>
       <dt>merkle root</dt><dd id="vRoot">—</dd>
       <dt>max supply</dt><dd id="vCap">—</dd>
       <dt>mint sealed</dt><dd id="vSealed">—</dd>
@@ -689,6 +720,7 @@ body{font-size:15px}
     rpcCall(RPC, 'getblockcount').then(function(h){ tickBlock=h; paintTicker(); }).catch(function(){});
     refreshRatios();
     refreshGov();
+    refreshBoard();
     refreshBalances();
   }
 
@@ -1000,6 +1032,86 @@ body{font-size:15px}
   }
   $('govRefresh').addEventListener('click', refreshGov);
 
+  // ---------- proposals board (registry v2: bonded proposals, escrowed on-chain) ----------
+  var pKind='ballot', boardBond=null;
+  function boardReady(){ return !!(configured && C.registry && C.registry.indexOf('0x0000')!==0); }
+  function b64ToStr(s){ try{ return decodeURIComponent(escape(atob(s))); }catch(e){ return atob(s); } }
+  function hashFromItem(it){
+    return (it && it.value) ? '0x'+FtbDapi.util.reverseHex(FtbDapi.util.b64ToHex(it.value)) : '—';
+  }
+  function paintKindSel(){
+    var box=$('pKindSel'); box.innerHTML='';
+    ['ballot','listing'].forEach(function(k){
+      var b=el('button', k===pKind?'on':null, k);
+      b.addEventListener('click', function(){ pKind=k; paintKindSel(); });
+      box.appendChild(b);
+    });
+  }
+  function refreshBoard(){
+    var body=$('boardBody'); if(!body) return;
+    if (!RPC || !boardReady()) return; // standby markup already in place
+    readInt(C.registry,'proposalBond').then(function(v){
+      boardBond=v;
+      $('pMetaHint').textContent='bond: '+fmt(v)+' FTB · exact, escrowed — refunded on a legitimate close, kept against spam';
+    }).catch(function(){});
+    readInt(C.registry,'proposalCount').then(function(n){
+      body.innerHTML='';
+      var count=Number(n);
+      if (!count){
+        body.appendChild(el('div','small muted','no proposals yet — the board is open; the first one costs the bond.'));
+        return;
+      }
+      for (var id=count; id>=1; id--){ (function(pid){ // newest first
+        readFn(C.registry,'proposal',[{type:'Integer',value:String(pid)}]).then(function(st){
+          var items=st[0].value;
+          var kind=b64ToStr(items[0].value);
+          var ref=hashFromItem(items[1]);
+          var meta=b64ToStr(items[2].value);
+          var bond=BigInt(items[4].value||'0');
+          var open=items[5].type==='Boolean' ? items[5].value : (items[5].value && items[5].value!=='');
+          var row=el('div','entry');
+          row.appendChild(el('span','idx',String(pid).padStart(2,'0')));
+          var mid=el('div'); mid.appendChild(el('span','ttl',meta)); row.appendChild(mid);
+          var m=el('div','meta');
+          m.appendChild(el('span','tag '+(open?'pub':'sealed'), open?'open':'closed'));
+          m.appendChild(el('span','tag',kind));
+          m.appendChild(el('span',null,short(ref)));
+          m.appendChild(el('span',null,'bond '+fmt(bond)+' FTB'));
+          row.appendChild(m);
+          body.appendChild(row);
+        }).catch(function(){});
+      })(id); }
+    }).catch(function(e){
+      body.innerHTML=''; body.appendChild(el('div','small','board unavailable: '+(e.message||e)));
+    });
+  }
+  $('boardRefresh').addEventListener('click', refreshBoard);
+  $('pGo').addEventListener('click', function(){
+    if (!boardReady()){
+      showPlan('board not wired','the registry hash is a placeholder in this deployment. proposals go live with the TestNet contracts.',
+        [['status','registry not configured']],null);
+      $('ovGo').disabled=true; return;
+    }
+    if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+    var meta=$('pMeta').value.trim(), ref=$('pRef').value.trim();
+    if (!meta){ $('pMetaHint').textContent='write the proposal first'; return; }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(ref)){ $('pMetaHint').textContent='reference must be a 0x contract hash (20 bytes)'; return; }
+    readInt(C.registry,'proposalBond').then(function(bond){
+      if (bond<=0n) throw new Error('proposal bond not configured on-chain');
+      var plan=dapi.submitProposal(account, pKind, ref, meta, bond.toString());
+      $('ovGo').disabled=false;
+      showPlan('submit '+pKind+' proposal',
+        'the bond is escrowed by the registry. a legitimate close refunds it to you; spam forfeits it to the committee. the record stays on-chain either way.',
+        [['kind',pKind],
+         ['reference',ref],
+         ['meta',meta.length>80?meta.slice(0,77)+'…':meta],
+         ['bond',fmt(bond)+' FTB'],
+         ['what you sign', plan.summary]],
+        plan);
+    }).catch(function(e){ $('pMetaHint').textContent='bond read failed: '+(e.message||e); });
+  });
+  paintKindSel();
+
   // ---------- own node ----------
   $('ownRpcBtn').addEventListener('click', function(){ openOv('ovRpc'); });
   $('ownRpcGo').addEventListener('click', function(){
@@ -1025,6 +1137,7 @@ body{font-size:15px}
   $('vMigrator').textContent = C.migrator || '—';
   $('vRegistry').textContent = C.registry || '—';
   $('vBallot').textContent = C.ballot || '—';
+  $('vBondvault').textContent = C.bondvault || '—';
   $('vRoot').textContent = MERKLE_ROOT || '—';
   $('rootLine').textContent = MERKLE_ROOT ? short(MERKLE_ROOT) : '—';
 
