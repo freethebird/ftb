@@ -110,10 +110,10 @@ set by the community, per proposal, on the record.
 |---|---|---|
 | snapshot-weighted vote, one per address | ballot | built, tested |
 | public tally, anyone reads | ballot | built |
-| proposal bond in FTB | registry | v2, not started |
-| live-proposals board | registry | v2, not started |
-| listing proposal type (token hash + bond terms in the vote) | registry | v2, not started |
-| bond vault: 50/50 split, LP lock, slash-by-vote, unlock only on delisting | new contract | v2, not started |
+| proposal bond in FTB | registry | built, tested (exact bond, escrow, refund-or-keep) |
+| live-proposals board | registry | built, tested (ballot + listing kinds) |
+| listing proposal type (token hash + bond terms in the vote) | registry | built, tested |
+| bond vault: 50/50 split, LP lock, slash-by-vote, unlock only on delisting | bondvault | built, tested |
 | bounty treasury keyed to ballot results | new contract | v3, not started |
 
 ## What this is not

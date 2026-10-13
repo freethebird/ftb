@@ -3,6 +3,10 @@ safemethods:
   - get
   - delay
   - finished
+  - proposalCount
+  - proposalBond
+  - escrow
+  - proposal
 events:
   - name: DelaySet
     parameters:
@@ -37,3 +41,33 @@ events:
     parameters:
       - name: blocks
         type: Integer
+  - name: ProposalBondSet
+    parameters:
+      - name: amount
+        type: Integer
+  - name: ProposalSubmitted
+    parameters:
+      - name: id
+        type: Integer
+      - name: kind
+        type: String
+      - name: ref
+        type: Hash160
+      - name: proposer
+        type: Hash160
+      - name: bond
+        type: Integer
+  - name: ProposalClosed
+    parameters:
+      - name: id
+        type: Integer
+      - name: refund
+        type: Boolean
+      - name: to
+        type: Hash160
+      - name: amount
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - transfer
