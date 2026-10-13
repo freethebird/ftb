@@ -12,10 +12,10 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - name: resolve modules
         run: go mod download
       - name: install neo-go compiler
@@ -36,10 +36,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - name: resolve modules
         run: go mod download
       - name: gofmt
