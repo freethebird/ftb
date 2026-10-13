@@ -4,7 +4,7 @@
 set -eu
 
 mkdir -p build
-for c in ftb_token ftb_migrator registry oracle lend ballot; do
+for c in ftb_token ftb_migrator registry oracle lend ballot bondvault; do
 	echo "compiling $c"
 	neo-go contract compile \
 		-i "contracts/$c/$c.go" \
