@@ -220,6 +220,11 @@
   FtbDapi.prototype.ballotNumOptions = function () { return this.read(this._need('ballot'), 'numOptions', []).then(decodeInt); };
   FtbDapi.prototype.ballotTally = function (option) { return this.read(this._need('ballot'), 'tally', [A.int(option)]).then(decodeInt); };
   FtbDapi.prototype.ballotVoted = function (acct) { return this.read(this._need('ballot'), 'voted', [A.h160(acct)]).then(decodeBool); };
+  // proposals board reads (registry v2): the board is replicated chain state — no one hosts it
+  FtbDapi.prototype.proposalCount = function () { return this.read(this._need('registry'), 'proposalCount', []).then(decodeInt); };
+  FtbDapi.prototype.proposalBond = function () { return this.read(this._need('registry'), 'proposalBond', []).then(decodeInt); };
+  FtbDapi.prototype.boardEscrow = function () { return this.read(this._need('registry'), 'escrow', []).then(decodeInt); };
+  FtbDapi.prototype.proposal = function (id) { return this.read(this._need('registry'), 'proposal', [A.int(id)]); };
 
   // ---- write plan builders (PURE: build, inspect .summary, then execute()) ----
   FtbDapi.prototype.claim = function (account, amountBase, proofHexArray) {
@@ -279,6 +284,17 @@
     return this._w(this._need('ballot'), 'vote',
       [A.h160(account), A.int(amountBase), A.int(option), proof],
       'Vote option #' + option + ' with weight ' + fromBaseUnits(amountBase) + ' FTB for ' + account);
+  };
+  // Submit a proposal to the board (registry v2): the exact bond IS the transfer amount and
+  // the proposal rides as the payment data [kind, ref, meta]. The registry escrows the bond;
+  // a legitimate close refunds it, spam forfeits it. kind: "ballot" (ref = ballot contract
+  // hash) or "listing" (ref = the token to list, meta carries the bond terms).
+  FtbDapi.prototype.submitProposal = function (account, kind, refHash, meta, bondBase) {
+    if (kind !== 'ballot' && kind !== 'listing') throw new Error('kind must be ballot or listing');
+    return this._w(this._need('ftb'), 'transfer',
+      [A.h160(account), A.h160(this._need('registry')), A.int(bondBase),
+       A.arr([A.str(kind), A.h160(refHash), A.str(meta)])],
+      'Submit ' + kind + ' proposal (bond ' + fromBaseUnits(bondBase) + ' FTB): ' + String(meta).slice(0, 60));
   };
   // Swap uses the EXTERNAL Flamingo router. Confirm the method name, arg order, and signer
   // scope against the deployed manifest; multi-hop usually needs a CustomContracts signer

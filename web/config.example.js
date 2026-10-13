@@ -14,6 +14,8 @@ window.FTB_CONFIG = {
     lend:     '0x0000000000000000000000000000000000000000', // Launch 2
     // ballot is deployed per proposal; the hash IS the proposal id
     ballot:   '0x0000000000000000000000000000000000000000',
+    // bond vault holds listing bonds (50/50 liquidity/rug-pull split)
+    bondvault: '0x0000000000000000000000000000000000000000',
     // bNEO (NeoBurger). This is the MainNet hash; use the correct one for your network.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
     // router is the external Flamingo swap; set only if you wire swap in your UI.
@@ -24,11 +26,13 @@ window.FTB_CONFIG = {
   assets: { gas: '0xd2a4cff31913016155e38e474a2c06d08be276cf' },
 
   // index.html reads over raw JSON-RPC with failover (wallets sign separately).
-  // list your three community nodes first; public endpoints are appended automatically.
+  // list your five community nodes first; public endpoints are appended automatically.
   rpcs: [
-    // 'https://rpc1.community.example',
-    // 'https://rpc2.community.example',
-    // 'https://rpc3.community.example'
+    // 'https://node1.ftb.example',
+    // 'https://node2.ftb.example',
+    // 'https://node3.ftb.example',
+    // 'https://node4.ftb.example',
+    // 'https://node5.ftb.example'
   ],
 
   // the published migration proofs (also on IPFS; keep the CID in the repo)
