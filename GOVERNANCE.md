@@ -84,17 +84,25 @@ the front end never shows the pair until the lock is visible on-chain.
 **L3. The bond splits 50/50. [chain, v2]**
 - **50% → liquidity**: paired into the FTB/<token> pool, LP position locked.
   Day-one depth for the new market, and the project cannot pull it.
-- **50% → rug-pull bond**: locked in a bond vault contract. If the project
-  rugs — abandons, mints, drains — governance votes to slash: the locked FTB
-  compensates harmed LPs or is burned. Good behavior for a vesting period
-  (also a voted parameter) and the bond unlocks back to the project.
+- **50% → rug-pull bond**: locked in a bond vault contract **for as long as
+  the project is listed** — there is no vesting clock and no good-behavior
+  unlock while the pair trades. If the project rugs — abandons, mints,
+  drains — governance votes to slash: the locked FTB compensates harmed LPs
+  or is burned. The bond is only ever released by a delisting vote (L4).
+
+**L4. Delisting is the only key. [chain, v2]**
+A delisting ballot ends the listing: the pair leaves the front end, the
+liquidity half is unwound by the same vote's terms, and the vault half
+returns to the project — unless a slash vote lands first. Listed = bonded;
+delisted = released. Nothing in between.
 
 **Why this shape works**
-The project has capital at risk exactly when holders do. The liquidity half
-makes the market real from block one; the vault half makes "rug" an
-expensive word. And because the percentage itself is voted, a blue-chip
-project and an anonymous launch get different prices of trust — set by the
-community, per proposal, on the record.
+The project has capital at risk for the entire life of the listing — as long
+as holders can buy the token, the project's bond answers for it. The
+liquidity half makes the market real from block one; the vault half makes
+"rug" an expensive word. And because the percentage itself is voted, a
+blue-chip project and an anonymous launch get different prices of trust —
+set by the community, per proposal, on the record.
 
 ## Contract deltas this implies
 
@@ -105,7 +113,7 @@ community, per proposal, on the record.
 | proposal bond in FTB | registry | v2, not started |
 | live-proposals board | registry | v2, not started |
 | listing proposal type (token hash + bond terms in the vote) | registry | v2, not started |
-| bond vault: 50/50 split, LP lock, slash-by-vote, vesting unlock | new contract | v2, not started |
+| bond vault: 50/50 split, LP lock, slash-by-vote, unlock only on delisting | new contract | v2, not started |
 | bounty treasury keyed to ballot results | new contract | v3, not started |
 
 ## What this is not
