@@ -1,0 +1,21 @@
+name: MockToken
+supportedstandards:
+  - NEP-17
+safemethods:
+  - symbol
+  - decimals
+  - totalSupply
+  - balanceOf
+events:
+  - name: Transfer
+    parameters:
+      - name: from
+        type: Hash160
+      - name: to
+        type: Hash160
+      - name: amount
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - onNEP17Payment

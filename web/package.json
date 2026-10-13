@@ -1,0 +1,8 @@
+{
+  "name": "ftb-web",
+  "private": true,
+  "description": "Free the Bird: static claim/swap front-end. No dependencies, no build step.",
+  "scripts": {
+    "dev": "node serve.mjs"
+  }
+}

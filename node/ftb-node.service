@@ -1,0 +1,20 @@
+[Unit]
+Description=FTB community Neo N3 TestNet node (neo-go)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ftb
+ExecStart=/usr/local/bin/neo-go node --config-file /etc/ftb-node/protocol.testnet.yml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+# hardening: the node needs its chain dir and nothing else
+ProtectSystem=full
+ReadWritePaths=/var/lib/ftb-node
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+name: FtbOracle
+safemethods:
+  - price
+  - enabled
+  - freshness
+  - minReports
+events:
+  - name: ReporterSet
+    parameters:
+      - name: reporter
+        type: Hash160
+      - name: enabled
+        type: Boolean
+  - name: ParamsSet
+    parameters:
+      - name: freshnessMs
+        type: Integer
+      - name: minReports
+        type: Integer
+  - name: Reported
+    parameters:
+      - name: reporter
+        type: Hash160
+      - name: asset
+        type: Hash160
+      - name: price
+        type: Integer

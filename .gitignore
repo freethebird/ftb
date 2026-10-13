@@ -1,0 +1,21 @@
+# build artifacts
+/build/
+*.nef
+*.manifest.json
+
+# secrets: never commit wallets or filled configs
+*.wallet.json
+cmd/*/config.json
+web/config.js
+
+# keep the examples and the published snapshot/proofs tracked:
+#   cmd/*/config.example.json, snapshot.csv, proofs.json
+
+# testnet deploy wallet password
+cmd/deploy/.pass
+
+# os / editor noise
+.DS_Store
+
+# local deploy binary (build with: go build ./cmd/deploy)
+/deploy

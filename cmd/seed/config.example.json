@@ -1,0 +1,12 @@
+{
+  "rpc": "http://127.0.0.1:30333",
+  "wallet": "deployer.wallet.json",
+  "password": "CHANGE_ME",
+  "router": "0x<reused FlamingoSwapRouter hash>",
+  "deadline_minutes": 10,
+  "pools": [
+    { "name": "bNEO/FTB", "tokenA": "0x48c40d4666f93408be1bef038b6722404d9a4c2a", "tokenB": "0x<FTB hash>",                                 "amountA": "10000_00000000", "amountB": "40000_00000000" },
+    { "name": "GAS/FTB",  "tokenA": "0xd2a4cff31913016155e38e474a2c06d08be276cf", "tokenB": "0x<FTB hash>",                                 "amountA": "5000_00000000",  "amountB": "20000_00000000" },
+    { "name": "bNEO/GAS", "tokenA": "0x48c40d4666f93408be1bef038b6722404d9a4c2a", "tokenB": "0xd2a4cff31913016155e38e474a2c06d08be276cf", "amountA": "10000_00000000", "amountB": "5000_00000000" }
+  ]
+}

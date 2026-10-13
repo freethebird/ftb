@@ -1,0 +1,112 @@
+# FTB decisions: settled, and what is yours to call
+
+After the first audit, most of the hardening is now in code. Two items genuinely need an owner
+decision rather than a code change, and this brief gives a recommendation for each. The rest is
+done and tested.
+
+## Done in code (this pass)
+
+The liquidation close-factor, bonus cap, and rate ceiling (FTB-07) are implemented: a single
+liquidation repays at most half the debt unless the position is underwater, the liquidation bonus
+is capped at 30 percent, and the per-block interest rate is capped at 1 percent (`maxRate`), which
+is far above any real rate and only bounds misconfiguration. The 50 percent close-factor and the
+ceilings are plain constants you can tune before launch. Merkle domain separation (FTB-11) is in:
+leaves are hashed with a `0x00` tag and internal nodes with `0x01`, on both the off-chain builder
+and the on-chain claim, verified consistent for odd and even trees and covered by the existing
+round-trip test. These join the earlier fixes from the audit pass (renounce-before-close interlock,
+write-once snapshot root, supply guards, debt-free collateral withdrawal, lend events, the
+`MaxSupply` view, snapshot aggregation, and the seed empty-pool guard), each with a test.
+
+## Decision 1: the cap number (FTB-01) is yours
+
+**Status 10 October 2026: computed and compiled in, pending the vote on ratios.** Ran
+`cmd/merkleroot -snapshot snapshot.csv -r1 1 -r2 4` against the final snapshot (4,847 holders):
+
+- Merkle root: `0x639aaa7801f41c75d15c75aaad31aa6d6ede2b8bb81bd30f7ebf9560d50a8bba`
+- Exact cap: `78326783050305942` base units (783,267,830.50305942 FTB), now the `maxSupply`
+  constant in `ftb_token.go`
+- Proofs: `proofs.json` (5.1 MB, 4,847 entries), every proof independently re-verified against
+  the root in a separate Python implementation (4,847/4,847)
+- Holder sums: 303.4M FLM + 120.0M FLOCKS claimed-eligible, vs 574.7M / 122.3M anchors — the
+  difference is the excluded attacker and contract balances, by construction
+
+If the vote picks different r1/r2, re-run merkleroot and reset the constant to the new printed
+total before compiling for launch; the test constant in `ftb_token_test.go` must match.
+
+(Original guidance follows.)
+
+The token's `maxSupply` must equal the exact sum of all migration entitlements from the final
+snapshot. The mechanism is in place: `cmd/merkleroot` prints that exact total, and the new
+`MaxSupply()` view exposes the compiled value on-chain so anyone can check it. What remains is the
+number itself, which only exists once the final snapshot and the community-agreed ratios are fixed.
+
+Recommendation: run `merkleroot` on the final `snapshot.csv` with the agreed ratios, take the
+printed total (`floor` of the sum over holders of `flm * r1 + flocks * r2`), set `maxSupply` to that
+exact value, and publish both the number and `proofs.json` together. Add a `make` check that the
+compiled constant equals the printed total so a mismatch cannot ship. This matters because a cap
+below the total makes honest claims fail at the cap, and a cap above the total leaves mint headroom
+in the pre-renounce window; exact equality removes both.
+
+## Decision 2: oracle governance and quorum (FTB-06) is yours (deployment)
+
+The oracle's own admin calls (`setReporter`, `setParams`) take effect immediately rather than
+behind the registry timelock, and `minReports` ships at 1. In production that has to be a real
+committee, or a single reporter can move the price, which is the exact risk the oracle exists to
+remove.
+
+Recommendation, which is a deployment choice rather than code: deploy the oracle (and lend) with the
+owner set to the same timelocked multisig as the registry, call `setParams` with `minReports` of 3
+or more, and enroll at least three independent reporters, each aggregating several venues off-chain.
+I did not hard-code a floor of 3 because the test harness and TestNet legitimately run a single
+reporter and a hard floor would break them; the floor belongs in the deployment checklist, where it
+now sits in the pre-launch gate. If you would rather enforce it in code (timelock quorum reductions
+and reporter additions inside the oracle), say so and I will add it.
+
+## Still required regardless
+
+None of this replaces the external gate: two independent audits of the Launch 1 core, a separate
+audit of oracle plus lend, and a public TestNet with a bug bounty. The internal audit and these
+fixes are a starting point, not a substitute. Lending stays out of the first launch.
+
+## Decision 3: TestNet deploy topology (11 October 2026)
+
+TestNet has no Flamingo AMM router and no bNEO — the Neo core team keeps an open issue about
+essential contracts being absent on TestNet (neo-project/neo#3285). Consequences, decided:
+
+- **TestNet deploys only what is ours**: token, migrator, registry, and the first governance
+  ballot (the r1=1, r2=4 ratio vote, 2 options, same Merkle root as the migration). Oracle and
+  lend stay out — they are Launch 2 and audit-gated.
+- **Router stays a placeholder on TestNet.** The market board and swap ticket degrade to their
+  standby states by design; they go live only where pools exist (MainNet, or a minimal
+  community AMM stood up for TestNet later — a separate decision).
+- **Owner on TestNet is the deployer's single key.** Acceptable for a valueless test network;
+  the driver prints the FTB-14 warning and MainNet must use `owner_multisig`. The deploy wallet
+  (`cmd/deploy/testnet.wallet.json`, password in `cmd/deploy/.pass`) is git-ignored; its only
+  job is paying deploy gas.
+- One command after funding: `sh scripts/deploy_testnet.sh` — compiles, deploys, wires, and
+  fills `web/config.js` from the driver's machine-readable output. Hash hand-copying is
+  eliminated as an error class.
+
+## Decision 4: UI pattern adoption (11 October 2026)
+
+The page adopts DEX patterns from Hyperliquid (ticker, funds strip, preview-before-sign),
+THORSwap (select → quote → review), Terra Station (turnout as the governance security metric),
+and NEAR (plain-word nav), inside the typewriter skin. Full mapping and the invariants future
+contributors must not break live in `web/UI_RATIONALE.md`. Two invariants are worth repeating
+here because they are protocol-level, not cosmetic: **no fiat prices anywhere** (a fiat price
+needs an oracle, and an oracle is a trust assumption the UI does not add), and **the page never
+holds keys** (it builds and reads; the wallet signs).
+
+## Decision 5: dependency bump for the govulncheck gate (13 October 2026)
+
+Adding `make conformance` (the Go canon Article 1 gate: fmt, vet, build, test, `-race`,
+govulncheck, NEF-hash record) surfaced six reachable vulnerabilities in two indirect
+modules of the operator tooling (`golang.org/x/net` v0.58.0, `google.golang.org/grpc`
+v1.82.1 — HTTP/2 paths reached by the RPC client in `cmd/deploy`/`cmd/seed`). Decided and
+done: bumped to `x/net` v0.60.0 and `grpc` v1.83.1 (the recorded minimum-fixed versions),
+with `x/crypto`, `x/mod`, `x/sync`, `x/sys`, `x/term`, `x/text`, and genproto following as
+indirects. The pinned platform dependency (neo-go v0.123.0) and the `go 1.26.0` directive
+are unchanged. Proof the bump changed nothing on-chain: all six contract NEFs recompile
+**byte-identical** across it (hashes compared before and after), and the full suite plus
+`-race` passes. govulncheck is now green and on the gate path, so the next vulnerable
+transitive dependency fails the build instead of shipping silently.

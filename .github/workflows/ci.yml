@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+# Two independent jobs, so the substantive signal (does it compile and do the tests pass) is not
+# blocked by formatting. go.sum is committed (FTB-19), so builds resolve the pinned module set
+# exactly; do not run `go mod tidy` in CI — a tidy diff means the committed sums drifted.
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: resolve modules
+        run: go mod download
+      - name: install neo-go compiler
+        run: go install github.com/nspcc-dev/neo-go/cli@v0.123.0
+      - name: rename compiler binary
+        run: mv "$HOME/go/bin/cli" "$HOME/go/bin/neo-go"
+      - name: compile contracts
+        run: sh scripts/compile.sh
+      - name: test (with race detector)
+        run: go test -race ./...
+      - name: install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: govulncheck (pinned module set)
+        run: govulncheck ./...
+      - name: NEF hash record
+        run: sh scripts/nef_hash.sh
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: resolve modules
+        run: go mod download
+      - name: gofmt
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then echo "gofmt needed in:"; echo "$out"; exit 1; fi
+      - name: go vet
+        run: go vet ./...
