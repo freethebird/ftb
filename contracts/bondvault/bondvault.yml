@@ -1,0 +1,47 @@
+name: FtbBondVault
+safemethods:
+  - state
+  - vaultOf
+  - liquidityOf
+  - project
+  - committee
+  - token
+events:
+  - name: Configured
+    parameters:
+      - name: ftb
+        type: Hash160
+      - name: committee
+        type: Hash160
+  - name: Bonded
+    parameters:
+      - name: from
+        type: Hash160
+      - name: token
+        type: Hash160
+      - name: amount
+        type: Integer
+      - name: vault
+        type: Integer
+      - name: liquidity
+        type: Integer
+  - name: Slashed
+    parameters:
+      - name: token
+        type: Hash160
+      - name: to
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: Delisted
+    parameters:
+      - name: token
+        type: Hash160
+      - name: project
+        type: Hash160
+      - name: amount
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - transfer
