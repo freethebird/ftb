@@ -426,7 +426,7 @@ body{font-size:15px}
   <div class="railfoot">
     <span class="idstate" id="idstate">[ no wallet ]</span>
     <button id="connectBtn">connect -&gt;</button>
-    <button class="linkish" id="themeBtn">theme</button>
+    <button class="linkish" id="themeBtn">invert</button>
     <span class="muted" id="rpcNote">rpc: connecting...</span>
     <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
   </div>
@@ -633,14 +633,17 @@ body{font-size:15px}
 (function(){
   'use strict';
 
-  // ---------- theme (from the design system) ----------
+  // ---------- theme: full color swap (every color flows through the tokens) ----------
   var root=document.documentElement;
   function eff(){ var t=root.getAttribute('data-theme'); if(t) return t;
     return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+  function paintThemeBtn(){ document.getElementById('themeBtn').textContent = 'invert [ ' + eff() + ' ]'; }
   try{ var s=localStorage.getItem('theme'); if(s==='dark'||s==='light') root.setAttribute('data-theme', s); }catch(e){}
   document.getElementById('themeBtn').addEventListener('click', function(){
     var n = eff()==='dark' ? 'light' : 'dark'; root.setAttribute('data-theme', n);
-    try{ localStorage.setItem('theme', n); }catch(e){} });
+    try{ localStorage.setItem('theme', n); }catch(e){}
+    paintThemeBtn(); });
+  paintThemeBtn();
 
   // ---------- tiny helpers ----------
   function $(id){ return document.getElementById(id); }
