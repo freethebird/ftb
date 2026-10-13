@@ -1,0 +1,22 @@
+name: FtbMigrator
+safemethods:
+  - claimed
+events:
+  - name: Configured
+    parameters:
+      - name: ftb
+        type: Hash160
+      - name: root
+        type: ByteArray
+  - name: Claimed
+    parameters:
+      - name: account
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: Closed
+permissions:
+  - contract: '*'
+    methods:
+      - mintForMigration
+      - closeMigration

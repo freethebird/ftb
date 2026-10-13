@@ -1,0 +1,18 @@
+{
+  "rpc": "http://127.0.0.1:30333",
+  "wallet": "deployer.wallet.json",
+  "password_env": "FTB_DEPLOY_PASSWORD",
+  "contracts_dir": "./build",
+  "merkle_root_hex": "0x<root from cmd/merkleroot>",
+  "timelock_blocks": 2,
+  "owner_multisig": {
+    "m": 3,
+    "pubkeys": [
+      "0x<member A compressed pubkey>",
+      "0x<member B compressed pubkey>",
+      "0x<member C compressed pubkey>",
+      "0x<member D compressed pubkey>",
+      "0x<member E compressed pubkey>"
+    ]
+  }
+}

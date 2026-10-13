@@ -1,0 +1,27 @@
+# Neo N3 TestNet protocol config for the FTB community node (neo-go v0.123+).
+ProtocolConfiguration:
+  Magic: 894710606
+  SeedList:
+    - seed1t.neo.org:20333
+    - seed2t.neo.org:20333
+    - seed3t.neo.org:20333
+    - seed4t.neo.org:20333
+    - seed5t.neo.org:20333
+  StandbyCommittee: []
+  ValidatorsCount: 7
+
+ApplicationConfiguration:
+  DBConfiguration:
+    Type: leveldb
+    LevelDBOptions:
+      DataDirectoryPath: /var/lib/ftb-node/chain
+  # RPC is bound to localhost only; Caddy fronts it with TLS and CORS.
+  RPC:
+    Enabled: true
+    Bind: 127.0.0.1
+    Port: 10332
+    MaxGasInvoke: 50
+    MaxIteratorResultItems: 100
+  # No wallet unlocking, no sessions: this node never holds keys.
+  UnlockWallet:
+    Enabled: false

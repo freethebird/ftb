@@ -1,0 +1,39 @@
+name: FtbRegistry
+safemethods:
+  - get
+  - delay
+  - finished
+events:
+  - name: DelaySet
+    parameters:
+      - name: blocks
+        type: Integer
+  - name: Bootstrapped
+    parameters:
+      - name: name
+        type: String
+      - name: value
+        type: Hash160
+  - name: BootstrapFinished
+  - name: Proposed
+    parameters:
+      - name: name
+        type: String
+      - name: value
+        type: Hash160
+      - name: eta
+        type: Integer
+  - name: Applied
+    parameters:
+      - name: name
+        type: String
+      - name: value
+        type: Hash160
+  - name: Cancelled
+    parameters:
+      - name: name
+        type: String
+  - name: DelayIncreased
+    parameters:
+      - name: blocks
+        type: Integer

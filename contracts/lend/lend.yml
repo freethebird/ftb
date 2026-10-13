@@ -1,0 +1,36 @@
+name: FtbLend
+safemethods:
+  - debtOf
+  - collateralValue
+  - maxBorrow
+  - isUnhealthy
+  - sharesOf
+  - totalShares
+  - totalBorrows
+events:
+  - name: Configured
+    parameters:
+      - name: registry
+        type: Hash160
+      - name: ftb
+        type: Hash160
+      - name: bneo
+        type: Hash160
+  - name: ParamsSet
+    parameters:
+      - name: ltv
+        type: Integer
+      - name: liq
+        type: Integer
+      - name: bonus
+        type: Integer
+      - name: rate
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - transfer
+      - balanceOf
+      - price
+      - get
+      - onNEP17Payment

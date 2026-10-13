@@ -1,0 +1,33 @@
+name: FreeTheBird
+supportedstandards:
+  - NEP-17
+safemethods:
+  - symbol
+  - decimals
+  - totalSupply
+  - balanceOf
+  - migrationOpen
+  - getMigrator
+events:
+  - name: Transfer
+    parameters:
+      - name: from
+        type: Hash160
+      - name: to
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: MigratorSet
+    parameters:
+      - name: migrator
+        type: Hash160
+  - name: MigrationClosed
+  - name: OwnershipRenounced
+permissions:
+  - contract: '*'
+    methods:
+      - onNEP17Payment
+      # native ContractManagement.update, for the pre-launch-only Update (renounced before
+      # value flows). Listed on the wildcard entry: a separate contract-specific entry
+      # duplicates the one the compiler infers from the management.UpdateWithData call.
+      - update

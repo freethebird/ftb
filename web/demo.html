@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FTB wallet demo (reference)</title>
+<style>
+  :root{ --ink:#1f2430; --sub:#55607a; --line:#dfe3ee; --card:#ffffff; --bg:#f6f7fb;
+         --pink:#e8537a; --pinkbg:#fbe9f0; --teal:#2f9e78; --amber:#b9821f; --amberbg:#fff6e6; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap{ max-width:860px; margin:0 auto; padding:22px 18px 60px; }
+  h1{ font-size:20px; margin:0 0 2px; }
+  .lede{ color:var(--sub); margin:0 0 16px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:12px 0; }
+  .card h2{ font-size:14px; letter-spacing:.02em; text-transform:uppercase; color:var(--sub); margin:0 0 12px; }
+  .banner{ background:var(--amberbg); border:1px solid #f0d9a8; color:#7a5a12; border-radius:10px;
+           padding:10px 12px; font-size:13px; margin-bottom:14px; }
+  label{ display:block; font-size:12px; color:var(--sub); margin:8px 0 3px; }
+  input,select{ width:100%; padding:8px 9px; border:1px solid var(--line); border-radius:8px; font:inherit; background:#fff; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .row > div{ flex:1 1 220px; }
+  button{ border:0; border-radius:8px; padding:8px 14px; font:inherit; font-weight:600; cursor:pointer; }
+  button.primary{ background:var(--pink); color:#fff; }
+  button.ghost{ background:#eef1f7; color:var(--ink); }
+  button.sign{ background:var(--teal); color:#fff; }
+  button:disabled{ opacity:.45; cursor:not-allowed; }
+  .btnrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .muted{ color:var(--sub); font-size:12px; }
+  .mono{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; word-break:break-all; }
+  .pill{ display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:600; }
+  .pill.off{ background:#eef1f7; color:var(--sub); }
+  .pill.on{ background:#e3f5ec; color:var(--teal); }
+  .out{ background:#0f1420; color:#d7e0f0; border-radius:8px; padding:10px 12px; margin-top:10px; min-height:20px; }
+  .review{ border:1px dashed var(--pink); background:var(--pinkbg); border-radius:10px; padding:12px; margin-top:12px; display:none; }
+  .review.show{ display:block; }
+  .review .sum{ font-weight:700; color:#8c2448; margin-bottom:6px; }
+  details summary{ cursor:pointer; color:var(--sub); font-size:12px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(max-width:620px){ .grid2{ grid-template-columns:1fr; } }
+  hr{ border:0; border-top:1px solid var(--line); margin:14px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>FTB wallet demo <span class="muted">(reference)</span></h1>
+  <p class="lede">A minimal page that talks to the FTB contracts through NeoLine. It is read-only
+  until you review a plan and press Sign. Point it at TestNet and set your own contract hashes.</p>
+
+  <div class="banner">
+    Reference code, pending audit. Nothing is signed without an explicit review and Sign click.
+    Contract hashes are yours to fill in. Use TestNet until the contracts are audited.
+  </div>
+
+  <div class="card">
+    <h2>1 . Connect</h2>
+    <div class="row">
+      <div>
+        <label>Network</label>
+        <select id="network"><option>TestNet</option><option>MainNet</option></select>
+      </div>
+      <div>
+        <label>Wallet</label>
+        <div>Status: <span id="walletPill" class="pill off">not connected</span></div>
+        <div class="muted" id="nep21line" style="margin-top:4px;"></div>
+      </div>
+    </div>
+    <div class="btnrow">
+      <button class="primary" id="connectBtn">Connect NeoLine</button>
+    </div>
+    <div class="muted mono" id="acct" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="card">
+    <h2>2 . Contract hashes (per deployment)</h2>
+    <div class="grid2">
+      <div><label>FTB token (0x..)</label><input id="c_ftb" placeholder="0x..."></div>
+      <div><label>Migrator (0x..)</label><input id="c_migrator" placeholder="0x..."></div>
+      <div><label>Lend (0x..)</label><input id="c_lend" placeholder="0x..."></div>
+      <div><label>bNEO (0x..)</label><input id="c_bneo" placeholder="0x..."></div>
+      <div><label>Registry (0x..)</label><input id="c_registry" placeholder="0x..."></div>
+      <div><label>Oracle (0x..)</label><input id="c_oracle" placeholder="0x..."></div>
+      <div><label>VOTE-FTB address (N..)</label><input id="v_ftb" placeholder="N..."></div>
+      <div><label>VOTE-WAIT address (N..)</label><input id="v_wait" placeholder="N..."></div>
+    </div>
+    <p class="muted">These never leave the page. The adapter reads them from here.</p>
+  </div>
+
+  <div class="card">
+    <h2>3 . Read (no signing)</h2>
+    <div class="btnrow">
+      <button class="ghost" data-read="balance">My FTB balance</button>
+      <button class="ghost" data-read="totalSupply">Total supply</button>
+      <button class="ghost" data-read="maxSupply">Cap</button>
+      <button class="ghost" data-read="migrationOpen">Migration open?</button>
+      <button class="ghost" data-read="claimed">Have I claimed?</button>
+      <button class="ghost" data-read="debtOf">My debt</button>
+      <button class="ghost" data-read="sharesOf">My supply shares</button>
+    </div>
+    <div class="out mono" id="readOut">results appear here</div>
+  </div>
+
+  <div class="card">
+    <h2>4 . Act (build, review, then sign)</h2>
+    <div class="row">
+      <div>
+        <label>Action</label>
+        <select id="action">
+          <option value="claim">Claim migration</option>
+          <option value="supply">Supply FTB (lend)</option>
+          <option value="repay">Repay FTB (lend)</option>
+          <option value="borrow">Borrow FTB (lend)</option>
+          <option value="addGas">Add GAS collateral</option>
+          <option value="voteFtb">Vote: Free the Bird</option>
+          <option value="voteWait">Vote: keep waiting</option>
+        </select>
+      </div>
+      <div>
+        <label id="amtLabel">Amount (whole units, e.g. 10.5)</label>
+        <input id="amount" placeholder="10.5">
+      </div>
+    </div>
+    <div id="claimExtra" style="display:none;">
+      <label>Claim amount (base units) and proof (comma-separated hex), from proofs.json</label>
+      <input id="claimAmount" placeholder="amount in base units" style="margin-bottom:6px;">
+      <input id="claimProof" placeholder="aabb...,ccdd..., (hex proof elements)">
+    </div>
+    <div class="btnrow">
+      <button class="ghost" id="buildBtn">Build plan</button>
+    </div>
+
+    <div class="review" id="review">
+      <div class="sum" id="reviewSum"></div>
+      <div class="muted" id="reviewNote"></div>
+      <details style="margin-top:6px;"><summary>exact invocation</summary>
+        <div class="mono" id="reviewJson" style="margin-top:6px;"></div>
+      </details>
+      <div class="btnrow">
+        <button class="sign" id="signBtn">Sign &amp; send</button>
+        <button class="ghost" id="cancelBtn">Cancel</button>
+      </div>
+    </div>
+    <div class="out mono" id="actOut">no transaction yet</div>
+  </div>
+
+  <p class="muted">Other actions (withdraw supply, withdraw collateral, add bNEO collateral,
+  liquidate, swap) are in the adapter as the same build-review-sign plans. See invocations.md.</p>
+</div>
+
+<!-- optional: copy config.example.js to config.js to prefill the fields (a missing file is harmless) -->
+<script src="config.js"></script>
+<!-- real source of truth; loads as a sibling when you open this file in a browser with NeoLine -->
+<script src="ftb-dapi.js"></script>
+<script>
+(function(){
+  'use strict';
+  var dapi=null, plan=null, connected=false;
+  var $=function(id){ return document.getElementById(id); };
+  function setOut(id,msg){ $(id).textContent = msg; }
+  function val(id){ return ($(id).value||'').trim(); }
+
+  function buildConfig(){
+    return new FtbDapi({
+      network: val('network'),
+      contracts: {
+        ftb: val('c_ftb'), migrator: val('c_migrator'), lend: val('c_lend'),
+        bneo: val('c_bneo'), registry: val('c_registry'), oracle: val('c_oracle')
+      },
+      vote: { ftb: val('v_ftb'), wait: val('v_wait') }
+    });
+  }
+
+  function ensureAdapter(){
+    if (typeof FtbDapi === 'undefined') {
+      throw new Error('ftb-dapi.js did not load. Open this file from the web/ folder in a browser (not a preview pane).');
+    }
+  }
+
+  async function connect(){
+    try{
+      ensureAdapter();
+      dapi = buildConfig();
+      await dapi.init();
+      var a = await dapi.connect();
+      connected = true;
+      $('walletPill').className='pill on'; $('walletPill').textContent='connected';
+      setOut('acct', a.address + (a.label? '  ('+a.label+')' : ''));
+      try{ var nets = await dapi.networks(); $('nep21line').textContent = 'network: '+(nets && (nets.defaultNetwork||nets.chainId||'')); }catch(e){}
+      try{ var p = await dapi.hasNep21(); $('nep21line').textContent += p? '  . NEP-21 provider also present' : ''; }catch(e){}
+    }catch(err){ alert(describe(err)); }
+  }
+
+  function describe(err){
+    if(!err) return 'unknown error';
+    if(err.type) return err.type+': '+(err.description||''); // legacy dApi error
+    if(err.code) return 'error '+err.code+': '+(err.message||''); // NEP-21 error
+    return err.message || String(err);
+  }
+
+  async function doRead(which){
+    try{
+      ensureAdapter();
+      if(!dapi) dapi = buildConfig();
+      if(!dapi.n3) await dapi.init();
+      var acct = dapi.account;
+      if(!acct && (which==='balance'||which==='claimed'||which==='debtOf'||which==='sharesOf')){
+        var a = await dapi.connect(); acct=a.address;
+      }
+      var r;
+      if(which==='balance') r = fmt(await dapi.balanceOf(acct))+' FTB';
+      else if(which==='totalSupply') r = fmt(await dapi.totalSupply())+' FTB';
+      else if(which==='maxSupply') r = fmt(await dapi.maxSupply())+' FTB';
+      else if(which==='migrationOpen') r = (await dapi.migrationOpen()) ? 'open' : 'closed (sealed)';
+      else if(which==='claimed') r = (await dapi.claimed(acct)) ? 'yes, already claimed' : 'not yet';
+      else if(which==='debtOf') r = fmt(await dapi.debtOf(acct))+' FTB';
+      else if(which==='sharesOf') r = (await dapi.sharesOf(acct)).toString()+' shares';
+      setOut('readOut', which+': '+r);
+    }catch(err){ setOut('readOut', 'error: '+describe(err)); }
+  }
+  function fmt(big){ return FtbDapi.util.fromBaseUnits(big.toString()); }
+
+  function buildPlan(){
+    try{
+      ensureAdapter();
+      if(!dapi) dapi = buildConfig();
+      if(!connected || !dapi.account){ alert('Connect your wallet first.'); return; }
+      var me = dapi.account, act = val('action'), u = FtbDapi.util;
+      var p;
+      if(act==='claim'){
+        var amt = val('claimAmount');
+        var proof = val('claimProof').split(',').map(function(s){return s.trim();}).filter(Boolean);
+        p = dapi.claim(me, amt, proof);
+      } else if(act==='supply'){ p = dapi.supply(me, u.toBaseUnits(val('amount')));
+      } else if(act==='repay'){ p = dapi.repay(me, u.toBaseUnits(val('amount')));
+      } else if(act==='borrow'){ p = dapi.borrow(me, u.toBaseUnits(val('amount')));
+      } else if(act==='addGas'){ p = dapi.addCollateralGas(me, u.toBaseUnits(val('amount')));
+      } else if(act==='voteFtb'){ p = dapi.vote(me, 'ftb');
+      } else if(act==='voteWait'){ p = dapi.vote(me, 'wait');
+      }
+      plan = p;
+      $('reviewSum').textContent = p.summary;
+      $('reviewNote').textContent = p.note || '';
+      $('reviewJson').textContent = JSON.stringify({scriptHash:p.scriptHash, operation:p.operation, args:p.args}, null, 1);
+      $('review').className = 'review show';
+      setOut('actOut','plan built. Review above, then Sign to send.');
+    }catch(err){ alert(describe(err)); }
+  }
+
+  async function sign(){
+    if(!plan) return;
+    try{
+      var r = await dapi.execute(plan);
+      setOut('actOut', 'sent. txid: '+(r && r.txid)+'   node: '+(r && r.nodeURL||''));
+      $('review').className='review';
+    }catch(err){ setOut('actOut', 'not sent: '+describe(err)); }
+  }
+
+  function prefill(c){
+    if(c.network) $('network').value = c.network;
+    var m = c.contracts||{};
+    ['ftb','migrator','lend','bneo','registry','oracle'].forEach(function(k){ if(m[k]) $('c_'+k).value=m[k]; });
+    var v = c.vote||{};
+    if(v.ftb) $('v_ftb').value=v.ftb;
+    if(v.wait) $('v_wait').value=v.wait;
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    if (typeof window.FTB_CONFIG === 'object' && window.FTB_CONFIG) { try{ prefill(window.FTB_CONFIG); }catch(e){} }
+    $('connectBtn').addEventListener('click', connect);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-read]'), function(b){
+      b.addEventListener('click', function(){ doRead(b.getAttribute('data-read')); });
+    });
+    $('action').addEventListener('change', function(){
+      var isClaim = $('action').value==='claim';
+      $('claimExtra').style.display = isClaim ? 'block' : 'none';
+      var isVote = $('action').value.indexOf('vote')===0;
+      $('amount').parentElement.style.display = (isClaim||isVote) ? 'none' : 'block';
+    });
+    $('buildBtn').addEventListener('click', buildPlan);
+    $('signBtn').addEventListener('click', sign);
+    $('cancelBtn').addEventListener('click', function(){ plan=null; $('review').className='review'; setOut('actOut','cancelled'); });
+    if (typeof FtbDapi === 'undefined') {
+      $('nep21line').textContent = 'adapter not loaded in this view (open demo.html from the web/ folder in a browser)';
+    }
+  });
+})();
+</script>
+</body>
+</html>
