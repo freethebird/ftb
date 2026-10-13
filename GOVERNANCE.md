@@ -64,6 +64,38 @@ implements, the nodes enforce; no layer acts alone.
 redeploy; IPFS pin when available. The UI the community sees always matches
 what governance ratified.
 
+## Listing track: voting new tokens onto the DEX
+
+A second proposal type, for admitting a project's token. Same ballot
+machinery, different subject — and the project pays to play.
+
+**L1. The project is the proposal. [chain, v2]**
+A listing proposal names the token contract hash, the project, and — crucially —
+the bond terms. The bond percentage is part of what gets voted on, not a
+fixed constant: the community prices its trust per project. Ballot options
+can even carry competing terms ("list at 1% bond / list at 2% / reject").
+
+**L2. Pass → the bond comes due. [chain, v2]**
+On a pass, the project must acquire the voted percentage of FTB supply — e.g.
+1% — bought on the open market. That purchase is the listing fee in the only
+currency that matters: demand for the community's token. No bond, no listing;
+the front end never shows the pair until the lock is visible on-chain.
+
+**L3. The bond splits 50/50. [chain, v2]**
+- **50% → liquidity**: paired into the FTB/<token> pool, LP position locked.
+  Day-one depth for the new market, and the project cannot pull it.
+- **50% → rug-pull bond**: locked in a bond vault contract. If the project
+  rugs — abandons, mints, drains — governance votes to slash: the locked FTB
+  compensates harmed LPs or is burned. Good behavior for a vesting period
+  (also a voted parameter) and the bond unlocks back to the project.
+
+**Why this shape works**
+The project has capital at risk exactly when holders do. The liquidity half
+makes the market real from block one; the vault half makes "rug" an
+expensive word. And because the percentage itself is voted, a blue-chip
+project and an anonymous launch get different prices of trust — set by the
+community, per proposal, on the record.
+
 ## Contract deltas this implies
 
 | change | where | status |
@@ -72,6 +104,8 @@ what governance ratified.
 | public tally, anyone reads | ballot | built |
 | proposal bond in FTB | registry | v2, not started |
 | live-proposals board | registry | v2, not started |
+| listing proposal type (token hash + bond terms in the vote) | registry | v2, not started |
+| bond vault: 50/50 split, LP lock, slash-by-vote, vesting unlock | new contract | v2, not started |
 | bounty treasury keyed to ballot results | new contract | v3, not started |
 
 ## What this is not
