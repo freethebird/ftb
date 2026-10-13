@@ -584,6 +584,7 @@ body{font-size:15px}
 
   <footer class="foot2">
     <span class="disp" style="font-size:20px">free the bird</span><br>
+    <span class="muted" id="shiftLine">// day shift</span><br>
     Reference implementation pending external audit. Nothing here is financial, legal, or
     investment advice. A gift to the Flamingo community: the code is MIT, the proofs are public,
     the mint is sealed by mathematics. Verify, then sign.
@@ -637,7 +638,12 @@ body{font-size:15px}
   var root=document.documentElement;
   function eff(){ var t=root.getAttribute('data-theme'); if(t) return t;
     return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
-  function paintThemeBtn(){ document.getElementById('themeBtn').textContent = 'invert [ ' + eff() + ' ]'; }
+  function paintThemeBtn(){
+    var t = eff();
+    document.getElementById('themeBtn').textContent = 'invert [ ' + t + ' ]';
+    var s = document.getElementById('shiftLine');
+    if (s) s.textContent = '// ' + (t==='dark' ? 'night shift' : 'day shift');
+  }
   try{ var s=localStorage.getItem('theme'); if(s==='dark'||s==='light') root.setAttribute('data-theme', s); }catch(e){}
   document.getElementById('themeBtn').addEventListener('click', function(){
     var n = eff()==='dark' ? 'light' : 'dark'; root.setAttribute('data-theme', n);
