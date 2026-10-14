@@ -383,8 +383,9 @@ func TestInterestAccrues(t *testing.T) {
 	}, "debtOf", borrower.ScriptHash().BytesBE())
 }
 
-// The 1/3 holders' share accrues to the reserve and sweeps to the dividends module,
-// callable by anyone; the reserve is excluded from suppliers' share value.
+// The 1/3 holders' share accrues to the reserve and sweeps out, callable by anyone; the
+// reserve is excluded from suppliers' share value. Unbound dividends fails closed; a bound
+// treasury takes 1/3 of the reserve (1/9 of interest), leaving 2/3 (2/9) to dividends.
 func TestReserveSplitAndSweep(t *testing.T) {
 	s := setup(t)
 	supplier := s.e.NewAccount(t)
@@ -423,13 +424,36 @@ func TestReserveSplitAndSweep(t *testing.T) {
 	lo.InvokeFail(t, "dividends module not bound", "sweepDividends")
 
 	// bind it, sweep from a random caller, and the reserve lands there exactly
+	// (no treasury bound yet: the holders receive the whole reserve)
 	s.e.NewInvoker(s.reg, s.owner).Invoke(t, stackitem.Null{}, "bootstrap", "dividends", dividends.ScriptHash().BytesBE())
 	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "sweepDividends")
 	lo.Invoke(t, stackitem.Make(0), "reserveAccrued")
-	reserve := dividendsBalance(t, s, dividends.ScriptHash())
-	if reserve.Sign() <= 0 {
+	first := dividendsBalance(t, s, dividends.ScriptHash())
+	if first.Sign() <= 0 {
 		t.Fatalf("dividends module received nothing")
 	}
+
+	// with the treasury bound the sweep splits: 1/3 of the reserve to the treasury
+	// (1/9 of total interest), 2/3 to dividends (2/9)
+	treasury := s.e.NewAccount(t)
+	s.e.NewInvoker(s.reg, s.owner).Invoke(t, stackitem.Null{}, "bootstrap", "treasury", treasury.ScriptHash().BytesBE())
+	for i := 0; i < 50; i++ {
+		s.e.AddNewBlock(t)
+	}
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1*dec) // accrue again
+	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "sweepDividends")
+
+	treasuryGot := dividendsBalance(t, s, treasury.ScriptHash())
+	dividendsGot := new(big.Int).Sub(dividendsBalance(t, s, dividends.ScriptHash()), first)
+	// treasuryGot == floor(reserve/3)  <=>  3*treasuryGot <= dividendsGot+treasuryGot < 3*(treasuryGot+1)
+	total := new(big.Int).Add(treasuryGot, dividendsGot)
+	if new(big.Int).Mul(treasuryGot, big.NewInt(3)).Cmp(total) > 0 {
+		t.Fatalf("treasury received more than a third: %s of %s", treasuryGot, total)
+	}
+	if total.Cmp(new(big.Int).Mul(new(big.Int).Add(treasuryGot, big.NewInt(1)), big.NewInt(3))) >= 0 {
+		t.Fatalf("treasury received less than floor(reserve/3): %s of %s", treasuryGot, total)
+	}
+	lo.Invoke(t, stackitem.Make(0), "reserveAccrued")
 }
 
 // APY views: utilization and both APYs are pure functions of pool state.

@@ -28,13 +28,17 @@ Three provenance classes:
 | 15 | Repay debt | `ftb_token.transfer` → `lend.onNEP17Payment` ("repay") | FTB |
 | 16 | Withdraw collateral (health-checked) | `lend.withdrawCollateral` | FTB |
 | 17 | Liquidate an unhealthy position | `ftb_token.transfer` → `lend.onNEP17Payment` ("liq") | FTB |
-| 18 | Sweep the 1/3 fee share to FTB holders | `lend.sweepDividends` → dividends module | FTB |
-| 19 | Oracle price report / read (lend pricing) | `oracle.report`, `oracle.price` | FTB |
-| 20 | Pay transaction fees | `gas.transfer` (system) | Neo native |
-| 21 | Committee governance actions (timelocked module swaps) | `registry.propose/apply` | FTB |
-| 22 | Deploy / update contracts | `ContractManagement` | Neo native |
-| 23 | Hash proofs (claim/vote verification) | `CryptoLib.sha256` | Neo native |
-| 24 | Block height (timelocks, accrual) | `Ledger.currentIndex` | Neo native |
+| 18 | Sweep the fee share: 1/9 treasury, 2/9 holders | `lend.sweepDividends` → treasury + dividends modules | FTB |
+| 19 | Fund a passed proposal (escrow the budget) | `treasury.createEscrow` (committee, after ballot) | FTB |
+| 20 | Attest a passed audit (binds the exact NEF hash) | `treasury.attest` (proposal auditor) | FTB |
+| 21 | Claim dev tranches (A after audit, B after soak) | `treasury.claimA`, `treasury.claimB` | FTB |
+| 22 | Return treasury excess to holders | `treasury.returnExcess` → dividends module | FTB |
+| 23 | Oracle price report / read (lend pricing) | `oracle.report`, `oracle.price` | FTB |
+| 24 | Pay transaction fees | `gas.transfer` (system) | Neo native |
+| 25 | Committee governance actions (timelocked module swaps) | `registry.propose/apply` | FTB |
+| 26 | Deploy / update contracts | `ContractManagement` | Neo native |
+| 27 | Hash proofs (claim/vote verification) | `CryptoLib.sha256` | Neo native |
+| 28 | Block height (timelocks, accrual, treasury soak) | `Ledger.currentIndex` | Neo native |
 
 **What is NOT used:** bNEO / NeoBurger (dropped — collateral is native NEO and GAS, one
 less external dependency), any hosted API, any custodial service. The front end talks to
