@@ -120,6 +120,17 @@ body{font-size:15px}
 /* full-width primary button, slightly rounded — the Flamingo CTA shape */
 .go{border-radius:3px; width:100%; text-align:center}
 
+/* ---- clickable = opposite-color box ---- */
+a, button, .linkish{background:var(--ink); color:var(--paper);
+  border:1px solid var(--ink); border-radius:2px; padding:.34em .72em; text-decoration:none}
+a:hover, button:hover, .linkish:hover{background:var(--paper); color:var(--ink)}
+/* brand marks stay bare, invert on hover */
+.topbar .bird3, .topbar .wordmark{background:transparent; color:var(--ink); border:0; padding:0}
+.topbar .bird3:hover, .topbar .wordmark:hover{background:var(--ink); color:var(--paper)}
+/* selected states read as pressed, not boxed */
+.tsel button.on, .ctabs span.cur{background:var(--paper); color:var(--ink);
+  box-shadow:inset 0 0 0 2px var(--paper), inset 0 0 0 4px var(--ink)}
+
 @media (max-width:860px){
   .tradegrid, .earngrid, .govgrid{grid-template-columns:1fr}
   .tiles{grid-template-columns:1fr 1fr}
@@ -161,9 +172,7 @@ MARKUP = """<header class="topbar">
 
 <section class="hero3">
   <h1>the flamingo, set free.</h1>
-  <p class="sub">trade, earn, borrow and govern on Neo N3. prices are ratios between
-    assets — no fiat, no oracle, no admin keys. the front end you are reading is a
-    static file on IPFS; the mechanism is the chain.</p>
+  <p class="sub">trade · earn · borrow · govern — ratios only, no fiat, no oracle, no admin.</p>
   <div class="cta-row">
     <a class="cta solid" href="#trade">start trading -&gt;</a>
     <a class="cta" href="#earn">earn dividends -&gt;</a>
@@ -188,8 +197,6 @@ MARKUP = """<header class="topbar">
     <div class="card" id="trade">
       <div class="card-h">
         <div class="ctabs"><span class="cur">swap</span><a href="#market">pools</a></div>
-        <span class="spacer"></span>
-        <span class="lede">0.3% fee · quote from live reserves</span>
       </div>
       <div class="card-b">
         <div class="bal" id="balStrip" hidden>
@@ -251,8 +258,6 @@ MARKUP = """<header class="topbar">
       <div class="card-b">
         <div class="biglabel">dividend apy</div>
         <div class="bign" id="dApy">—</div>
-        <p class="small muted">stake FTB, earn a pro-rata share of platform revenue.
-          like FLOCKS — but one asset, one accumulator, no lockup.</p>
         <div class="flockstats">
           <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">—</div></div>
           <div class="fs"><div class="l">growth / ftb</div><div class="v" id="dAcc">—</div></div>
@@ -267,7 +272,7 @@ MARKUP = """<header class="topbar">
             <button class="linkish" id="dvUnstakeGo">unstake -&gt;</button>
             <button class="linkish" id="dvClaimGo">claim -&gt;</button>
           </div>
-          <p class="small muted" id="dvHint">every action is review-and-sign in your wallet; the page never holds keys</p>
+          <p class="small muted" id="dvHint">review-and-sign in your wallet — the page never holds keys</p>
         </div>
         <p class="small muted" id="earnOff">standby — goes live when the dividends module hash is configured for this network</p>
       </div>
@@ -316,8 +321,7 @@ MARKUP = """<header class="topbar">
       </div>
       <div class="card-b">
         <h2 class="disp" style="font-size:28px; margin:.1em 0 .3em" id="govQ">no live ballot</h2>
-        <p class="small muted" id="govHint">one vote per snapshot address — weight is your
-          snapshot balance, your proof is the same one you claim with.</p>
+        <p class="small muted" id="govHint">weight = your snapshot balance.</p>
         <div id="govBody"></div>
       </div>
     </div>
@@ -376,11 +380,11 @@ MARKUP = """<header class="topbar">
         <span class="idx">02</span>
         <div><span class="ttl">Check your claim against the pre-exploit snapshot</span></div>
         <button class="read linkish" id="checkBtn">check -&gt;</button>
-        <div class="meta"><span id="claimHint">connect a wallet, we look up your address in the published proofs</span></div>
+        <div class="meta"><span id="claimHint">connect a wallet to check</span></div>
       </div>
       <div class="entry">
         <span class="idx">03</span>
-        <div><span class="ttl">The snapshot is the fairness. The attacker is not in it.</span></div>
+        <div><span class="ttl">The attacker is not in the snapshot.</span></div>
         <button class="read linkish" id="proofsBtn">proofs -&gt;</button>
         <div class="meta"><span class="tag">merkle</span><span id="rootLine">root —</span><span>4,847 holders</span></div>
       </div>
@@ -406,10 +410,8 @@ MARKUP = """<header class="topbar">
         <dt>snapshot</dt><dd>block 12,782,704 — reproducible with snapshot_state.py against any archive node</dd>
       </dl>
       <p class="sealnote">
-        These hashes are the whole ballgame. A hostile mirror of this page would change them —
-        so check them against the published repo and the deploy output before you sign anything.
-        After close + renounceOwnership, the token has no admin at all; that fact is readable
-        on-chain, forever.
+        Check every hash against the repo before you sign. After close + renounceOwnership
+        the token has no admin — readable on-chain, forever.
       </p>
     </div>
   </div>
@@ -417,9 +419,8 @@ MARKUP = """<header class="topbar">
   <footer class="foot3">
     <span class="disp" style="font-size:20px">free the bird</span><br>
     <span class="muted" id="shiftLine">// day shift</span><br>
-    Reference implementation pending external audit. Nothing here is financial, legal, or
-    investment advice. A gift to the Flamingo community: the code is MIT, the proofs are public,
-    the mint is sealed by mathematics. Verify, then sign.
+    Reference implementation pending external audit. Not financial advice.
+    MIT code, public proofs — a gift to the Flamingo community.
   </footer>
 </div>
 
