@@ -99,8 +99,15 @@ func main() {
 		check(err)
 		_, err = act.WaitSuccess(context.Background(), txh, vub, err)
 		check(err)
-		// print both byte orders so there is no 0x BE vs LE ambiguity when you paste it
-		fmt.Printf("deployed %-12s -> 0x%x  (le 0x%x)\n", name, h.BytesBE(), h.BytesLE())
+		// self-check: the contract must answer getcontractstate at the computed hash
+		// before anything downstream (wiring calls, config.js) uses it.
+		if _, err := cli.GetContractStateByHash(h); err != nil {
+			check(fmt.Errorf("deploy of %s: tx 0x%s HALTed but contract 0x%s not found on-chain: %w",
+				name, txh.StringBE(), h.StringBE(), err))
+		}
+		// print both byte orders so there is no 0x BE vs LE ambiguity when you paste it;
+		// the FIRST form (0x + BE) is the one RPC calls and explorers expect.
+		fmt.Printf("deployed %-12s -> 0x%x  (le 0x%x)  tx 0x%s\n", name, h.BytesBE(), h.BytesLE(), txh.StringBE())
 		return h
 	}
 
@@ -130,7 +137,7 @@ func main() {
 		check(err)
 		_, err = act.WaitSuccess(context.Background(), txh, vub, err)
 		check(err)
-		fmt.Printf("  wired %s\n", method)
+		fmt.Printf("  wired %-16s tx 0x%s\n", method, txh.StringBE())
 	}
 
 	// 2. the token's only minter is the migrator
@@ -154,13 +161,14 @@ func main() {
 	}
 
 	fmt.Println("\nDeployed and wired.")
-	// machine-readable line for scripts/deploy_testnet.sh to build web/config.js
+	// machine-readable line for scripts/deploy_testnet.sh to build web/config.js;
+	// hashes are 0x-prefixed big-endian, the exact form RPC calls and config.js expect.
 	ballotStr := ""
 	if cfg.BallotOptions >= 2 {
-		ballotStr = ballot.String()
+		ballotStr = "0x" + ballot.StringBE()
 	}
 	fmt.Printf("FTB_HASHES {\"ftb\":%q,\"migrator\":%q,\"registry\":%q,\"ballot\":%q}\n",
-		token.String(), migrator.String(), registry.String(), ballotStr)
+		"0x"+token.StringBE(), "0x"+migrator.StringBE(), "0x"+registry.StringBE(), ballotStr)
 	if cfg.OwnerMultisig == nil && cfg.OwnerScriptHash == "" {
 		fmt.Println("WARNING: the owner is the deployer's SINGLE key. Dev/TestNet only;")
 		fmt.Println("for any real launch set owner_multisig in the config and redeploy (FTB-14).")

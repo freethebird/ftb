@@ -41,7 +41,7 @@ s = s.replace(
 );
 fs.writeFileSync("web/config.js", s);
 console.log("web/config.js updated:", JSON.stringify(h));
-'
+' "$LINE"
 
 echo
 echo "Done. Contract hashes are in web/config.js."
