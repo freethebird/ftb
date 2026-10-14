@@ -167,7 +167,7 @@ MARKUP = """<aside class="rail">
       <div class="bal" id="balStrip" hidden>
         <span>wallet:</span>
         <span>FTB <b id="balFtb">—</b></span>
-        <span>bNEO <b id="balBneo">—</b></span>
+        <span>NEO <b id="balNeo">—</b></span>
         <span>GAS <b id="balGas">—</b></span>
         <span>claimable <b id="balClaim">—</b></span>
       </div>

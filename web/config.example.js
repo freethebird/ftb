@@ -16,14 +16,18 @@ window.FTB_CONFIG = {
     ballot:   '0x0000000000000000000000000000000000000000',
     // bond vault holds listing bonds (50/50 liquidity/rug-pull split)
     bondvault: '0x0000000000000000000000000000000000000000',
-    // bNEO (NeoBurger). This is the MainNet hash; use the correct one for your network.
+    // bNEO (NeoBurger) — ratio-board listing only; lend collateral is native NEO + GAS.
+    // This is the MainNet hash; use the correct one for your network.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
     // router is the external Flamingo swap; set only if you wire swap in your UI.
     router:   '0x0000000000000000000000000000000000000000'
   },
 
-  // native GAS, same on every Neo N3 network
-  assets: { gas: '0xd2a4cff31913016155e38e474a2c06d08be276cf' },
+  // native NEO and GAS, same on every Neo N3 network (NEO is 0 decimals, whole units)
+  assets: {
+    neo: '0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5',
+    gas: '0xd2a4cff31913016155e38e474a2c06d08be276cf'
+  },
 
   // index.html reads over raw JSON-RPC with failover (wallets sign separately).
   // list your five community nodes first; public endpoints are appended automatically.

@@ -1,15 +1,23 @@
 // Package lend is the FTB lending market: NO MINT. Suppliers deposit FTB and earn
-// interest; borrowers post bNEO/GAS collateral and borrow FTB from what suppliers put in.
-// Like a bank, it lends only deposits and never prints. Supply uses cToken-style shares so
-// interest accrues into every share's value; debt accrues through a borrow index.
+// interest; borrowers post NEO or GAS collateral — the two native assets, no wrapper, no
+// vendor — and borrow FTB from what suppliers put in. Like a bank, it lends only deposits
+// and never prints. Supply uses cToken-style shares so interest accrues into every
+// share's value; debt accrues through a borrow index.
+//
+// Economics (ECONOMICS.md): the borrow rate follows utilization along a kinked curve,
+// and interest splits 2/3 to suppliers (share value) and 1/3 to the dividend reserve for
+// FTB holders. The reserve is swept to the "dividends" module bound in the registry —
+// fail-closed until it is bound. NEO is indivisible (0 decimals): it is priced per whole
+// NEO, and liquidation seizes floor-divided whole NEO, leaving any dust value with the
+// borrower.
 //
 // The oracle is resolved through the registry each call, so it can be upgraded behind the
 // registry timelock without touching this contract (the seam).
 //
-// HIGHEST-RISK MODULE. Launch 2 only, behind its own dedicated audit. The interest model
-// here is simple linear accrual and the liquidation seize is reference-level; both must be
-// reviewed and hardened. All token amounts are base units (8 decimals). Prices are FTB
-// base units per 1 whole asset, so value = amount * price / 1e8.
+// HIGHEST-RISK MODULE. Launch 2 only, behind its own dedicated audit. All FTB/GAS amounts
+// are base units (8 decimals); NEO amounts are whole units. Prices are FTB base units per
+// 1 whole asset, so value = amount * price / 1e8 for 8-decimal assets and
+// value = wholeNeo * price for NEO.
 //
 // Reference implementation pending audit.
 package lend
@@ -19,27 +27,34 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/interop/contract"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/gas"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/ledger"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/neo"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
 )
 
 const (
-	dec     = 100_000_000               // 1e8, decimals of FTB/bNEO/GAS
-	scale   = 1_000_000_000_000_000_000 // 1e18 fixed-point for the borrow index
+	dec     = 100_000_000               // 1e8, decimals of FTB/GAS
+	scale   = 1_000_000_000_000_000_000 // 1e18 fixed-point for rates and the borrow index
 	bps     = 10000
 	maxRate = scale / 100 // per-block rate ceiling (FTB-07): 1% per block is far above any real
 	// rate; it only bounds gross misconfiguration and keeps accrual products inside 256 bits.
+	blocksPerYear = 2_102_400 // 15-second target block time; linear annualization
+	maxReserveBps = 5000      // holders' fee share can never exceed half, even by vote
 )
 
 var (
-	keyOwner    = []byte{0x01}
-	keyRegistry = []byte{0x02}
-	keyFTB      = []byte{0x03}
-	keyBNEO     = []byte{0x04}
-	keyLTV      = []byte{0x05}
-	keyLiq      = []byte{0x06}
-	keyBonus    = []byte{0x07}
-	keyRate     = []byte{0x08}
+	keyOwner      = []byte{0x01}
+	keyRegistry   = []byte{0x02}
+	keyFTB        = []byte{0x03}
+	keyLTV        = []byte{0x05}
+	keyLiq        = []byte{0x06}
+	keyBonus      = []byte{0x07}
+	keyBase       = []byte{0x08} // base borrow rate per block (1e18 scale)
+	keySlope1     = []byte{0x09} // slope below the kink
+	keySlope2     = []byte{0x0A} // slope above the kink
+	keyKink       = []byte{0x0B} // kink, in bps of utilization
+	keyResBps     = []byte{0x0C} // holders' share of interest (the 1/3)
+	keyResAccrued = []byte{0x0D} // FTB owed to the dividends module
 
 	keyTotShares = []byte{0x20}
 	keyTotBorrow = []byte{0x21}
@@ -48,8 +63,8 @@ var (
 
 	prefixShares = []byte{0x30}
 	prefixBNorm  = []byte{0x31}
-	prefixColB   = []byte{0x32} // bNEO collateral
-	prefixColG   = []byte{0x33} // GAS collateral
+	prefixColN   = []byte{0x32} // NEO collateral (whole units)
+	prefixColG   = []byte{0x33} // GAS collateral (base units)
 )
 
 func _deploy(data any, isUpdate bool) {
@@ -64,39 +79,61 @@ func _deploy(data any, isUpdate bool) {
 	storage.Put(ctx, keyOwner, owner)
 	storage.Put(ctx, keyBIdx, scale)
 	storage.Put(ctx, keyLastBlk, ledger.CurrentIndex())
-	storage.Put(ctx, keyLTV, 6000)  // 60% max borrow
-	storage.Put(ctx, keyLiq, 7500)  // 75% liquidation threshold
-	storage.Put(ctx, keyBonus, 800) // 8% liquidation bonus
-	storage.Put(ctx, keyRate, 0)    // set a real per-block rate before launch
+	storage.Put(ctx, keyLTV, 6000)    // 60% max borrow
+	storage.Put(ctx, keyLiq, 7500)    // 75% liquidation threshold
+	storage.Put(ctx, keyBonus, 800)   // 8% liquidation bonus
+	storage.Put(ctx, keyKink, 8000)   // the curve steepens past 80% utilization
+	storage.Put(ctx, keyResBps, 3333) // 1/3 of interest to FTB holders (ECONOMICS.md)
+	// rates ship at zero: set a real curve with SetRates before launch
 }
 
 // ---- admin (owner = multisig) ----
 
-func Configure(registry, ftb, bneo interop.Hash160) {
+func Configure(registry, ftb interop.Hash160) {
 	requireOwner()
-	if len(registry) != 20 || len(ftb) != 20 || len(bneo) != 20 {
+	if len(registry) != 20 || len(ftb) != 20 {
 		panic("configure: bad hash")
 	}
 	ctx := storage.GetContext()
 	storage.Put(ctx, keyRegistry, registry)
 	storage.Put(ctx, keyFTB, ftb)
-	storage.Put(ctx, keyBNEO, bneo)
-	runtime.Notify("Configured", registry, ftb, bneo) // FTB-09: wiring changes must be observable
+	runtime.Notify("Configured", registry, ftb) // FTB-09: wiring changes must be observable
 }
 
-func SetParams(ltv, liq, bonus, ratePerBlock int) {
+// SetRisk sets the collateral-risk knobs. The bonus is capped at 30% so a mis-set or
+// malicious value cannot seize a multiple of the repaid debt (FTB-07).
+func SetRisk(ltv, liq, bonus int) {
 	requireOwner()
-	// bonus capped at 30% so a mis-set or malicious value cannot seize a multiple of the
-	// repaid debt. Audit item FTB-07. (A ratePerBlock ceiling is a deploy-time policy choice.)
-	if ltv <= 0 || ltv >= liq || liq >= bps || bonus < 0 || bonus > 3000 || ratePerBlock < 0 || ratePerBlock > maxRate {
-		panic("bad params")
+	if ltv <= 0 || ltv >= liq || liq >= bps || bonus < 0 || bonus > 3000 {
+		panic("bad risk params")
 	}
 	ctx := storage.GetContext()
 	storage.Put(ctx, keyLTV, ltv)
 	storage.Put(ctx, keyLiq, liq)
 	storage.Put(ctx, keyBonus, bonus)
-	storage.Put(ctx, keyRate, ratePerBlock)
-	runtime.Notify("ParamsSet", ltv, liq, bonus, ratePerBlock) // FTB-09: risk changes must be observable
+	runtime.Notify("RiskSet", ltv, liq, bonus) // FTB-09: risk changes must be observable
+}
+
+// SetRates sets the utilization curve and the fee split. The peak rate (at 100%
+// utilization) is capped far above any real rate; the holders' share is capped at 50%
+// so no vote can starve the pool that pays it.
+func SetRates(base, slope1, slope2, kink, reserveBps int) {
+	requireOwner()
+	if base < 0 || slope1 < 0 || slope2 < 0 || kink <= 0 || kink >= bps ||
+		reserveBps < 0 || reserveBps > maxReserveBps {
+		panic("bad rate params")
+	}
+	peak := base + kink*slope1/bps + (bps-kink)*slope2/bps
+	if peak > maxRate {
+		panic("rate curve exceeds the ceiling")
+	}
+	ctx := storage.GetContext()
+	storage.Put(ctx, keyBase, base)
+	storage.Put(ctx, keySlope1, slope1)
+	storage.Put(ctx, keySlope2, slope2)
+	storage.Put(ctx, keyKink, kink)
+	storage.Put(ctx, keyResBps, reserveBps)
+	runtime.Notify("RatesSet", base, slope1, slope2, kink, reserveBps)
 }
 
 // ---- receive tokens ----
@@ -104,6 +141,18 @@ func SetParams(ltv, liq, bonus, ratePerBlock int) {
 func OnNEP17Payment(from interop.Hash160, amount int, data any) {
 	accrue()
 	token := runtime.GetCallingScriptHash()
+	if from == nil {
+		// A null sender means a mint, and the only mint that can land here is the GAS
+		// claim distributed whenever the contract's NEO balance changes (deposits,
+		// withdrawals, liquidations). It is not collateral and not a repayment; the
+		// amounts are dust and belong to no user. Accept it into the contract's
+		// unaccounted GAS balance — rejecting it would fault every NEO transfer out
+		// and brick withdrawals and liquidations (a protocol-level DoS).
+		if !eq(token, interop.Hash160(gas.Hash)) {
+			panic("unexpected mint")
+		}
+		return
+	}
 	if eq(token, ftbHash()) {
 		arr := data.([]any)
 		action := arr[0].(string)
@@ -116,7 +165,7 @@ func OnNEP17Payment(from interop.Hash160, amount int, data any) {
 		} else {
 			panic("bad action")
 		}
-	} else if eq(token, bneoHash()) {
+	} else if eq(token, interop.Hash160(neo.Hash)) {
 		addCollateral(from, amount, true)
 	} else if eq(token, interop.Hash160(gas.Hash)) {
 		addCollateral(from, amount, false)
@@ -157,7 +206,7 @@ func WithdrawSupply(user interop.Hash160, shares int) {
 	if shares <= 0 || shares > s {
 		panic("bad shares")
 	}
-	c := cash() // one cross-contract read, reused for both the share price and the liquidity check
+	c := cashAvailable() // one read, reused for the share price and the liquidity check
 	amount := shares * (c + getIntCtx(ctx, keyTotBorrow)) / getIntCtx(ctx, keyTotShares)
 	if amount > c {
 		panic("not enough cash; borrowers must repay first")
@@ -169,27 +218,27 @@ func WithdrawSupply(user interop.Hash160, shares int) {
 
 // ---- collateral ----
 
-func addCollateral(user interop.Hash160, amount int, isBneo bool) {
+func addCollateral(user interop.Hash160, amount int, isNeo bool) {
 	ctx := storage.GetContext()
-	k := colKey(user, isBneo)
+	k := colKey(user, isNeo)
 	storage.Put(ctx, k, getIntCtx(ctx, k)+amount)
 }
 
-func WithdrawCollateral(user interop.Hash160, bneo, gasAmt int) {
+func WithdrawCollateral(user interop.Hash160, neoAmt, gasAmt int) {
 	if !runtime.CheckWitness(user) {
 		panic("no witness")
 	}
 	accrue()
-	if bneo < 0 || gasAmt < 0 {
+	if neoAmt < 0 || gasAmt < 0 {
 		panic("negative")
 	}
 	ctx := storage.GetContext()
-	cb := col(user, true) // one storage read each, reused below
+	cn := col(user, true) // one storage read each, reused below
 	cg := col(user, false)
-	if bneo > cb || gasAmt > cg {
+	if neoAmt > cn || gasAmt > cg {
 		panic("too much")
 	}
-	storage.Put(ctx, colKey(user, true), cb-bneo)
+	storage.Put(ctx, colKey(user, true), cn-neoAmt)
 	storage.Put(ctx, colKey(user, false), cg-gasAmt)
 	// Debt-free users withdraw without touching the oracle, so a paused oracle never traps
 	// their own collateral. Audit item FTB-10.
@@ -199,8 +248,8 @@ func WithdrawCollateral(user interop.Hash160, bneo, gasAmt int) {
 			panic("would be undercollateralized")
 		}
 	}
-	if bneo > 0 {
-		send(bneoHash(), user, bneo)
+	if neoAmt > 0 {
+		send(interop.Hash160(neo.Hash), user, neoAmt)
 	}
 	if gasAmt > 0 {
 		send(interop.Hash160(gas.Hash), user, gasAmt)
@@ -217,7 +266,7 @@ func Borrow(user interop.Hash160, amount int) {
 	if amount <= 0 {
 		panic("amount")
 	}
-	if amount > cash() {
+	if amount > cashAvailable() {
 		panic("not enough liquidity")
 	}
 	if DebtOf(user)+amount > collateralValueFrom(oracleHash(), user)*getInt(keyLTV)/bps {
@@ -268,27 +317,27 @@ func liquidateIn(liquidator interop.Hash160, repay int, borrower interop.Hash160
 	storage.Put(ctx, keyTotBorrow, getIntCtx(ctx, keyTotBorrow)-pay)
 
 	seizeFtb := pay * (bps + getIntCtx(ctx, keyBonus)) / bps // FTB-value of collateral to seize
-	cb := col(borrower, true)                                // one storage read each, reused below
+	cn := col(borrower, true)                                // one storage read each, reused below
 	cg := col(borrower, false)
-	pB := priceFrom(orc, bneoHash())
-	bneoVal := cb * pB / dec
+	pN := priceFrom(orc, interop.Hash160(neo.Hash))
+	neoVal := cn * pN // NEO is whole-unit: value = wholeNeo * price, no decimal scaling
 
-	var seizeB, seizeG int
-	if seizeFtb <= bneoVal {
-		seizeB = seizeFtb * dec / pB
+	var seizeN, seizeG int
+	if seizeFtb <= neoVal {
+		seizeN = seizeFtb / pN // floor: up to one whole NEO of dust value stays with the borrower
 	} else {
-		seizeB = cb
-		remFtb := seizeFtb - bneoVal
-		pG := priceFrom(orc, interop.Hash160(gas.Hash)) // only needed when bNEO cannot cover the seize
+		seizeN = cn
+		remFtb := seizeFtb - neoVal
+		pG := priceFrom(orc, interop.Hash160(gas.Hash)) // only needed when NEO cannot cover the seize
 		seizeG = remFtb * dec / pG
 		if seizeG > cg {
 			seizeG = cg
 		}
 	}
-	storage.Put(ctx, colKey(borrower, true), cb-seizeB)
+	storage.Put(ctx, colKey(borrower, true), cn-seizeN)
 	storage.Put(ctx, colKey(borrower, false), cg-seizeG)
-	if seizeB > 0 {
-		send(bneoHash(), liquidator, seizeB)
+	if seizeN > 0 {
+		send(interop.Hash160(neo.Hash), liquidator, seizeN)
 	}
 	if seizeG > 0 {
 		send(interop.Hash160(gas.Hash), liquidator, seizeG)
@@ -298,7 +347,7 @@ func liquidateIn(liquidator interop.Hash160, repay int, borrower interop.Hash160
 	}
 }
 
-// ---- interest accrual ----
+// ---- interest accrual (utilization curve + the 2/3 : 1/3 split) ----
 
 func accrue() {
 	ctx := storage.GetContext()
@@ -308,17 +357,40 @@ func accrue() {
 	if blocks <= 0 {
 		return
 	}
-	rate := getIntCtx(ctx, keyRate)
 	tb := getIntCtx(ctx, keyTotBorrow)
+	rate := borrowRatePerBlock()
 	if rate > 0 && tb > 0 {
 		factor := rate * blocks
 		interest := tb * factor / scale
+		reserve := interest * getIntCtx(ctx, keyResBps) / bps
+		storage.Put(ctx, keyResAccrued, getIntCtx(ctx, keyResAccrued)+reserve)
 		storage.Put(ctx, keyTotBorrow, tb+interest)
 		bi := getIntCtx(ctx, keyBIdx)
 		storage.Put(ctx, keyBIdx, bi+bi*factor/scale)
-		// interest raised poolValue, so every supplier share is worth more. No mint.
+		// interest minus the reserve raises poolValue, so every supplier share is worth
+		// more — the 2/3. The reserve is the holders' 1/3. No mint, either way.
 	}
 	storage.Put(ctx, keyLastBlk, now)
+}
+
+// SweepDividends pays the accrued reserve to the dividends module bound in the registry.
+// Callable by anyone: the binding is timelocked and in the open, and the funds can only
+// go to that address (fail-closed while unbound).
+func SweepDividends() {
+	accrue()
+	ctx := storage.GetContext()
+	reserve := getIntCtx(ctx, keyResAccrued)
+	if reserve <= 0 {
+		panic("sweep: no reserve")
+	}
+	div := contract.Call(regHash(), "get", contract.ReadOnly, "dividends")
+	if div == nil {
+		panic("sweep: dividends module not bound")
+	}
+	to := div.(interop.Hash160)
+	storage.Put(ctx, keyResAccrued, 0)
+	send(ftbHash(), to, reserve)
+	runtime.Notify("DividendsSwept", to, reserve)
 }
 
 // ---- views (safe) ----
@@ -330,10 +402,11 @@ func CollateralValue(user interop.Hash160) int {
 
 // collateralValueFrom prices both collateral assets against an already-resolved oracle, so
 // hot paths pay the registry lookup once per transaction instead of once per price read.
+// NEO is whole-unit (0 decimals): value = wholeNeo * price. GAS is 8 decimals: /dec.
 func collateralValueFrom(orc, user interop.Hash160) int {
 	v := 0
-	if b := col(user, true); b > 0 {
-		v += b * priceFrom(orc, bneoHash()) / dec
+	if n := col(user, true); n > 0 {
+		v += n * priceFrom(orc, interop.Hash160(neo.Hash))
 	}
 	if g := col(user, false); g > 0 {
 		v += g * priceFrom(orc, interop.Hash160(gas.Hash)) / dec
@@ -348,14 +421,57 @@ func SharesOf(user interop.Hash160) int { return getInt(shareKey(user)) }
 func TotalShares() int                  { return getInt(keyTotShares) }
 func TotalBorrows() int                 { return getInt(keyTotBorrow) }
 
+// CollateralOf is the user's posted collateral: whole NEO when isNeo, GAS base units
+// otherwise. Bookkeeping only — the contract's raw GAS balance also holds claim dust.
+func CollateralOf(user interop.Hash160, isNeo bool) int { return col(user, isNeo) }
+
+// ReserveAccrued is the FTB owed to FTB holders, waiting for the next sweep.
+func ReserveAccrued() int { return getInt(keyResAccrued) }
+
+// UtilizationBps: totalBorrows as bps of the lendable pool (available cash + borrows).
+func UtilizationBps() int {
+	tb := getInt(keyTotBorrow)
+	if tb == 0 {
+		return 0
+	}
+	return tb * bps / (cashAvailable() + tb)
+}
+
+// BorrowRatePerBlock is the current point on the kinked utilization curve (1e18 scale).
+func BorrowRatePerBlock() int { return borrowRatePerBlock() }
+
+// SupplyRatePerBlock: what suppliers earn after the holders' 1/3 is taken out.
+func SupplyRatePerBlock() int {
+	return borrowRatePerBlock() * UtilizationBps() / bps * (bps - getInt(keyResBps)) / bps
+}
+
+// BorrowApyBps / SupplyApyBps annualize linearly at the 15-second target block time.
+func BorrowApyBps() int { return borrowRatePerBlock() * blocksPerYear * bps / scale }
+func SupplyApyBps() int { return SupplyRatePerBlock() * blocksPerYear * bps / scale }
+
 // ---- helpers ----
 
-func poolValue() int { return cash() + getInt(keyTotBorrow) }
+func borrowRatePerBlock() int {
+	u := UtilizationBps()
+	kink := getInt(keyKink)
+	if kink == 0 {
+		return 0 // curve not configured yet
+	}
+	base := getInt(keyBase)
+	if u <= kink {
+		return base + u*getInt(keySlope1)/bps
+	}
+	return base + kink*getInt(keySlope1)/bps + (u-kink)*getInt(keySlope2)/bps
+}
+
+// poolValue is the suppliers' claim: cash + borrows, minus the holders' reserve.
+func poolValue() int { return cash() + getInt(keyTotBorrow) - getInt(keyResAccrued) }
+
+// cashAvailable is what can actually leave the contract: the reserve is spoken for.
+func cashAvailable() int { return cash() - getInt(keyResAccrued) }
+
 func cash() int {
 	return contract.Call(ftbHash(), "balanceOf", contract.ReadOnly, runtime.GetExecutingScriptHash()).(int)
-}
-func price(asset interop.Hash160) int {
-	return priceFrom(oracleHash(), asset)
 }
 func priceFrom(orc, asset interop.Hash160) int {
 	return contract.Call(orc, "price", contract.ReadOnly, asset).(int)
@@ -370,14 +486,13 @@ func oracleHash() interop.Hash160 {
 func regHash() interop.Hash160 {
 	return storage.Get(storage.GetContext(), keyRegistry).(interop.Hash160)
 }
-func ftbHash() interop.Hash160  { return storage.Get(storage.GetContext(), keyFTB).(interop.Hash160) }
-func bneoHash() interop.Hash160 { return storage.Get(storage.GetContext(), keyBNEO).(interop.Hash160) }
-func bidx() int                 { return getInt(keyBIdx) }
+func ftbHash() interop.Hash160 { return storage.Get(storage.GetContext(), keyFTB).(interop.Hash160) }
+func bidx() int                { return getInt(keyBIdx) }
 
 func send(token, to interop.Hash160, amount int) {
-	// FTB-15: check the NEP-17 result. FTB's own transfer faults on real failures, but
-	// bNEO is an external contract; if it ever returns false instead of faulting, our
-	// storage was already debited and the tokens must provably have moved.
+	// FTB-15: check the NEP-17 result. FTB's own transfer faults on real failures; if an
+	// asset ever returns false instead of faulting, our storage was already debited and the
+	// tokens must provably have moved.
 	if !contract.Call(token, "transfer", contract.All, runtime.GetExecutingScriptHash(), to, amount, nil).(bool) {
 		panic("send: token transfer returned false")
 	}
@@ -391,14 +506,14 @@ func requireOwner() {
 func eq(a, b interop.Hash160) bool      { return string(a) == string(b) }
 func shareKey(u interop.Hash160) []byte { return append(prefixShares, u...) }
 func bnormKey(u interop.Hash160) []byte { return append(prefixBNorm, u...) }
-func colKey(u interop.Hash160, bneo bool) []byte {
-	if bneo {
-		return append(prefixColB, u...)
+func colKey(u interop.Hash160, isNeo bool) []byte {
+	if isNeo {
+		return append(prefixColN, u...)
 	}
 	return append(prefixColG, u...)
 }
-func col(u interop.Hash160, bneo bool) int { return getInt(colKey(u, bneo)) }
-func getInt(key []byte) int                { return getIntCtx(storage.GetContext(), key) }
+func col(u interop.Hash160, isNeo bool) int { return getInt(colKey(u, isNeo)) }
+func getInt(key []byte) int                 { return getIntCtx(storage.GetContext(), key) }
 func getIntCtx(ctx storage.Context, key []byte) int {
 	v := storage.Get(ctx, key)
 	if v == nil {

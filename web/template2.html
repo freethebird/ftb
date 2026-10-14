@@ -475,7 +475,7 @@ body{font-size:15px}
       <div class="bal" id="balStrip" hidden>
         <span>wallet:</span>
         <span>FTB <b id="balFtb">—</b></span>
-        <span>bNEO <b id="balBneo">—</b></span>
+        <span>NEO <b id="balNeo">—</b></span>
         <span>GAS <b id="balGas">—</b></span>
         <span>claimable <b id="balClaim">—</b></span>
       </div>
@@ -698,8 +698,8 @@ body{font-size:15px}
     $('balStrip').hidden=false;
     var h=[{type:'Hash160', value:acctHash160()}];
     readInt(C.ftb,'balanceOf',h).then(function(v){ $('balFtb').textContent=fmt(v); }).catch(function(){});
-    if (C.bneo && C.bneo.indexOf('0x0000')!==0)
-      readInt(C.bneo,'balanceOf',h).then(function(v){ $('balBneo').textContent=fmt(v); }).catch(function(){});
+    var neo=(CFG.assets||{}).neo;
+    if (neo) readInt(neo,'balanceOf',h).then(function(v){ $('balNeo').textContent=v.toString(); }).catch(function(){}); // NEO: whole units, no scaling
     var gas=(CFG.assets||{}).gas;
     if (gas) readInt(gas,'balanceOf',h).then(function(v){ $('balGas').textContent=fmt(v); }).catch(function(){});
     loadProofs().then(function(){
