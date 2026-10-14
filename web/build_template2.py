@@ -109,9 +109,11 @@ MARKUP = """<aside class="rail">
   <div class="date2" id="dateline">// CONNECTING //</div>
   <nav aria-label="sections">
     <a href="#vote">vote</a>
+    <a href="#board">board</a>
     <a href="#market">market</a>
     <a href="#swap">swap</a>
     <a href="#lend">lend</a>
+    <a href="#earn">earn</a>
     <a href="#claim">claim</a>
     <a href="#verify">verify</a>
   </nav>
@@ -136,6 +138,35 @@ MARKUP = """<aside class="rail">
     <p class="hero2-hint" id="govHint">one vote per snapshot address — weight is your snapshot
       balance, your proof is the same one you claim with. every node counts the same chain state.</p>
     <div id="govBody"></div>
+  </section>
+
+  <!-- ============ PROPOSALS BOARD ============ -->
+  <section class="act2" id="board">
+    <div class="col-h"><span class="no">BOARD</span>
+      <span class="lede">proposals cost a bond — spam pays, the record stays</span>
+      <button class="linkish" id="boardRefresh">refresh -&gt;</button></div>
+    <div id="boardBody">
+      <div class="entry">
+        <span class="idx">//</span>
+        <div><span class="ttl">standby — the board loads when the registry is configured for this network</span></div>
+        <div class="meta"><span class="tag">standby</span></div>
+      </div>
+    </div>
+    <div class="ticket" style="margin-top:12px">
+      <div class="trow">
+        <label for="pMeta">proposal</label>
+        <input id="pMeta" maxlength="1024" autocomplete="off" placeholder="what should the community decide?">
+        <div class="tsel" id="pKindSel" role="group" aria-label="proposal kind"></div>
+      </div>
+      <div class="trow">
+        <label for="pRef">reference</label>
+        <input id="pRef" autocomplete="off" spellcheck="false" placeholder="0x… ballot contract hash, or the token hash for a listing">
+      </div>
+      <div class="tmeta" id="pMetaHint">bond: — FTB · exact, escrowed — refunded on a legitimate close, kept against spam</div>
+      <button class="go" id="pGo">review &amp; sign -&gt;</button>
+    </div>
+    <p class="small muted">the board is chain state — every node serves the same list.
+      votes happen in per-proposal ballot contracts; listing bonds sit in the bond vault.</p>
   </section>
 
   <!-- ============ STAT TILES ============ -->
@@ -224,6 +255,37 @@ MARKUP = """<aside class="rail">
     </div>
   </section>
 
+  <!-- ============ EARN (dividends) ============ -->
+  <section class="act2" id="earn">
+    <div class="col-h"><span class="no">EARN</span>
+      <span class="lede">FTB is dividend-bearing — stake it, earn the holders' 2/9 of every fee</span>
+      <button class="read linkish" id="earnRefresh">refresh -&gt;</button></div>
+    <div class="entry">
+      <span class="idx">01</span>
+      <div><span class="ttl">Pool — <b id="dTotal">—</b> staked · dividend APY <b id="dApy">—</b></span></div>
+      <div class="meta">
+        <span class="tag">growth</span><span id="dAcc">—</span>
+        <span class="tag muted">apy samples daily from the on-chain accumulator</span>
+      </div>
+    </div>
+    <div class="entry" id="earnPos" hidden>
+      <span class="idx">02</span>
+      <div><span class="ttl">Your stake — <b id="dStaked">—</b> staked · <b id="dPending">—</b> claimable</span></div>
+      <div class="meta">
+        <span class="tag">stake</span><input id="dvStakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0" style="width:9ch">
+        <button class="linkish" id="dvStakeGo">stake -&gt;</button>
+        <span class="tag">unstake</span><input id="dvUnstakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0" style="width:9ch">
+        <button class="linkish" id="dvUnstakeGo">unstake -&gt;</button>
+        <button class="linkish" id="dvClaimGo">claim -&gt;</button>
+      </div>
+      <div class="meta"><span class="muted" id="dvHint">every action is review-and-sign in your wallet; the page never holds keys</span></div>
+    </div>
+    <div class="entry" id="earnOff">
+      <span class="idx">03</span>
+      <div><span class="ttl">standby — the panel goes live when the dividends module hash is configured for this network</span></div>
+    </div>
+  </section>
+
   <!-- ============ CLAIM ============ -->
   <section class="act2" id="claim">
     <div class="col-h"><span class="no">CLAIM</span>
@@ -276,6 +338,7 @@ MARKUP = """<aside class="rail">
 
   <footer class="foot2">
     <span class="disp" style="font-size:20px">free the bird</span><br>
+    <span class="muted" id="shiftLine">// day shift</span><br>
     Reference implementation pending external audit. Nothing here is financial, legal, or
     investment advice. A gift to the Flamingo community: the code is MIT, the proofs are public,
     the mint is sealed by mathematics. Verify, then sign.
@@ -348,15 +411,49 @@ TILES_SCRIPT = """
       el.textContent = bad ? 'LIQUIDATABLE' : 'healthy';
     }).catch(function(){});
   }
+  // ---------- dividends (the holders' 2/9) ----------
+  function loadEarn(url){
+    var dv=C.dividends;
+    if (!dv || dv.indexOf('0x0000')===0){ var off=document.getElementById('earnOff'); if(off) off.hidden=false; return; }
+    var off=document.getElementById('earnOff'); if(off) off.hidden=true;
+    readInt(url,dv,'totalStaked').then(function(v){ set('dTotal', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,dv,'accPerShare').then(function(v){
+      set('dAcc', '1 staked FTB has earned '+(Number(v)/1e18).toFixed(8)+' FTB');
+      // dividend APY: sample the accumulator, compare with a sample at least 20h old
+      try{
+        var now=Date.now(), prev=JSON.parse(localStorage.getItem('ftb_div_acc')||'null');
+        if (prev && prev.v && (now-prev.t) > 20*3600*1000){
+          var perDay=(Number(v)-Number(prev.v))/1e18 / ((now-prev.t)/(24*3600*1000));
+          if (perDay >= 0) set('dApy', (perDay*365*100).toFixed(2)+'%');
+          localStorage.setItem('ftb_div_acc', JSON.stringify({v:v.toString(),t:now}));
+        } else if (!prev){
+          localStorage.setItem('ftb_div_acc', JSON.stringify({v:v.toString(),t:now}));
+          set('dApy', 'sampling — check back tomorrow');
+        }
+      }catch(e){}
+    }).catch(function(){});
+    var acct=null;
+    try{ acct=window.FTB_ACCOUNT||null; }catch(e){}
+    if (!acct) return;
+    var pos=document.getElementById('earnPos'); if(pos) pos.hidden=false;
+    var hu=[{type:'Hash160',value:acct}];
+    readInt(url,dv,'stakedOf',hu).then(function(v){ set('dStaked', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,dv,'pendingOf',hu).then(function(v){ set('dPending', fmt(v)+' FTB'); }).catch(function(){});
+  }
   pick().then(function(url){
-    loadLend(url);
+    loadLend(url); loadEarn(url);
     var lb=document.getElementById('lendRefresh');
     if(lb) lb.addEventListener('click', function(){ loadLend(url); });
-    // a wallet can connect after page load; pick the position panel up then
+    var eb=document.getElementById('earnRefresh');
+    if(eb) eb.addEventListener('click', function(){ loadEarn(url); });
+    // a wallet can connect after page load; pick the position panels up then
     setInterval(function(){
-      var pos=document.getElementById('lendPos');
-      if (window.FTB_ACCOUNT && pos && pos.hidden) loadLend(url);
+      if (!window.FTB_ACCOUNT) return;
+      var lp=document.getElementById('lendPos'), ep=document.getElementById('earnPos');
+      if ((lp && lp.hidden) || (ep && ep.hidden)) { loadLend(url); loadEarn(url); }
     }, 5000);
+    // keep the pools fresh while the page is open
+    setInterval(function(){ loadLend(url); loadEarn(url); }, 60000);
   }).catch(function(){});
 })();
 """
@@ -386,4 +483,5 @@ out = """<!doctype html>
 """
 
 open('template2.html', 'w').write(out)
-print('wrote template2.html', len(out), 'bytes')
+open('index.html', 'w').write(out)  # / serves index.html — same build, no drift
+print('wrote template2.html + index.html', len(out), 'bytes')

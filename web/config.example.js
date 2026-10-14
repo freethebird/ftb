@@ -16,6 +16,9 @@ window.FTB_CONFIG = {
     ballot:   '0x0000000000000000000000000000000000000000',
     // bond vault holds listing bonds (50/50 liquidity/rug-pull split)
     bondvault: '0x0000000000000000000000000000000000000000',
+    // treasury escrows proposal budgets; dividends pays the holders' 2/9 to stakers
+    treasury:  '0x0000000000000000000000000000000000000000',
+    dividends: '0x0000000000000000000000000000000000000000',
     // bNEO (NeoBurger) — ratio-board listing only; lend collateral is native NEO + GAS.
     // This is the MainNet hash; use the correct one for your network.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
