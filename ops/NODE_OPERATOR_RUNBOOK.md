@@ -50,6 +50,22 @@ ops/ipfs/ftb-push-ipfs.sh <user>@<vm-ip>
 The same IPNS key is imported on every node, so all five publish **one** name.
 The front end is a static build — what's on IPFS is byte-for-byte what was reviewed.
 
+### the mirrors tile (how the page counts live nodes)
+
+Every deploy stamps `beat.json` (`project`, `commit`, `published`) into the build.
+The front end compares its own stamp against each mirror listed in `web/config.js`
+(`mirrors:`) — reachable AND same commit shows as live. If you serve the site from
+your VM's web server, allow cross-origin reads of that one file so the counter can
+see you from any gateway or local preview:
+
+```caddy
+# Caddy: one header is enough
+header /beat.json Access-Control-Allow-Origin *
+```
+
+Report your web URL to the coordinator alongside your RPC URL; both go into
+`web/config.js`.
+
 ## Step 4 — DNSLink (domain owner, once)
 
 ```

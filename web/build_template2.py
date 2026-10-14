@@ -175,6 +175,7 @@ MARKUP = """<aside class="rail">
     <div class="tile"><div class="tl">hard cap</div><div class="tn" id="tCap">—</div></div>
     <div class="tile"><div class="tl">weight voted</div><div class="tn" id="tVoted">—</div></div>
     <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">—</div></div>
+    <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">—</div></div>
   </div>
 
   <div class="ticker" id="ticker" style="margin-top:14px">// market: waiting for the pools</div>
@@ -382,6 +383,39 @@ TILES_SCRIPT = """
       }).catch(function(){});
     }
   }).catch(function(){});
+// ---------- ipfs mirror counter ----------
+// every mirror is a base URL that should serve THIS exact build. the deploy script
+// stamps each build with beat.json {project, commit, published}; we compare our own
+// beat.json against every mirror's: reachable AND same commit = live, reachable but
+// older = stale, no answer = down. hover the tile for the per-mirror breakdown.
+(function(){
+  var tile=document.getElementById('tMirrors'); if(!tile) return;
+  var M=(CFG.mirrors && CFG.mirrors.length ? CFG.mirrors.slice() : []);
+  if(!M.length){ tile.textContent='—'; return; }
+  function get(u,ms){ return Promise.race([
+    fetch(u+(u.indexOf('?')>=0?'&':'?')+'v='+Date.now(),{cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); }),
+    new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, ms); })]); }
+  function probe(){
+    get('beat.json',4000).then(function(mine){
+      var myCommit=mine&&mine.commit;
+      Promise.all(M.map(function(base){
+        return get(base.replace(/[/]+$/,'')+'/beat.json',8000).then(function(b){
+          return {base:base, ok:true, same: !!(b && b.project==='ftb' && myCommit && b.commit===myCommit)};
+        }).catch(function(){ return {base:base, ok:false, same:false}; });
+      })).then(function(rs){
+        var live=rs.filter(function(r){ return r.same; }).length;
+        tile.textContent=live+'/'+M.length;
+        tile.title=rs.map(function(r){
+          return (r.same?'● live':(r.ok?'◐ stale':'○ down'))+'  '+r.base; }).join('\\n');
+      });
+    }).catch(function(){
+      tile.textContent='?/'+M.length;
+      tile.title='no beat.json on this origin — deploys are version-stamped by ftb-push-ipfs.sh';
+    });
+  }
+  probe(); setInterval(probe, 300000);
+})();
 // ---------- lend pool + position (Launch 2) ----------
   function readVal(url,h,op,args){ return rpc(url,'invokefunction',[h,op,args||[]]).then(function(r){
     if(r.state!=='HALT') throw new Error('fault'); var it=r.stack&&r.stack[0];

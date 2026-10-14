@@ -8,9 +8,24 @@ WEB_DIR="$(cd "$(dirname "$0")/../../web" && pwd)"
 STAGE="$(mktemp -d)/ftb-web"
 trap 'rm -rf "$(dirname "$STAGE")"' EXIT
 
+REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+COMMIT="$(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo '?')"
+STAMP="$(date '+%Y-%m-%d %H:%M')"
+STAMP_ISO="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+echo "==> Ensuring IPNS key 'ftb' exists"
+ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | awk "\$2==\"ftb\"" | grep -q . || sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key gen ftb --type=ed25519'
+IPNS="$(ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l' | awk '$2=="ftb" {print $1}' | tr -d '[:space:]')"
+
 echo "==> Staging front-end from: $WEB_DIR"
 # -L resolves symlinks (web/proofs.json -> ../../proofs.json) so IPFS gets real files.
-rsync -aL --exclude '.DS_Store' "$WEB_DIR/" "$STAGE/"
+# A stale local beat.json never rides along — the stamp below is the only one.
+rsync -aL --exclude '.DS_Store' --exclude 'beat.json' "$WEB_DIR/" "$STAGE/"
+
+# Version stamp: the front end's mirror counter compares this file across origins —
+# same commit on two nodes = both serve this exact build.
+printf '{"project":"ftb","commit":"%s","published":"%s","ipns":"%s"}\n' \
+  "$COMMIT" "$STAMP_ISO" "$IPNS" > "$STAGE/beat.json"
 
 echo "==> Copying to $HOST"
 ssh "$HOST" 'rm -rf /tmp/ftb-web && mkdir -p /tmp/ftb-web'
@@ -21,19 +36,12 @@ echo "==> Adding to IPFS and pinning"
 ROOT_CID="$(ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs add -r -Q --pin /tmp/ftb-web | tr -d '[:space:]'")"
 echo "    Root CID: $ROOT_CID"
 
-echo "==> Ensuring IPNS key 'ftb' exists"
-ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | awk "\$2==\"ftb\"" | grep -q . || sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key gen ftb --type=ed25519'
-IPNS="$(ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l' | awk '$2=="ftb" {print $1}' | tr -d '[:space:]')"
-
 echo "==> Publishing IPNS name (this can take a minute or two)"
 ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs name publish --key=ftb --lifetime=720h --ttl=15m /ipfs/$ROOT_CID"
 ssh "$HOST" 'rm -rf /tmp/ftb-web'
 
 echo "==> Appending to deploy log"
 LOG="$(cd "$(dirname "$0")" && pwd)/DEPLOYS.md"
-REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-COMMIT="$(git -C "$REPO_DIR" log --format='%h' -1 2>/dev/null || echo '?')"
-STAMP="$(date '+%Y-%m-%d %H:%M')"
 printf '| auto | %s | `%s` | `%s` | Deployed via ftb-push-ipfs.sh |\n' "$STAMP" "$ROOT_CID" "$COMMIT" >> "$LOG"
 echo "    logged: $STAMP  $ROOT_CID  $COMMIT"
 

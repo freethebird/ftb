@@ -42,6 +42,17 @@ window.FTB_CONFIG = {
     // 'https://node5.ftb.example'
   ],
 
+  // who else serves this exact front end. the mirrors tile probes each base URL's
+  // beat.json (written per deploy by ops/ipfs/ftb-push-ipfs.sh): reachable AND same
+  // commit = live, reachable but older = stale, no answer = down. our own node(s),
+  // then the public IPFS gateways resolving the IPNS name.
+  mirrors: [
+    // 'https://freethebird.co',
+    // 'https://ipfs.io/ipns/<IPNS_NAME>',
+    // 'https://dweb.link/ipns/<IPNS_NAME>',
+    // 'https://w3s.link/ipns/<IPNS_NAME>'
+  ],
+
   // the published migration proofs (also on IPFS; keep the CID in the repo)
   proofsUrl: './proofs.json',
   merkleRoot: '0x639aaa7801f41c75d15c75aaad31aa6d6ede2b8bb81bd30f7ebf9560d50a8bba',
