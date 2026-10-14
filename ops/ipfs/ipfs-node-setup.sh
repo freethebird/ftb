@@ -10,11 +10,23 @@ apt-get install -y -qq curl tar ufw jq >/dev/null
 echo "==> Creating ipfs user"
 id ipfs &>/dev/null || useradd -r -m -d /var/lib/ipfs -s /usr/sbin/nologin ipfs
 
-echo "==> Installing Kubo (latest stable)"
+echo "==> Installing Kubo (latest stable, from GitHub releases — dist.ipfs.tech is often unreachable from some networks)"
 ARCH="$(dpkg --print-architecture)"           # amd64 or arm64
-VER="$(curl -fsSL https://dist.ipfs.tech/kubo/versions | tail -n1 | sed 's/^v//' | tr -d '[:space:]')"
+VER="$(curl -fsSL https://api.github.com/repos/ipfs/kubo/releases/latest | jq -r .tag_name | sed 's/^v//' | tr -d '[:space:]')"
+[ -n "$VER" ] && [ "$VER" != "null" ] || { echo "ERROR: could not resolve latest Kubo version (GitHub API)"; exit 1; }
 echo "    Kubo version: v${VER} (${ARCH})"
-curl -fsSL "https://dist.ipfs.tech/kubo/v${VER}/kubo_v${VER}_linux-${ARCH}.tar.gz" -o /tmp/kubo.tgz
+curl -fsSL "https://github.com/ipfs/kubo/releases/download/v${VER}/kubo_v${VER}_linux-${ARCH}.tar.gz" -o /tmp/kubo.tgz
+
+echo "==> Verifying SHA-512 against the published checksum (fail closed)"
+curl -fsSL "https://github.com/ipfs/kubo/releases/download/v${VER}/kubo_v${VER}_linux-${ARCH}.tar.gz.sha512" -o /tmp/kubo.sha512
+EXPECTED="$(awk '{print $1}' /tmp/kubo.sha512 | tr -d '[:space:]')"
+ACTUAL="$(sha512sum /tmp/kubo.tgz | awk '{print $1}')"
+if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "ERROR: checksum mismatch for kubo_v${VER}_linux-${ARCH}.tar.gz — refusing to install"
+  exit 1
+fi
+rm -f /tmp/kubo.sha512
+
 tar -xzf /tmp/kubo.tgz -C /tmp
 install -m 0755 /tmp/kubo/ipfs /usr/local/bin/ipfs
 rm -rf /tmp/kubo /tmp/kubo.tgz
@@ -22,7 +34,7 @@ rm -rf /tmp/kubo /tmp/kubo.tgz
 echo "==> Initializing IPFS repo (server profile: refuses to dial private/LAN addresses)"
 sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs init --profile=server
 # Faster IPNS resolution via pubsub; keep API + gateway bound to localhost only.
-sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs config --json Experimental.AcceleratedDHTClient true
+sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs config --json Routing.AcceleratedDHTClient true
 
 echo "==> Creating systemd service"
 cat > /etc/systemd/system/ipfs.service <<'UNIT'
