@@ -719,7 +719,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   }
   $('connectBtn').addEventListener('click', function(){
     if (account || !dapi) return;
-    dapi.connect().then(function(){ account = dapi.account; setState(); refresh(); })
+    dapi.connect().then(function(){ account = dapi.account; window.FTB_ACCOUNT = acctHash160(); setState(); refresh(); })
       .catch(function(e){ $('idstate').textContent = '[ ' + (e.message||'wallet error') + ' ]'; });
   });
 
@@ -990,7 +990,8 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
     dapi = new FtbDapi(Object.assign({}, CFG));
     dapi.init().catch(function(){ $('idstate').textContent='[ install NeoLine or a dApi wallet ]'; });
     dapi.on && dapi.on('accountChanged', function(a){
-      account = a && a.address ? a.address : null; if(dapi) dapi.account = account; setState(); refreshBalances();
+      account = a && a.address ? a.address : null; if(dapi) dapi.account = account;
+      window.FTB_ACCOUNT = account ? acctHash160() : null; setState(); refreshBalances();
     });
   } else {
     $('idstate').textContent = configured ? '[ adapter missing ]' : '[ hashes not configured ]';

@@ -111,6 +111,7 @@ MARKUP = """<aside class="rail">
     <a href="#vote">vote</a>
     <a href="#market">market</a>
     <a href="#swap">swap</a>
+    <a href="#lend">lend</a>
     <a href="#claim">claim</a>
     <a href="#verify">verify</a>
   </nav>
@@ -192,6 +193,36 @@ MARKUP = """<aside class="rail">
       </div>
     </div>
   </div>
+
+  <!-- ============ LEND ============ -->
+  <section class="act2" id="lend">
+    <div class="col-h"><span class="no">LEND</span>
+      <span class="lede">no mint — interest splits 2/3 suppliers, 1/3 FTB holders</span>
+      <button class="read linkish" id="lendRefresh">refresh -&gt;</button></div>
+    <div class="entry">
+      <span class="idx">01</span>
+      <div><span class="ttl">Pool — utilization <b id="lUtil">—</b> · borrow APY <b id="lBApy">—</b> · supply APY <b id="lSApy">—</b></span></div>
+      <div class="meta">
+        <span class="tag">borrows</span><span id="lBorrows">—</span>
+        <span class="tag">holder reserve</span><span id="lReserve">—</span>
+      </div>
+    </div>
+    <div class="entry" id="lendPos" hidden>
+      <span class="idx">02</span>
+      <div><span class="ttl">Your position <span class="tag pub" id="pHealth">—</span></span></div>
+      <div class="meta">
+        <span class="tag">NEO posted</span><span id="pNeo">—</span>
+        <span class="tag">GAS posted</span><span id="pGas">—</span>
+        <span class="tag">debt</span><span id="pDebt">—</span>
+        <span class="tag">max borrow</span><span id="pMax">—</span>
+        <span class="tag">shares</span><span id="pShares">—</span>
+      </div>
+    </div>
+    <div class="entry" id="lendOff">
+      <span class="idx">03</span>
+      <div><span class="ttl">standby — the panel goes live when the lend contract hash is configured for this network</span></div>
+    </div>
+  </section>
 
   <!-- ============ CLAIM ============ -->
   <section class="act2" id="claim">
@@ -286,6 +317,46 @@ TILES_SCRIPT = """
         set('tVoted', fmt(t)+' FTB');
       }).catch(function(){});
     }
+  }).catch(function(){});
+// ---------- lend pool + position (Launch 2) ----------
+  function readVal(url,h,op,args){ return rpc(url,'invokefunction',[h,op,args||[]]).then(function(r){
+    if(r.state!=='HALT') throw new Error('fault'); var it=r.stack&&r.stack[0];
+    return it?it.value:null; }); }
+  function bps(v){ return (Number(v)/100).toFixed(2)+'%'; }
+  function loadLend(url){
+    var lend=C.lend;
+    if (!lend || lend.indexOf('0x0000')===0){ var off=document.getElementById('lendOff'); if(off) off.hidden=false; return; }
+    var off=document.getElementById('lendOff'); if(off) off.hidden=true;
+    readInt(url,lend,'utilizationBps').then(function(v){ set('lUtil', bps(v)); }).catch(function(){});
+    readInt(url,lend,'borrowApyBps').then(function(v){ set('lBApy', bps(v)); }).catch(function(){});
+    readInt(url,lend,'supplyApyBps').then(function(v){ set('lSApy', bps(v)); }).catch(function(){});
+    readInt(url,lend,'totalBorrows').then(function(v){ set('lBorrows', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,lend,'reserveAccrued').then(function(v){ set('lReserve', fmt(v)+' FTB'); }).catch(function(){});
+    var acct=null;
+    try{ acct=window.FTB_ACCOUNT||null; }catch(e){}
+    if (!acct) return;
+    var pos=document.getElementById('lendPos'); if(pos) pos.hidden=false;
+    var hu=[{type:'Hash160',value:acct}];
+    readInt(url,lend,'collateralOf',hu.concat([{type:'Boolean',value:true}])).then(function(v){ set('pNeo', v.toString()+' NEO'); }).catch(function(){});
+    readInt(url,lend,'collateralOf',hu.concat([{type:'Boolean',value:false}])).then(function(v){ set('pGas', fmt(v)+' GAS'); }).catch(function(){});
+    readInt(url,lend,'debtOf',hu).then(function(v){ set('pDebt', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,lend,'maxBorrow',hu).then(function(v){ set('pMax', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,lend,'sharesOf',hu).then(function(v){ set('pShares', v.toString()); }).catch(function(){});
+    readVal(url,lend,'isUnhealthy',hu).then(function(v){
+      var el=document.getElementById('pHealth'); if(!el) return;
+      var bad=(v===true||v==='true'||v==='1');
+      el.textContent = bad ? 'LIQUIDATABLE' : 'healthy';
+    }).catch(function(){});
+  }
+  pick().then(function(url){
+    loadLend(url);
+    var lb=document.getElementById('lendRefresh');
+    if(lb) lb.addEventListener('click', function(){ loadLend(url); });
+    // a wallet can connect after page load; pick the position panel up then
+    setInterval(function(){
+      var pos=document.getElementById('lendPos');
+      if (window.FTB_ACCOUNT && pos && pos.hidden) loadLend(url);
+    }, 5000);
   }).catch(function(){});
 })();
 """
