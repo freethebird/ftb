@@ -338,3 +338,25 @@ Suite: 7 new tests covering the full lifecycle, validation bounds, cancel/fail r
 paths, foreign-token rejection, the fail-closed excess return, and write-once configure;
 the lend sweep test now asserts the 1/3 : 2/3 reserve split arithmetically. `make
 conformance` green: 8 contracts compiled, all packages race-clean, govulncheck clean.
+
+## Addendum 5: the dividends module (14 October 2026)
+
+**New subject:** `contracts/dividends` — the holders' 2/9 distribution point, completing
+the fee constitution (providers 2/3, holders 2/9, treasury 1/9). xSUSHI-style staking with
+a 1e18 per-share accumulator: chosen over hold-and-earn because pro-rata snapshots on a
+transferable token require a transfer hook inside the sealed `ftb_token` — a coupling and
+a gas tax on every send that this design simply does not have. Revenue arriving while
+nothing is staked queues and folds into the next distribution; floor-division dust rides
+forward as cushion. No committee, no owner knob after configure: pure accounting.
+
+**Annex B spot-checks:** forgery — witness on claim/unstake, tagged-transfer routing for
+stakes, FTB-only receive door; transcript — write-once configure, evented stake/unstake/
+distribute/claim; replay — checkpoints settle before every balance change, so a re-stake
+can never re-earn settled dividends (TestRestakeSettlesAtOldBalance) and double-claims
+revert; DoS — no loops, caller-paid gas, settlement is O(1) per account per touch; the
+FTB-29 null-sender mint class is rejected outright. **QRN class A:** no retained authority
+at all — there is nothing to seize. Class B: funds and entitlements are chain state.
+
+Suite: 7 module tests plus the end-to-end integration (`TestSweepIntoRealDividendsModule`):
+real lend interest accrues, the sweep splits the reserve, and a staked holder claims the
+exact pending amount from the real module — the constitution executed, not asserted.

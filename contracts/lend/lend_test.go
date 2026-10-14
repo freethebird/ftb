@@ -518,3 +518,54 @@ func requirePositive(t testing.TB, name string, v *big.Int) {
 		t.Fatalf("%s must be positive, got %s", name, v)
 	}
 }
+
+// End-to-end money path: lend interest accrues, the sweep splits the reserve, and a
+// staked FTB holder claims their dividend from the REAL dividends module — the fee
+// constitution executed by the contracts, not asserted in a comment.
+func TestSweepIntoRealDividendsModule(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	holder := s.e.NewAccount(t)
+
+	// deploy the real dividends module and bind it in the registry
+	divC := neotest.CompileFile(t, s.e.Validator.ScriptHash(), "../dividends/dividends.go", "../dividends/dividends.yml")
+	s.e.DeployContract(t, divC, s.owner.ScriptHash().BytesBE())
+	s.e.NewInvoker(divC.Hash, s.owner).Invoke(t, stackitem.Null{}, "configure", s.ftb.BytesBE())
+	s.e.NewInvoker(s.reg, s.owner).Invoke(t, stackitem.Null{}, "bootstrap", "dividends", divC.Hash.BytesBE())
+
+	// the holder stakes FTB into the dividends module (the xSUSHI door)
+	s.mintFTB(t, holder.ScriptHash(), 100*dec)
+	s.e.NewInvoker(s.ftb, holder).Invoke(t, stackitem.Make(true), "transfer",
+		holder.ScriptHash().BytesBE(), divC.Hash.BytesBE(), 100*dec, []any{"stake"})
+
+	// the pool earns interest
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setRates", 1_000_000_000_000, 0, 0, 8000, 3333)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lb := s.e.NewInvoker(s.lend, borrower)
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1000*dec)
+	for i := 0; i < 50; i++ {
+		s.e.AddNewBlock(t)
+	}
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1*dec) // accrue
+
+	// sweep: no treasury bound, so the whole reserve lands in the dividends module
+	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "sweepDividends")
+
+	// the sole staker is owed the whole reserve and claims it
+	dv := s.e.NewInvoker(divC.Hash, s.owner)
+	var pending *big.Int
+	dv.InvokeAndCheck(t, func(t testing.TB, stack []stackitem.Item) {
+		pending = stack[0].Value().(*big.Int)
+	}, "pendingOf", holder.ScriptHash().BytesBE())
+	requirePositive(t, "holder pending dividend", pending)
+	before := dividendsBalance(t, s, holder.ScriptHash())
+	s.e.NewInvoker(divC.Hash, holder).Invoke(t, stackitem.Null{}, "claim", holder.ScriptHash().BytesBE())
+	after := dividendsBalance(t, s, holder.ScriptHash())
+	if new(big.Int).Sub(after, before).Cmp(pending) != 0 {
+		t.Fatalf("claim paid %s, pending was %s", new(big.Int).Sub(after, before), pending)
+	}
+}

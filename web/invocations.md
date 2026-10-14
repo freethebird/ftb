@@ -92,6 +92,21 @@ GAS-claim note: whenever the contract's NEO balance moves, the chain mints the a
 to the contract with a null sender. The contract accepts it into an unaccounted balance (it is
 not user collateral) — rejecting it would brick every NEO withdrawal and liquidation.
 
+## Dividends (`<dividends>`)
+
+The holders' 2/9 lands here. Stake FTB to earn; claim any time; unstake any time. Staking
+is a tagged FTB transfer, the same routing pattern as the lend pool.
+
+| action | kind | target | operation | args |
+|--------|------|--------|-----------|------|
+| stake FTB | write | `<ftb>` | `transfer` | `from, <dividends>, amount, Array[String "stake"]` |
+| claim dividends | write | `<dividends>` | `claim` | `Hash160 user` |
+| unstake | write | `<dividends>` | `unstake` | `Hash160 user, Integer amount` |
+| my claimable dividend | read | `<dividends>` | `pendingOf` | `Hash160 user` |
+| my stake | read | `<dividends>` | `stakedOf` | `Hash160 user` |
+| total staked | read | `<dividends>` | `totalStaked` | none |
+| dividend growth curve | read | `<dividends>` | `accPerShare` | none (1e18-scaled, sample daily for APY) |
+
 ## Oracle (`<oracle>`), Launch 2
 
 | call | kind | operation | args |
