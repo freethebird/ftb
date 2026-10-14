@@ -374,7 +374,8 @@ TILES_SCRIPT = """
     }
     if (C.ballot && C.ballot.indexOf('0x0000')!==0 && CFG.ballot && CFG.ballot.options && CFG.ballot.options.length){
       Promise.all(CFG.ballot.options.map(function(_,i){
-        return readInt(url,C.ballot,'tally',[{type:'Integer',value:String(i)}]);
+        // on-chain options are 1-based (tally keys are byte-wide; 0 faults, FTB-31)
+        return readInt(url,C.ballot,'tally',[{type:'Integer',value:String(i+1)}]);
       })).then(function(vals){
         var t=vals.reduce(function(s,v){return s+v;},0n);
         set('tVoted', fmt(t)+' FTB');

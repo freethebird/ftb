@@ -905,7 +905,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       var en=findEntry(account);
       if (!en){ $('balClaim').textContent='not in snapshot'; return; }
       readFn(C.migrator,'claimed',h).then(function(st){
-        var it=st&&st[0], c = it && (it.type==='Boolean' ? it.value : (it.value && it.value!==''));
+        var it=st&&st[0], c = it && (it.type==='Boolean' ? it.value : (it.type==='Integer' ? parseInt(it.value||'0',10)>0 : (it.value && it.value!=='')));
         $('balClaim').textContent = c ? 'claimed ✓' : fmt(en.amount)+' FTB';
       }).catch(function(){});
     }).catch(function(){});
@@ -1186,7 +1186,8 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     $('govQ').textContent=CFG.ballot.question;
     var opts=CFG.ballot.options||[];
     Promise.all(opts.map(function(_,i){
-      return readInt(C.ballot,'tally',[{type:'Integer',value:String(i)}]);
+      // on-chain options are 1-based (tally keys are byte-wide; 0 faults, FTB-31)
+      return readInt(C.ballot,'tally',[{type:'Integer',value:String(i+1)}]);
     })).then(function(vals){
       var total=vals.reduce(function(s,v){ return s+v; }, 0n);
       body.innerHTML='';
@@ -1194,17 +1195,17 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         var pct = total>0n ? (Number(v*10000n/total)/100) : 0;
         var opt=el('div','gopt');
         var row=el('div','grow');
-        row.appendChild(el('span','gname','#'+i+' '+opts[i]));
+        row.appendChild(el('span','gname','#'+(i+1)+' '+opts[i]));
         row.appendChild(el('span','gnum', fmt(v)+' FTB'));
         var btn=el('button',null,'vote ->');
-        btn.addEventListener('click', function(){ voteGov(i, opts[i]); });
+        btn.addEventListener('click', function(){ voteGov(i+1, opts[i]); });
         row.appendChild(btn);
         opt.appendChild(row);
         var bar=el('div','gbar'); var fill=el('i'); fill.style.width=pct+'%'; bar.appendChild(fill);
         opt.appendChild(bar);
         var meta=el('div','gmeta');
         meta.appendChild(el('span',null, pct.toFixed(2)+'% of weight voted'));
-        meta.appendChild(el('span',null,'option '+i));
+        meta.appendChild(el('span',null,'option '+(i+1)+' on-chain'));
         opt.appendChild(meta);
         body.appendChild(opt);
       });
@@ -1216,7 +1217,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       });
       if (account){
         readFn(C.ballot,'voted',[{type:'Hash160',value:acctHash160()}]).then(function(st){
-          var it=st&&st[0], v = it && (it.type==='Boolean' ? it.value : (it.value && it.value!==''));
+          var it=st&&st[0], v = it && (it.type==='Boolean' ? it.value : (it.type==='Integer' ? parseInt(it.value||'0',10)>0 : (it.value && it.value!=='')));
           if (v) $('govHint').textContent='this address has voted · total weight voted: '+fmt(total)+' FTB.';
         }).catch(function(){});
       }
@@ -1231,7 +1232,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         $('ovGo').disabled=true; return;
       }
       readFn(C.ballot,'voted',[{type:'Hash160',value:acctHash160()}]).then(function(st){
-        var it=st&&st[0], already = it && (it.type==='Boolean' ? it.value : (it.value && it.value!==''));
+        var it=st&&st[0], already = it && (it.type==='Boolean' ? it.value : (it.type==='Integer' ? parseInt(it.value||'0',10)>0 : (it.value && it.value!=='')));
         if (already){
           showPlan('already voted','one vote per snapshot address — the chain has recorded this address.',[['address',account]],null);
           $('ovGo').disabled=true; return;
@@ -1412,7 +1413,8 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     }
     if (C.ballot && C.ballot.indexOf('0x0000')!==0 && CFG.ballot && CFG.ballot.options && CFG.ballot.options.length){
       Promise.all(CFG.ballot.options.map(function(_,i){
-        return readInt(url,C.ballot,'tally',[{type:'Integer',value:String(i)}]);
+        // on-chain options are 1-based (tally keys are byte-wide; 0 faults, FTB-31)
+        return readInt(url,C.ballot,'tally',[{type:'Integer',value:String(i+1)}]);
       })).then(function(vals){
         var t=vals.reduce(function(s,v){return s+v;},0n);
         set('tVoted', fmt(t)+' FTB');
