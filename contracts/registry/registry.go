@@ -16,7 +16,8 @@
 // event. Bonds sit in escrow and are refunded on a legitimate close or kept by the
 // committee against spam — the disposition is explicit in the closing call.
 //
-// Reference implementation pending audit.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package registry
 
 import (
@@ -49,6 +50,7 @@ var (
 // maxMetaLen bounds the free-text field (Annex B class 5: every input has a length).
 const maxMetaLen = 1024
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return

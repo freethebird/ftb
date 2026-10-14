@@ -1,6 +1,6 @@
 NEOGO_VERSION ?= v0.123.0
 
-.PHONY: all tools fmt vet build test test-race vuln nefhash conformance clean
+.PHONY: all tools fmt vet build test test-race vuln nefhash deepcheck conformance clean
 
 ## fmt + vet + build + test, the whole audit in one command
 all: fmt vet build test
@@ -38,11 +38,25 @@ vuln:
 
 ## record/verify contract NEF hashes (QRN class D: reproducible build)
 nefhash: build
+	sh scripts/nef_determinism.sh
 	sh scripts/nef_hash.sh
+
+## deep static analysis (FTB-32): three independent analyzers beyond vet.
+## staticcheck — full SA/U/ST/QF suite; gosec — security rules; deadcode — unreachable code.
+## deadcode runs with -test (test-only APIs are reachable) and contract entry points
+## (_deploy and the exported ABI methods) are filtered: the VM calls them, not Go.
+deepcheck:
+	@command -v staticcheck >/dev/null 2>&1 || { echo "staticcheck missing: go install honnef.co/go/tools/cmd/staticcheck@master"; exit 1; }
+	@command -v gosec >/dev/null 2>&1 || { echo "gosec missing: go install github.com/securego/gosec/v2/cmd/gosec@master"; exit 1; }
+	@command -v deadcode >/dev/null 2>&1 || { echo "deadcode missing: go install golang.org/x/tools/cmd/deadcode@latest"; exit 1; }
+	staticcheck ./...
+	gosec -quiet ./...
+	@out="$$(deadcode -test ./... | grep -v '^contracts/')"; if [ -n "$$out" ]; then echo "deadcode:"; echo "$$out"; exit 1; fi
+	@echo "deepcheck: staticcheck, gosec, deadcode clean"
 
 ## the Article 1 guarantee in one named gate: every check, every build
 ## (the Go canon's `make conformance` analog; a failure anywhere is a build failure)
-conformance: fmt vet build test test-race vuln nefhash
+conformance: fmt vet build test test-race vuln nefhash deepcheck
 	@echo "conformance: all gates green"
 
 clean:

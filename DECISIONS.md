@@ -64,9 +64,10 @@ and reporter additions inside the oracle), say so and I will add it.
 
 ## Still required regardless
 
-None of this replaces the external gate: two independent audits of the Launch 1 core, a separate
-audit of oracle plus lend, and a public TestNet with a bug bounty. The internal audit and these
-fixes are a starting point, not a substitute. Lending stays out of the first launch.
+Superseded by Decision 7 (14 October 2026): the external-audit requirement is withdrawn. The
+public TestNet and the bug bounty still stand. The internal audit and these fixes are the
+starting point the whole verification model now rests on. Lending stays out of the first
+launch.
 
 ## Decision 3: TestNet deploy topology (11 October 2026)
 
@@ -129,3 +130,25 @@ work; excess accrual can only return to the registry-bound dividends module. No 
 holds treasury keys. Committee execution uses the same trusted-window multisig already
 recorded for the registry and oracle (QRN class A); moving execution behind the ballot
 itself is v3 work, recorded here rather than smoothed over.
+
+## Decision 7: no external audit — the audit posture is internal, gated, and public (14 October 2026)
+
+Decided by the owner: **FTB will not commission external audits.** The previous launch gate —
+two independent external audits of the Launch 1 core, plus a separate audit of oracle and lend —
+is withdrawn, not satisfied. Per Article 6 this is recorded in the open everywhere the audit
+posture is stated, not smoothed over:
+
+- **What stands in its place.** The internal audit lineage (passes 1, 2, and the MO V8 / QRN
+  pass), the `make conformance` gate — fmt, vet, compile, the full suite, `-race`,
+  govulncheck, the NEF-hash record, the compile-twice determinism check, and the deepcheck
+  trio (staticcheck, gosec, deadcode) — the fuzz gates, the published artifacts (snapshot,
+  ratios, `proofs.json`, reproducible root), a public TestNet, and a bug bounty. Anyone can
+  re-run every gate and re-derive every number; that is the verification model now.
+- **What is given up, honestly.** A second pair of professional eyes. The internal lineage is
+  self-review: it can be wrong in ways it cannot see. The treasury contract still names an
+  auditor per proposal — that role is unaffected; what changes is that no firm signs the
+  whole codebase before launch.
+- **The consequence for users.** The banners and docs now say "internal audit lineage only;
+  no external audit was performed." Anyone who requires an external audit before trusting
+  value should not trust value — that is the honest reading, and it is printed where they
+  will see it.

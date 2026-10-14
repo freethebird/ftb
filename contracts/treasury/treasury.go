@@ -15,7 +15,8 @@
 // accrual can only be returned to the registry-bound dividends module — fail-closed, never
 // to an arbitrary address.
 //
-// Reference implementation pending audit.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package treasury
 
 import (
@@ -54,6 +55,7 @@ var (
 	prefixSoak   = []byte{0x17} // + id -> soak blocks between attestation and tranche B
 )
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return
@@ -94,13 +96,18 @@ func OnNEP17Payment(from interop.Hash160, amount int, data any) {
 	runtime.Notify("Received", from, amount)
 }
 
+// maxEscrowID bounds the id space: escKey packs ids into 4 big-endian bytes. NOTE: spelled
+// as a literal, never as 1<<32 — shift expressions in this position make neo-go v0.123.0
+// emit non-deterministic NEFs (found by the NEF-hash gate, FTB-33).
+const maxEscrowID = 4294967296 // 2^32
+
 // CreateEscrow locks a proposal budget after its ballot passes. Committee only. The dev
 // team and the auditor must be different addresses — the one who writes the code is never
 // the one who approves it.
 func CreateEscrow(id int, dev, auditor interop.Hash160, amount, trancheABps, soakBlocks int) {
 	requireCommittee()
-	if id < 0 {
-		panic("escrow: bad id")
+	if id < 0 || id >= maxEscrowID {
+		panic("escrow: bad id") // escKey packs the id into 4 bytes; the bound is proven, not hoped
 	}
 	if len(dev) != 20 || len(auditor) != 20 || eq(dev, auditor) {
 		panic("escrow: bad dev/auditor")
@@ -288,9 +295,25 @@ func release(ctx storage.Context, id, toState int) {
 	storage.Put(ctx, keyEscrowed, getIntCtx(ctx, keyEscrowed)-amount)
 }
 
-// escKey prefixes a proposal id as 4 big-endian bytes: fixed-width, collision-free.
+// escKey prefixes a proposal id as 4 big-endian bytes: fixed-width, collision-free. The id
+// space is therefore bounded — enforced here, at the one place keys are built, so no id can
+// ever alias onto another id's slot (Go canon Book II rule 5: a ceiling, not hope).
+// CreateEscrow rejects out-of-range ids with its own message first; this guard is the
+// fail-closed backstop on the view paths.
+//
+// NOTE: the bytes are appended one per statement, never as one variadic append — a
+// multi-argument append of computed values makes neo-go v0.123.0 emit the SETITEM sequence
+// in map order, producing different (semantically equal) NEFs per build and breaking the
+// reproducibility gate (FTB-33, upstream compiler bug).
 func escKey(prefix []byte, id int) []byte {
-	return append(prefix, byte(id>>24), byte(id>>16), byte(id>>8), byte(id))
+	if id < 0 || id >= maxEscrowID {
+		panic("treasury: id out of range")
+	}
+	k := append(prefix, byte(id>>24)) // #nosec G115 -- id bounded by the guard above
+	k = append(k, byte(id>>16))       // #nosec G115 -- id bounded by the guard above
+	k = append(k, byte(id>>8))        // #nosec G115 -- id bounded by the guard above
+	k = append(k, byte(id))           // #nosec G115 -- id bounded by the guard above
+	return k
 }
 
 func free(ctx storage.Context) int {

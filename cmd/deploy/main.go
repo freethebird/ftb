@@ -170,11 +170,11 @@ func main() {
 }
 
 func load(dir, name string) (nef.File, *manifest.Manifest) {
-	nb, err := os.ReadFile(filepath.Join(dir, name+".nef"))
+	nb, err := os.ReadFile(filepath.Join(dir, name+".nef")) // #nosec G304 -- operator tool: dir and name are the operator's own CLI args, not remote input
 	check(err)
 	ne, err := nef.FileFromBytes(nb)
 	check(err)
-	mb, err := os.ReadFile(filepath.Join(dir, name+".manifest.json"))
+	mb, err := os.ReadFile(filepath.Join(dir, name+".manifest.json")) // #nosec G304 -- operator tool: dir and name are the operator's own CLI args, not remote input
 	check(err)
 	m := &manifest.Manifest{}
 	check(json.Unmarshal(mb, m))

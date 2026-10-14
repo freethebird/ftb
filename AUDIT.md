@@ -110,7 +110,7 @@ make tools   # neo-go compiler, SDK, node
 make         # gofmt, vet, compile every contract, run every neotest suite
 ```
 
-Each contract has a neotest suite; `cmd/merkleroot` has the leaf cross-check. Nothing should
-reach real value until two independent audits of the Launch 1 core, a separate audit of oracle
-plus lend, and a public TestNet with a bug bounty have passed. See `ARCHITECTURE.md` for the
+Each contract has a neotest suite; `cmd/merkleroot` has the leaf cross-check. Per DECISIONS.md
+Decision 7 no external audit will be performed: the verification model is this internal lineage,
+the `make conformance` gate (which anyone can re-run), a public TestNet, and a bug bounty. See `ARCHITECTURE.md` for the
 module and seam design and `README.md` for the deploy and seed runbooks.

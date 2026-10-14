@@ -11,8 +11,8 @@
 // MO: every power is explicit and emits an event; every input is validated; the
 // irreversible acts (CloseMigration, RenounceOwnership) are one-way doors.
 //
-// Reference implementation pending audit. Do not deploy with real value until two
-// independent audits and a public TestNet with a bug bounty have passed.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package ftbtoken
 
 import (
@@ -45,6 +45,8 @@ var (
 
 // _deploy sets the owner explicitly from deploy data (MO: visible, no hidden constant).
 // On update, state is preserved.
+//
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return

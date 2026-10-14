@@ -11,7 +11,8 @@
 // Price unit: FTB base units per 1 whole asset (bNEO or GAS, both 8 decimals). So
 // collateralValueFTB = assetBaseUnits * Price(asset) / 1e8.
 //
-// Reference implementation pending audit.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package oracle
 
 import (
@@ -30,6 +31,7 @@ var (
 	prefixTime     = []byte{0x12} // prefixTime  + asset + reporter -> timestamp(ms)
 )
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return

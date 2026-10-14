@@ -193,11 +193,18 @@ Under the Canonical Bible, Hardening Go Edition V1, the FTB subproject **satisfi
 1 and 3 through 10 of MO V8, answers every Annex B class and every QRN network class at its
 layer, records its one dependency deviation (Article 2) and its one platform override
 (Article 11) in the open**, and closes its last High finding (FTB-01) by re-computation on
-this machine today. The Definition of Done is not yet met — not because of a defect, but
-because the doctrine's own external gates still stand: two independent external audits of
-the Launch 1 core, a separate audit of oracle plus lend, and a public TestNet with a bug
-bounty. Those are the launch gate, named in every document in this lineage, and this audit
-does not move them.
+this machine today.
+
+**Audit-posture amendment (14 October 2026, DECISIONS.md Decision 7):** the external gates
+named here in the first writing — two independent external audits of the Launch 1 core and a
+separate audit of oracle plus lend — are **withdrawn by owner decision, not satisfied**. FTB
+will not commission external audits. What remains of the launch gate is the public TestNet
+and the bug bounty; what stands as the audit posture is this internal lineage plus the
+`make conformance` gate (now including the deepcheck trio and the compile-twice determinism
+check — see Addendum 6), all re-runnable by anyone. Per Article 6 the withdrawal is recorded
+wherever the audit posture is stated, and the honest consequence travels with it: the
+internal lineage is self-review, and anyone who requires an external audit before trusting
+value should not trust value.
 
 ## Addendum: gate-hardening pass (13 October 2026)
 
@@ -238,8 +245,8 @@ across 8 packages, race clean, govulncheck clean, NEF hashes recorded.
 
 **New subjects:** `contracts/bondvault` (listing bonds, new contract) and
 `contracts/registry` v2 (proposals board: bonded submission, close-with-refund-or-keep).
-Doctrine: `GOVERNANCE.md`. Same standing rule applies — reference implementations pending
-external audit; the launch gate is unmoved.
+Doctrine: `GOVERNANCE.md`. Same standing rule applies — reference implementations; the
+external-audit leg of the launch gate was later withdrawn (Decision 7, Addendum 6).
 
 **Article spot-checks (Go canon):**
 
@@ -273,7 +280,7 @@ registry and oracle; bonds sit in escrow with an explicit, evented disposition (
 keep). Class B: submission is permissionless and the board is replicated chain state —
 no one hosts the vote page.
 
-(c) 2026 — internal audit lineage; reference implementation pending external audit.
+(c) 2026 — internal audit lineage; no external audit was performed (DECISIONS.md, Decision 7).
 
 ## Addendum 3: lend v2 economics (14 October 2026)
 
@@ -360,3 +367,75 @@ at all — there is nothing to seize. Class B: funds and entitlements are chain 
 Suite: 7 module tests plus the end-to-end integration (`TestSweepIntoRealDividendsModule`):
 real lend interest accrues, the sweep splits the reserve, and a staked holder claims the
 exact pending amount from the real module — the constitution executed, not asserted.
+
+## Addendum 6: the deep-tooling pass, the compiler non-determinism find, and Decision 7 (14 October 2026)
+
+**New subjects:** the Go analyzer stack beyond `vet`, the front-end adapter, and the
+reproducibility gate itself. Three analyzers were added to the gate path as
+`make deepcheck`, folded into `make conformance`: **staticcheck** (full SA/U/ST/QF suite),
+**gosec** (security rules), and **deadcode** (unreachable code, `-test` mode). All three run
+from master/nightly builds because the released versions predate Go 1.27 export data — an
+accepted, recorded deviation from the pinned-toolchain rule: the pinned artifacts (go,
+neo-go) are unchanged; the deepcheck tools are verifiers, not build inputs. Pin them at
+release alongside the vendoring item (FTB-21).
+
+**FTB-30 — treasury escrow-id ceiling (fixed).** gosec G115: `escKey` packs a proposal id
+into 4 big-endian bytes, but `CreateEscrow` bounded ids only from below, so ids ≥ 2^32 would
+alias onto lower ids' slots — practically unreachable (committee-only, monotonic ids), yet
+the canon wants a ceiling, not hope (Book II rule 5). Fixed: explicit bound at creation
+(`maxEscrowID`) plus a fail-closed backstop inside `escKey` itself so the view paths are
+covered too. Regression tests: id = 2^32 rejected at creation and on the `state` view.
+
+**FTB-31 — ballot Tally view aliasing (fixed).** gosec G115: the tally key is one byte and
+the `Tally(option)` view took an unbounded int, so `Tally(257)` would silently read option
+1's tally. The `Vote` path was already safe (option bounded to 1..numOptions, and
+`Configure` caps numOptions at 16, write-once). Fixed: the view panics out of range.
+Regression tests pin 0, 17, and 257.
+
+**FTB-32 — analyzer hygiene (fixed).** staticcheck flagged one real item (an unused test
+helper, removed); the nine `_deploy` VM entry points it and deadcode flag are invoked by the
+chain via the manifest, annotated `//lint:ignore` so the gate stays clean without hiding
+why. gosec's remaining findings were intentional and are annotated inline with
+justifications: `cmd/deploy` reads paths from the operator's own CLI args (G304 ×2), and
+`cmd/merkleroot` writes `proofs.json` world-readable because it is a published artifact
+(G306). Result: staticcheck, gosec (0 issues), and deadcode all clean on the gate.
+
+**FTB-33 — the NEF is not deterministic: found by re-running the gate, fixed at the source.**
+The session's hardest find. Re-compiling the unchanged treasury source produced **different
+NEF bytes on different runs** (3 distinct hashes in 5 runs; the pristine HEAD source showed
+the same — 3 distinct in 10 — so this is a pre-existing platform defect, not introduced by
+this pass). Disassembling two variants isolated the permuted region to `escKey`'s single
+variadic `append(prefix, byte(id>>24), …)` — the compiler emits the SETITEM sequence in map
+order, so each run yields a different, semantically equal permutation. neo-go master
+(v0.123.1-pre) is equally affected; the other eight contracts are unaffected (verified 5/5
+each). Two responses, both done: **(a)** `escKey` now appends one element per statement —
+12/12 byte-identical compiles after the rewrite; **(b)** the gate grew teeth:
+`scripts/nef_determinism.sh` compiles every contract twice on every `make conformance` and
+fails closed if any pair differs, so this class can never again ship silently (the
+pre-fix tree fails it; the post-fix tree passes). Residual, in the open: the compiler bug is
+upstream and unfixed — a future edit that reintroduces a multi-argument computed append
+anywhere will be caught by (b), and the bug itself should be reported to neo-go. QRN class
+D's reproducibility half now verifies what it claims to verify.
+
+**FTB-34 — grpc bump for GO-2026-6443 (fixed).** The deepened govulncheck run flagged a
+grpc server-side panic (missing Host header) in v1.83.1 — unreachable by FTB code (operator
+tooling is a grpc client), but the canon wants the gate clean, not excused: bumped to the
+minimum-fixed v1.83.2, NEFs proven byte-identical across the bump, govulncheck fully clean.
+
+**FTB-18 / FTB-25 — front-end base58check (closed).** `ftb-dapi.js`'s address decoder
+checked length only; a mistyped address would have silently derived a wrong script hash.
+The decoder now verifies the Neo N3 version byte (0x35) and the 4-byte double-SHA256
+checksum, using a pure-JS SHA-256 written in-file (Article 2: the web client stays
+dependency-free). KATs: the documented NeoLine vector, a zero-hash vector derived against
+Node's crypto, LE/BE round-trip, and corrupted-address rejection — all pass.
+
+**Decision 7 — the audit posture changes, recorded in the open.** The owner withdrew the
+external-audit gate: no external audit will be performed. Every banner, brief, ops
+checklist, and web footer that named it now says so ("internal audit lineage only — no
+external audit was performed"), and the standing rule above the conclusion carries the
+honest consequence. The verification model is now exactly what this lineage plus the gates
+can prove — and every gate re-runs on any machine.
+
+Full matrix after the pass: `make conformance` green end to end — 67 tests + 3 fuzz targets
+across 11 packages, race clean, govulncheck clean, staticcheck/gosec/deadcode clean, all
+nine contracts compiled twice and byte-identical, NEF hashes recorded.

@@ -19,7 +19,8 @@
 // 1 whole asset, so value = amount * price / 1e8 for 8-decimal assets and
 // value = wholeNeo * price for NEO.
 //
-// Reference implementation pending audit.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package lend
 
 import (
@@ -67,6 +68,7 @@ var (
 	prefixColG   = []byte{0x33} // GAS collateral (base units)
 )
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return

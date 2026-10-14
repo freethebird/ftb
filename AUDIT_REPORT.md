@@ -3,8 +3,9 @@
 Date: 9 October 2026. Scope: the `ftb/` repo (token, migrator, registry, oracle, lend, the
 `pkg/merkle` builder, and the `cmd/` tools). The reused Flamingo swap is external and out of
 scope. Method: two independent passes, one by the author and one by a separate reviewer that
-read the code cold, then reconciled. This is a first internal audit, not a substitute for the
-two independent external audits the launch gate still requires.
+read the code cold, then reconciled. This is a first internal audit. (Note, 14 October 2026:
+per DECISIONS.md Decision 7 the external-audit gate this line referenced is withdrawn; this
+internal lineage is now the audit posture, recorded in the open.)
 
 ## Verdict
 

@@ -130,6 +130,12 @@ func TestCreateEscrowValidation(t *testing.T) {
 		s.dev.ScriptHash().BytesBE(), s.auditor.ScriptHash().BytesBE(), 100, 10000, 10)
 	trC.InvokeFail(t, "bad id", "createEscrow", -1,
 		s.dev.ScriptHash().BytesBE(), s.auditor.ScriptHash().BytesBE(), 100, 3000, 10)
+	// the escKey ceiling: ids are packed into 4 bytes, so 2^32 and above are rejected
+	// outright rather than silently aliasing onto a lower id's slot (FTB-30, gosec G115)
+	trC.InvokeFail(t, "bad id", "createEscrow", 1<<32,
+		s.dev.ScriptHash().BytesBE(), s.auditor.ScriptHash().BytesBE(), 100, 3000, 10)
+	// the same bound is fail-closed on the view path
+	s.e.NewInvoker(s.treasury, s.other).InvokeFail(t, "id out of range", "state", 1<<32)
 
 	s.create(t, 1, 100, 3000, 10)
 	trC.InvokeFail(t, "id already used", "createEscrow", 1,

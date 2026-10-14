@@ -10,7 +10,8 @@
 // No funds move here. No mint. One ballot per proposal: a new question is a new deployment,
 // and the published contract hash IS the proposal's identity.
 //
-// Reference implementation pending audit.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package ballot
 
 import (
@@ -29,6 +30,7 @@ var (
 	prefixVoted = []byte{0x11} // prefixVoted + account -> option chosen (one vote, ever)
 )
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return
@@ -109,16 +111,21 @@ func Vote(account interop.Hash160, amount int, option int, proof [][]byte) {
 	}
 
 	storage.Put(ctx, votedKey, option)
-	tk := append(prefixTally, byte(option))
+	tk := append(prefixTally, byte(option)) // #nosec G115 -- option is bounded to 1..numOptions above, and Configure caps numOptions at 16
 	storage.Put(ctx, tk, getIntCtx(ctx, tk)+amount)
 	runtime.Notify("Voted", account, option, amount)
 }
 
 // ---- views (safe) ----
 
-// Tally returns the total snapshot weight behind an option (1-based).
+// Tally returns the total snapshot weight behind an option (1-based). Out-of-range ids are
+// rejected rather than silently aliased: the tally key is one byte, so an unbounded option
+// would read another option's tally (found by gosec G115, FTB-31).
 func Tally(option int) int {
-	return getInt(append(prefixTally, byte(option)))
+	if option < 1 || option > 16 { // the Configure ceiling; tally keys are byte-wide
+		panic("tally: no such option")
+	}
+	return getInt(append(prefixTally, byte(option))) // #nosec G115 -- bounded to 1..16 above
 }
 
 // Voted returns the option an address chose, or 0 if it has not voted.

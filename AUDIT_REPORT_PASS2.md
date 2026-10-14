@@ -133,9 +133,9 @@ The Launch 1 core remains sound and the first pass's fixes are genuinely in the 
 named for each. Nothing new threatens the sealed-mint invariant. The two items worth acting on
 before launch are FTB-14 (make the multisig owner real, since the docs already promise it) and
 FTB-17 (remove the divergent C# tree and its wrong leaf spec). FTB-15 and FTB-16 are one-line
-hardenings. The pre-launch gate from the first report stands unchanged: set the cap from the
-merkleroot total, close then renounce, real oracle quorum before any lend value, external audits,
-public TestNet with a bounty.
+hardenings. The pre-launch gate from the first report stands, minus its external-audit leg
+(withdrawn per DECISIONS.md Decision 7, 14 October 2026): set the cap from the merkleroot total,
+close then renounce, real oracle quorum before any lend value, public TestNet with a bounty.
 
 ## Addendum: first real build (10 October 2026, local toolchain)
 
@@ -179,8 +179,8 @@ math and the close-factor) passes unchanged, which pins the behavior.
 
 ## Addendum 3: ballot contract — on-chain governance (10 October 2026)
 
-A sixth contract, `contracts/ballot`, is now in the tree and **must be in scope for the
-external audit**. It is the governance mechanism: deployed once per proposal, its hash is the
+A sixth contract, `contracts/ballot`, is now in the tree and **must stay in scope for any
+future review** (the external-audit gate itself is withdrawn per Decision 7). It is the governance mechanism: deployed once per proposal, its hash is the
 proposal identity. Design decisions an auditor should confirm:
 
 - It reuses the migration Merkle tree verbatim — the same domain-separated leaf format

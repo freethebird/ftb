@@ -2,7 +2,7 @@
 
 How five community members with five VMs run the whole FTB stack with no single point of
 control. This is the operational companion to `ARCHITECTURE.md` (the seams) and
-`FTB_Stack_Map.md` (the signing boundary), and it is the script for the TestNet rehearsal
+`../docs/STACK_MAP.md` (the signing boundary), and it is the script for the TestNet rehearsal
 before MainNet.
 
 ## 0. The principle
@@ -183,8 +183,8 @@ not just to run the contracts. Do every step for real:
       events in the open.
 - [ ] **T5 — seal.** Multisig signs `close`, then `renounceOwnership`; verify owner empty and
       mint sealed on-chain.
-- [ ] **T6 — go/no-go.** Every box above ticked, external audits scheduled, bounty findings
-      resolved. Only then does MainNet repeat this exact script.
+- [ ] **T6 — go/no-go.** Every box above ticked, bounty findings resolved (no external
+      audit - withdrawn per DECISIONS.md Decision 7). Only then does MainNet repeat this script.
 
 ## 10. Key hygiene
 

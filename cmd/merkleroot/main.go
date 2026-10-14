@@ -197,7 +197,7 @@ func main() {
 		o.Entries = append(o.Entries, entry{Address: it.raw, Amount: it.amt.String(), Proof: ph})
 	}
 	b, _ := json.MarshalIndent(o, "", "  ")
-	if err := os.WriteFile(*out, b, 0o644); err != nil {
+	if err := os.WriteFile(*out, b, 0o644); err != nil { // #nosec G306 -- proofs.json is a published public artifact; world-readable is intended
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
