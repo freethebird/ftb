@@ -1,0 +1,34 @@
+# FTB Deploy Log — freethebird.co
+
+Every deploy pins a new CID on the IPFS node (`ftb-node` / 185.112.147.245, 1984.is Reykjavík)
+and repoints the stable IPNS name:
+
+- IPNS: `k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq`
+- DNSLink: `_dnslink.freethebird.co TXT "dnslink=/ipns/k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq"`
+- IPNS key backup: `ftb/ops/ipfs/keys/ftb-ipns.key` (local only, never on the VM image)
+
+## Rollback
+
+Any version below is permanently retrievable at its CID. To roll back, repoint IPNS:
+
+```bash
+ssh ftb-node "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs name publish --key=ftb --lifetime=720h --ttl=15m /ipfs/<CID>"
+```
+
+## Deploys
+
+| # | Date (local) | CID | Git commit | Notes |
+|---|---|---|---|---|
+| 3 | 2026-10-14 ~15:35 | `QmdKwwMEqAeWP8tokfDmiEAxqDYDF6DeAuuA6cDWktRPaw` | `a9edb03` | Dark theme default for everyone; toggle still allows light. **Current.** |
+| 2 | 2026-10-14 ~15:19 | `QmVYbZj6WUnxjGf86uzEVonXihNtJkZjysQ95sLfmWS6yn` | `82e7549` | Template 3 promoted to / (flamingo blend, phosphor keys). |
+| 1 | 2026-10-14 ~12:25 | `QmXpGF99ioKJfDskdkcBg9gLL4iSaM6RAsCnqv9mwLBx87` | ≈ `2e4257a` (working tree) | First IPFS deploy. Template 2 "station dashboard". Node + Caddy + DNSLink live. |
+
+## Deploy command
+
+```bash
+cd "/Users/merlin/Desktop/FLM KIMI" && ./ftb/ops/ipfs/ftb-push-ipfs.sh ftb-node
+```
+
+The script stages `ftb/web/` (resolving the `proofs.json` symlink), pins on the node,
+republishes IPNS, and appends a row to this log.
+| auto | 2026-10-14 16:23 | `QmdKwwMEqAeWP8tokfDmiEAxqDYDF6DeAuuA6cDWktRPaw` | `43b25c9` | Deployed via ftb-push-ipfs.sh |
