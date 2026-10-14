@@ -484,8 +484,7 @@ def main():
 """
 
     open('template2.html', 'w').write(out)
-    open('index.html', 'w').write(out)  # / serves index.html — same build, no drift
-    print('wrote template2.html + index.html', len(out), 'bytes')
+    print('wrote template2.html', len(out), 'bytes')  # template 3 is promoted to / — see build_template3.py
 
 
 if __name__ == '__main__':
