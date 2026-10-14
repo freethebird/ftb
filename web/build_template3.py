@@ -120,16 +120,30 @@ body{font-size:15px}
 /* full-width primary button, slightly rounded — the Flamingo CTA shape */
 .go{border-radius:3px; width:100%; text-align:center}
 
-/* ---- clickable = opposite-color box ---- */
-a, button, .linkish{background:var(--ink); color:var(--paper);
-  border:1px solid var(--ink); border-radius:2px; padding:.34em .72em; text-decoration:none}
-a:hover, button:hover, .linkish:hover{background:var(--paper); color:var(--ink)}
-/* brand marks stay bare, invert on hover */
-.topbar .bird3, .topbar .wordmark{background:transparent; color:var(--ink); border:0; padding:0}
-.topbar .bird3:hover, .topbar .wordmark:hover{background:var(--ink); color:var(--paper)}
-/* selected states read as pressed, not boxed */
-.tsel button.on, .ctabs span.cur{background:var(--paper); color:var(--ink);
-  box-shadow:inset 0 0 0 2px var(--paper), inset 0 0 0 4px var(--ink)}
+/* ---- clickable = phosphor key (MS-DOS terminal green, one size everywhere) ---- */
+:root{--keybg:#101010; --keyfg:#33ff33}
+a, button, .linkish, button.linkish, .tabs a, .cta, .cta.solid, .ctabs a{
+  background:var(--keybg); color:var(--keyfg);
+  border:1px solid var(--keyfg); border-radius:2px;
+  padding:.45em .8em; font-size:12px; letter-spacing:.14em;
+  text-transform:uppercase; text-decoration:none; line-height:1.2;
+}
+a:hover, button:hover, .linkish:hover, button.linkish:hover,
+.tabs a:hover, .cta:hover, .cta.solid:hover, .cta:not(.solid):hover, .ctabs a:hover{
+  background:var(--keyfg); color:var(--keybg);
+}
+/* the big CTAs are the same key, just full-width */
+.ticket .go, .go{font-size:12px; padding:.7em .8em}
+/* brand marks stay bare, phosphor on hover */
+.topbar .bird3, .topbar .wordmark{background:transparent; color:var(--ink);
+  border:0; padding:0; font-size:inherit; letter-spacing:.08em; text-transform:none}
+.topbar .bird3:hover, .topbar .wordmark:hover{background:transparent; color:var(--keyfg)}
+/* selected pill/tab = pressed key: same well, double phosphor ring */
+.tsel button.on, .ctabs span.cur{background:var(--keybg); color:var(--keyfg);
+  border:1px solid var(--keyfg); box-shadow:inset 0 0 0 2px var(--keybg), inset 0 0 0 3px var(--keyfg)}
+/* tab + card-tab rows: keys sit flush like a keyboard */
+.tabs a, .ctabs a, .ctabs span.cur{margin-left:-1px}
+.tabs a:first-child, .ctabs a:first-child, .ctabs span.cur:first-child{margin-left:0}
 
 @media (max-width:860px){
   .tradegrid, .earngrid, .govgrid{grid-template-columns:1fr}

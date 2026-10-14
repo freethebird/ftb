@@ -128,3 +128,14 @@ users feel at home. What we took, and what we deliberately did not:
 The blend is the shell, not the substance: familiar where familiarity helps a returning
 user (tabs, cards, table, APY headline), ours where the discipline matters (ratio-only
 pricing, review-and-sign modal, verify panel, no oracle anywhere).
+
+### The phosphor key (14 October 2026) — a deliberate break of the grayscale invariant
+
+Every clickable element is the same object: a dark key-well (`#101010` in both shifts)
+with phosphor-green (`#33ff33`) uppercase lettering — the MS-DOS terminal green of the
+era. Hover flips the key (green well, dark legend). Selected pills/tabs are the same key
+"pressed": double phosphor ring. The two brand marks stay bare ink and only glow green
+on hover — they are identity, not controls. Rationale: in grayscale the eye could not
+tell control from label; one single affordance color, used *only* for clickables, makes
+the whole page readable at a glance. Green is not decoration here — it is the universal
+"this does something" signal, and nothing else is allowed to use it.
