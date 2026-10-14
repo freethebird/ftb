@@ -2,7 +2,7 @@
 
 The thin client layer that lets a NeoLine wallet (and other dApi wallets) talk to the FTB
 contracts. It is the only part of the project that lives in the browser, and it holds no keys and
-no logic the contracts do not already enforce. The signing boundary in `../../FTB_Stack_Map.png`
+no logic the contracts do not already enforce. The signing boundary in `../docs/STACK_MAP.png`
 is exactly this folder: everything here builds and reads, the wallet signs.
 
 ## What is here
