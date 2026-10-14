@@ -12,7 +12,13 @@ Every fee the system earns splits the same way:
   pool itself (share value rises; no mint, no transfers). Untouchable: LP yield is the
   liquidity moat.
 - **2/9 → FTB holders** — the dividend. It accrues to a reserve and is swept to the
-  dividends module; FTB is dividend-bearing by construction.
+  dividends module; FTB is dividend-bearing by construction. The module
+  (`contracts/dividends`) is xSUSHI-style: stake FTB, every distribution raises the
+  per-share accumulator, claim any time, unstake any time. Staking rather than
+  hold-and-earn because pro-rata snapshots on a transferable token would need a
+  transfer hook inside the sealed token; staking keeps `ftb_token` untouched and the
+  accounting exact. Revenue that arrives while nothing is staked is queued, not lost.
+  The module has no committee and no owner knob after configure — pure accounting.
 - **1/9 → the treasury** — the development fund. Of the holders' old third, one share in
   three now funds the proposals the holders themselves vote for: they reinvest part of
   their own dividend into the code they approved.

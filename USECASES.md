@@ -33,12 +33,15 @@ Three provenance classes:
 | 20 | Attest a passed audit (binds the exact NEF hash) | `treasury.attest` (proposal auditor) | FTB |
 | 21 | Claim dev tranches (A after audit, B after soak) | `treasury.claimA`, `treasury.claimB` | FTB |
 | 22 | Return treasury excess to holders | `treasury.returnExcess` → dividends module | FTB |
-| 23 | Oracle price report / read (lend pricing) | `oracle.report`, `oracle.price` | FTB |
-| 24 | Pay transaction fees | `gas.transfer` (system) | Neo native |
-| 25 | Committee governance actions (timelocked module swaps) | `registry.propose/apply` | FTB |
-| 26 | Deploy / update contracts | `ContractManagement` | Neo native |
-| 27 | Hash proofs (claim/vote verification) | `CryptoLib.sha256` | Neo native |
-| 28 | Block height (timelocks, accrual, treasury soak) | `Ledger.currentIndex` | Neo native |
+| 23 | Stake FTB for dividends | `ftb_token.transfer` → `dividends.onNEP17Payment` ("stake") | FTB |
+| 24 | Claim earned dividends | `dividends.claim` | FTB |
+| 25 | Unstake FTB (earned dividends stay claimable) | `dividends.unstake` | FTB |
+| 26 | Oracle price report / read (lend pricing) | `oracle.report`, `oracle.price` | FTB |
+| 27 | Pay transaction fees | `gas.transfer` (system) | Neo native |
+| 28 | Committee governance actions (timelocked module swaps) | `registry.propose/apply` | FTB |
+| 29 | Deploy / update contracts | `ContractManagement` | Neo native |
+| 30 | Hash proofs (claim/vote verification) | `CryptoLib.sha256` | Neo native |
+| 31 | Block height (timelocks, accrual, treasury soak) | `Ledger.currentIndex` | Neo native |
 
 **What is NOT used:** bNEO / NeoBurger (dropped — collateral is native NEO and GAS, one
 less external dependency), any hosted API, any custodial service. The front end talks to
