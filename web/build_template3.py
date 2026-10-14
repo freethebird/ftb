@@ -467,7 +467,8 @@ def main():
 """
 
     open('template3.html', 'w').write(out)
-    print('wrote template3.html', len(out), 'bytes')
+    open('index.html', 'w').write(out)  # template 3 is promoted: / serves this build
+    print('wrote template3.html + index.html', len(out), 'bytes')
 
 
 if __name__ == '__main__':
