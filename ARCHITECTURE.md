@@ -61,7 +61,7 @@ the client cannot move funds, only ask the wallet to sign something the user rev
 are pure (build, inspect `plan.summary`, then `execute`), writes default to the least-privilege
 CalledByEntry scope, and contract hashes come from config, never hard-coded. `web/invocations.md` is
 the wallet-neutral spec and `web/demo.html` is a read-only-by-default reference page. See
-`FTB_Stack_Map.png` for where this sits in the whole stack.
+`docs/STACK_MAP.png` (with notes in `docs/STACK_MAP.md`) for where this sits in the whole stack.
 
 ## Build order (safety-first sequencing)
 

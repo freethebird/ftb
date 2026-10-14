@@ -1,13 +1,38 @@
-# FTB (Free the Bird)
+# FTB — Free the Bird
 
-A community relaunch of a Flamingo-style DeFi system on Neo N3, built one language end to
-end in Go via [neo-go](https://github.com/nspcc-dev/neo-go), which provides the Go-to-NeoVM
-contract compiler, the SDK, and the node. The audited Flamingo swap is reused as a deployed
-NEF and called by hash, so no other language enters the repo.
+**A community relaunch of Flamingo-style DeFi on Neo N3.** Trade, earn, borrow, and
+govern — the mechanism lives 100% on-chain, the front end is a static page served from
+IPFS by community nodes, and after launch there are no admin keys at all.
 
-Read `ARCHITECTURE.md` first. It maps the production MO (visible cost over invisible,
-never leave stones unturned, optimize for speed/weight/security/productivity, audit every
-step, modular via seams) onto concrete decisions.
+Three promises, enforced in code and readable by anyone:
+
+- **No mint beyond the hard cap.** The only mint is the migration claim, then it seals
+  forever. FTB is dividend-bearing, never inflationary.
+- **No fiat oracle.** Prices on the front end are ratios between assets — nothing to
+  manipulate, nothing to trust.
+- **No single point of control.** Governance, the treasury, and even the website run on
+  contracts and community nodes. A gift to the Flamingo community.
+
+One language end to end: Go, via [neo-go](https://github.com/nspcc-dev/neo-go) (contract
+compiler, SDK, and node). The audited Flamingo swap is reused as a deployed NEF and called
+by hash — battle-tested code, and no second language ever enters the repo.
+
+> **Status: pre-TestNet.** Reference implementation — internal audit lineage only, no
+> external audit was performed (Decision 7) — see [Safety](#safety) before trusting value.
+
+## The documents
+
+| you want… | read |
+|---|---|
+| the one-page "what is this" | `OVERVIEW.md` |
+| the architecture and the seams | `ARCHITECTURE.md` + `docs/STACK_MAP.md` |
+| fees, rates, APY, the 2/3 : 2/9 : 1/9 constitution | `ECONOMICS.md` |
+| proposal → vote → code lifecycle | `GOVERNANCE.md` |
+| every user action → the contract it invokes → who published it | `USECASES.md` |
+| run one of the five community nodes | `ops/NODE_OPERATOR_RUNBOOK.md` |
+| audit the code | `AUDIT.md`, then `AUDIT_REPORT.md` / `AUDIT_REPORT_PASS2.md` / `AUDIT_MOV8_QRN_V1.md` |
+| build any client against the contracts | `web/invocations.md` |
+| extend the front end without breaking the discipline | `web/UI_RATIONALE.md` |
 
 ## Build and test in one command
 
@@ -23,29 +48,31 @@ detector, `govulncheck` against the pinned module set, and the NEF-hash record/v
 (`scripts/nef_hash.sh`; record a release with `cp build/NEF_HASHES.sha256 NEF_RELEASE.sha256`).
 
 CI (`.github/workflows/ci.yml`) runs the exact same steps on every push and pull request,
-so nothing merges unless it compiles and all tests pass. This repo's root is the `ftb/`
-directory; publish it as-is.
+so nothing merges unless it compiles and all tests pass.
 
 ## Status
 
-- [x] Increment 1: `ftb_token` (capped NEP-17, mint only by the Migrator, sealable,
-      renounceable) + full neotest suite.
-- [x] Increment 2: `ftb_migrator` + `pkg/merkle` + `cmd/merkleroot`, with a pure-Go tree
-      test and an on-chain claim test that proves the off-chain and on-chain leaf formats
-      agree byte for byte.
-- [x] Increment 3: `registry` seam (multisig + timelock) + the Go deploy/wire driver,
-      with a registry neotest suite.
-- [x] Increment 4: `cmd/seed` liquidity-seeding driver + the Launch-1 swap/seed runbook.
+- [x] Token: `ftb_token` — capped NEP-17, mint only by the Migrator, sealable,
+      renounceable, full neotest suite.
+- [x] Migration: `ftb_migrator` + `pkg/merkle` + `cmd/merkleroot`, with an on-chain claim
+      test proving the off-chain and on-chain leaf formats agree byte for byte.
+- [x] Registry seam (multisig + timelock) + the Go deploy/wire driver.
+- [x] Liquidity seeding: `cmd/seed` driver + the swap/seed runbook.
+- [x] Oracle (reporter-median, staleness-safe) + lend (no-mint supply/borrow, native
+      NEO+GAS collateral, kinked utilization curve), oracle resolved via the registry seam.
+- [x] Ballot: on-chain snapshot-weighted governance — one contract per proposal, the
+      contract hash IS the proposal id, voters reuse their migration Merkle proof as
+      weight, tallies in chain state so every node counts the same result.
+- [x] Governance economy: `bondvault` (listing bonds locked while a project is listed),
+      `treasury` (proposal escrow — auditor-attested NEF hash, tranche payouts, the fund is
+      a contract, not a wallet), `dividends` (xSUSHI-style distributor paying FTB stakers
+      the holders' 2/9 of every fee). Fee constitution: 2/3 LPs, 2/9 holders, 1/9 treasury.
+- [x] Front end: static, dependency-free, ratio-only pricing (no fiat oracle), served from
+      IPFS by community pinning nodes (`ops/NODE_OPERATOR_RUNBOOK.md`).
 - [ ] Launch 1: token + migration + reused swap, protocol-owned liquidity (on TestNet, then
-      MainNet, after audits).
-- [x] Increment 6: `oracle` (reporter-median, staleness-safe) + `lend` (no-mint
-      supply/borrow) written with neotest suites, resolving the oracle via the registry seam.
-- [x] Increment 7: `ballot` — on-chain snapshot-weighted governance. Deployed once per
-      proposal (the contract hash IS the proposal id), voters reuse their migration Merkle
-      proof as weight, one vote per snapshot address, tallies in chain state so every node
-      counts the same result.
-- [ ] Launch 2: enable `oracle` + `lend` on MainNet, only after their own dedicated audit.
-      Deliberately not part of Launch 1.
+      MainNet).
+- [ ] Launch 2: enable `oracle` + `lend` on MainNet, only after their own dedicated
+      internal audit pass. Deliberately not part of Launch 1.
 
 ## Layout
 
@@ -157,7 +184,7 @@ neo-go contract invokefunction -r $RPC -w wallet.json <router> addLiquidity \
 After seeding, do a small manual swap to confirm pricing, run the full flow on TestNet with
 community testers and a bug bounty, and only then consider MainNet.
 
-## Lending and oracle (Launch 2, audit-gated)
+## Lending and oracle (Launch 2, separately reviewed)
 
 Written to the same standard, but deliberately not part of the first launch, because lending
 is the highest-risk primitive and a lend-side bug is what destroyed Flamingo.
@@ -172,8 +199,9 @@ is the highest-risk primitive and a lend-side bug is what destroyed Flamingo.
   cap, liquidation, and cToken-style supply shares. It resolves the oracle through the
   registry seam, so the oracle can be upgraded behind the timelock without touching lend.
 
-These must pass their own dedicated audit, with a hardened multi-source oracle and far more
-exhaustive tests (interest over time, rounding, partial liquidations), before any value.
+These ship only after their own dedicated internal audit pass — a hardened multi-source
+oracle and far more exhaustive tests (interest over time, rounding, partial liquidations) —
+before any value.
 
 ## The one rule, enforced in code
 
@@ -183,11 +211,11 @@ liquidity in other modules, never from printing.
 
 ## Safety
 
-Reference implementation, pending audit. Do not deploy with real value until two
-independent audits and a public TestNet with a bug bounty have passed. Lending ships later,
-on its own, with its own audit, because it is the highest-risk module.
+Reference implementation. Internal audit lineage only - no external audit was performed
+(DECISIONS.md, Decision 7); verify before trusting value, and use the public TestNet and bug
+bounty. Lending ships later, on its own, because it is the highest-risk module.
 
 ## License
 
-MIT (see `LICENSE`), matching the reused Flamingo swap and neo-go, both MIT. Change the
-copyright holder line to whatever the community agrees on before publishing.
+MIT (see `LICENSE`), copyright the Free the Bird community — matching the reused Flamingo
+swap and neo-go, both MIT.
