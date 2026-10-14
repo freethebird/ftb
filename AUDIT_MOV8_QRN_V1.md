@@ -310,3 +310,31 @@ covered by `TestDebtFreeWithdrawDuringOraclePause` and both liquidation tests.
 Full matrix after the pass: `make conformance` green end to end — 62 tests + 3 fuzz targets
 across 8 packages, race clean, govulncheck clean, all seven contracts recompiled and their
 NEF hashes recorded.
+
+## Addendum 4: the treasury (14 October 2026)
+
+**New subject:** `contracts/treasury` — the development fund as a contract, not a wallet
+(ECONOMICS.md, Decision 6). Budgets escrow to a passed proposal id; the named auditor
+attests on-chain binding the exact audited NEF hash; the dev team self-serves tranche A on
+attestation and tranche B after the soak; failed audits and pre-attestation cancels return
+the budget; excess returns only to the registry-bound dividends module (fail-closed). Lend's
+sweep now splits the holders' reserve 1/3 to the treasury and 2/3 to dividends, making the
+interest split exactly 2/3 suppliers, 2/9 holders, 1/9 treasury; with no treasury bound the
+holders receive the whole reserve (fail-open toward holders, never stuck funds).
+
+**Annex B spot-checks:** forgery — committee witness on escrow/cancel/excess, auditor
+witness on attest/fail, dev witness on claims, and dev != auditor by construction;
+transcript — write-once configure, monotonic states, every act evented; replay — escrows
+are one-shot per id, tranches are state-gated, double-claim reverts; DoS — caller-paid gas,
+no loops, no cross-contract calls on the claim path except the final NEP-17 transfer to the
+dev team (a plain address chosen at escrow creation — a dev team that registers a faulting
+receiver DoSes only itself); LangSec — 20-byte addresses, 32-byte NEF hash, bounded bps and
+ids. **QRN class A:** escrow creation rides the same committee trusted window already
+recorded; payment itself is self-service against chain state, so the committee can delay
+funding a proposal but can never reroute or withhold an earned one. Class B: funds live in
+chain state; no custodian exists to subpoena.
+
+Suite: 7 new tests covering the full lifecycle, validation bounds, cancel/fail return
+paths, foreign-token rejection, the fail-closed excess return, and write-once configure;
+the lend sweep test now asserts the 1/3 : 2/3 reserve split arithmetically. `make
+conformance` green: 8 contracts compiled, all packages race-clean, govulncheck clean.

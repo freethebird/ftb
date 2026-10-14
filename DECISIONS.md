@@ -110,3 +110,22 @@ are unchanged. Proof the bump changed nothing on-chain: all six contract NEFs re
 **byte-identical** across it (hashes compared before and after), and the full suite plus
 `-race` passes. govulncheck is now green and on the gate path, so the next vulnerable
 transitive dependency fails the build instead of shipping silently.
+
+## Decision 6: fee parity with Flamingo, and the treasury is a contract (14 October 2026)
+
+With Flamingo gone, its rates are the community's reference point. Decided: the DEX swap
+fee is **0.30% of volume — exact Flamingo parity**. What changes is where the money goes:
+the old 2/3 : 1/3 (providers : holders) becomes **2/3 providers, 2/9 holders, 1/9 treasury**
+(≈20 / 6.7 / 3.3 bps of swap volume; on lend interest the sweep splits the holders' reserve
+1/3 to treasury, 2/3 to dividends). The LP share is untouched — liquidity is the moat — and
+the treasury slice comes out of the holders' own dividend, because holders are the ones
+voting the proposals it funds.
+
+And the fund is **a contract, not a wallet** (`contracts/treasury`): budgets escrow to a
+passed proposal id, the named auditor attests on-chain binding the exact audited NEF hash,
+and the dev team self-serves two tranches — A on attestation, B after the testnet soak. A
+failed audit or pre-attestation cancel returns the budget; there is no clawback of attested
+work; excess accrual can only return to the registry-bound dividends module. No person ever
+holds treasury keys. Committee execution uses the same trusted-window multisig already
+recorded for the registry and oracle (QRN class A); moving execution behind the ballot
+itself is v3 work, recorded here rather than smoothed over.

@@ -373,9 +373,10 @@ func accrue() {
 	storage.Put(ctx, keyLastBlk, now)
 }
 
-// SweepDividends pays the accrued reserve to the dividends module bound in the registry.
-// Callable by anyone: the binding is timelocked and in the open, and the funds can only
-// go to that address (fail-closed while unbound).
+// SweepDividends pays the accrued reserve: 1/3 of it to the treasury (the dev fund — 1/9
+// of total interest), the rest to the dividends module (2/9). Both are registry bindings,
+// timelocked and in the open. Dividends is fail-closed while unbound; the treasury leg is
+// optional — until it is bound, the holders receive the whole reserve and nothing is stuck.
 func SweepDividends() {
 	accrue()
 	ctx := storage.GetContext()
@@ -387,10 +388,19 @@ func SweepDividends() {
 	if div == nil {
 		panic("sweep: dividends module not bound")
 	}
-	to := div.(interop.Hash160)
+	tre := contract.Call(regHash(), "get", contract.ReadOnly, "treasury")
 	storage.Put(ctx, keyResAccrued, 0)
-	send(ftbHash(), to, reserve)
-	runtime.Notify("DividendsSwept", to, reserve)
+	dividendsAmt := reserve
+	if tre != nil {
+		treasuryAmt := reserve / 3 // of total interest this leg is exactly 1/9
+		if treasuryAmt > 0 {
+			send(ftbHash(), tre.(interop.Hash160), treasuryAmt)
+			dividendsAmt -= treasuryAmt
+			runtime.Notify("TreasurySwept", tre.(interop.Hash160), treasuryAmt)
+		}
+	}
+	send(ftbHash(), div.(interop.Hash160), dividendsAmt)
+	runtime.Notify("DividendsSwept", div.(interop.Hash160), dividendsAmt)
 }
 
 // ---- views (safe) ----

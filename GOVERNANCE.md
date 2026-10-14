@@ -44,10 +44,13 @@ The candidate code goes to audit. The report is committed to the repo
 (`AUDIT*.md` — same as this project's existing audits). Fail = back to 4a,
 no payment, no merge.
 
-**4c. Audit passes → bounty paid. [ops → chain, v3]**
-Initially: a 3-of-5 operator multisig pays the bounty on presentation of the
-passing report and the ratified vote. Target: a treasury contract that pays
-only against a passed ballot result, removing the multisig from the loop.
+**4c. Audit passes → bounty paid. [chain — built]**
+The treasury contract holds the budget: the committee escrows it to the passed proposal id
+(same trusted-window multisig as the registry — it turns the key, it never holds funds),
+the auditor attests on-chain binding the exact audited NEF hash, and the dev team claims
+tranche A on attestation and tranche B after the TestNet soak — self-service, no multisig
+in the payment path. Failed audit or pre-attestation cancel returns the budget. Full
+removal of the committee from escrow creation (ballot-executed funding) remains v3 work.
 
 **4d. TestNet first. [ops]**
 The ratified build deploys to TestNet via `scripts/deploy_testnet.sh`. Soak
