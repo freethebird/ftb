@@ -458,7 +458,8 @@ TILES_SCRIPT = """
 })();
 """
 
-out = """<!doctype html>
+def main():
+    out = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -482,6 +483,10 @@ out = """<!doctype html>
 </html>
 """
 
-open('template2.html', 'w').write(out)
-open('index.html', 'w').write(out)  # / serves index.html — same build, no drift
-print('wrote template2.html + index.html', len(out), 'bytes')
+    open('template2.html', 'w').write(out)
+    open('index.html', 'w').write(out)  # / serves index.html — same build, no drift
+    print('wrote template2.html + index.html', len(out), 'bytes')
+
+
+if __name__ == '__main__':
+    main()

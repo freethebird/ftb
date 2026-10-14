@@ -107,3 +107,24 @@ and a two-column working area with the market board left and the wallet strip + 
 right (THORSwap). Same ids, same signing flows, same invariants; `build_template2.py`
 assembles it from template 1's font, component CSS, modals, and script, so the two never
 drift in behavior — only in layout.
+
+## Template 3: the Flamingo blend (14 October 2026)
+
+Template 3 (`template3.html`, built by `build_template3.py` from the same shared engine —
+imports from `build_template2.py`, zero behavior drift) blends flamingo.finance's
+information architecture back into the typewriter discipline, so returning Flamingo
+users feel at home. What we took, and what we deliberately did not:
+
+| flamingo.finance | template 3 |
+|---|---|
+| Top tab bar: Swap · Earn · Lend · … with connect wallet at the right | `.topbar` sticky tab bar: trade · earn · lend · vote · board · claim · verify; wallet state, connect, invert, own-node on the right |
+| Landing hero: "Trade, Earn, and Borrow Crypto with Ease" + Get Started | `.hero3`: "the flamingo, set free." + three CTAs (trade / earn / govern). No marketing images — display type only |
+| Swap card with Swap \| Pool tabs | Swap card with a `swap | pools` tab strip; `pools` anchors to the tokens table (we have no add-liquidity UI — liquidity is added at the router directly) |
+| "Tokens on Flamingo" table (# · Token · Price · Change · TVL · Volume) | Tokens table (`.toktab`): the same `.rcard` ratio cards restyled as numbered rows via CSS counters — pair, ratio, inverse, drift. **No fiat price, no TVL in dollars** — the no-oracle invariant stands; ratio and drift carry the same information honestly |
+| FLOCKS card: dividend token, big APY with steppers, payout stats | EARN card: dividend APY as the display-size headline (`.bign`), then total staked / growth per FTB / claimable as the stat row, stake-unstake-claim actions below. Our dividends accrue continuously per block, so there is no "next payout" — that stat would be a lie here |
+| Full-width rounded primary CTA buttons | `.go` goes full-width with a 3px radius — the one concession to Flamingo's button shape |
+| Latest News, TradingView charts, token icons | **Not taken.** News needs a server, TradingView is a third-party dependency, icons are decoration. The invariants hold: no dependencies, no external APIs, strict grayscale |
+
+The blend is the shell, not the substance: familiar where familiarity helps a returning
+user (tabs, cards, table, APY headline), ours where the discipline matters (ratio-only
+pricing, review-and-sign modal, verify panel, no oracle anywhere).
