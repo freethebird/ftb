@@ -3,8 +3,9 @@
 # Neo N3 TestNet, then fills web/config.js with the deployed hashes.
 #
 # Prereq: cmd/deploy/testnet.wallet.json must hold enough TestNet GAS (~100 GAS is ample;
-# faucet: https://faucet.ngd.network/?n3=1). Wallet password lives in cmd/deploy/.pass
-# (git-ignored, chmod 600).
+# faucet: https://n3t5wish.ngd.network/ — 50 GAS + 50 NEO per address per day, so two
+# drips, or apply for bulk at https://neo.org/testcoin/apply). Wallet password lives in
+# cmd/deploy/.pass (git-ignored, chmod 600).
 #
 #   sh scripts/deploy_testnet.sh
 #
