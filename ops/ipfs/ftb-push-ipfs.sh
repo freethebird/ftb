@@ -22,8 +22,8 @@ ROOT_CID="$(ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs add -r -Q --p
 echo "    Root CID: $ROOT_CID"
 
 echo "==> Ensuring IPNS key 'ftb' exists"
-ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | grep -q ' ftb\$' || sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key gen ftb --type=ed25519"
-IPNS="$(ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | awk '/ ftb\$/ {print \$1}' | tr -d '[:space:]')"
+ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | grep -q " ftb$" || sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key gen ftb --type=ed25519'
+IPNS="$(ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l' | awk '$2=="ftb" {print $1}' | tr -d '[:space:]')"
 
 echo "==> Publishing IPNS name (this can take a minute or two)"
 ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs name publish --key=ftb --lifetime=720h --ttl=15m /ipfs/$ROOT_CID"
