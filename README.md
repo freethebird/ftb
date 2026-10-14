@@ -1,5 +1,8 @@
 # FTB — Free the Bird
 
+[![ci](https://github.com/freethebird/ftb/actions/workflows/ci.yml/badge.svg)](https://github.com/freethebird/ftb/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 **A community relaunch of Flamingo-style DeFi on Neo N3.** Trade, earn, borrow, and
 govern — the mechanism lives 100% on-chain, the front end is a static page served from
 IPFS by community nodes, and after launch there are no admin keys at all.
