@@ -22,26 +22,25 @@ ROOT_CID="$(ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs add -r -Q --p
 echo "    Root CID: $ROOT_CID"
 
 echo "==> Ensuring IPNS key 'ftb' exists"
-ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | grep -q " ftb$" || sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key gen ftb --type=ed25519'
+ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | awk "\$2==\"ftb\"" | grep -q . || sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key gen ftb --type=ed25519'
 IPNS="$(ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l' | awk '$2=="ftb" {print $1}' | tr -d '[:space:]')"
 
 echo "==> Publishing IPNS name (this can take a minute or two)"
 ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs name publish --key=ftb --lifetime=720h --ttl=15m /ipfs/$ROOT_CID"
 ssh "$HOST" 'rm -rf /tmp/ftb-web'
 
+echo "==> Appending to deploy log"
+LOG="$(cd "$(dirname "$0")" && pwd)/DEPLOYS.md"
+REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+COMMIT="$(git -C "$REPO_DIR" log --format='%h' -1 2>/dev/null || echo '?')"
+STAMP="$(date '+%Y-%m-%d %H:%M')"
+printf '| auto | %s | `%s` | `%s` | Deployed via ftb-push-ipfs.sh |\n' "$STAMP" "$ROOT_CID" "$COMMIT" >> "$LOG"
+echo "    logged: $STAMP  $ROOT_CID  $COMMIT"
+
 echo
 echo "=============================================================="
-echo " FTB front-end is now on IPFS:"
+echo " FTB front-end is live at https://freethebird.co"
 echo "   ipfs://$ROOT_CID"
-echo "   https://ipfs.io/ipfs/$ROOT_CID"
-echo
-echo " IPNS name (stable pointer, update with each deploy):"
-echo "   ipns://$IPNS"
-echo "   https://ipfs.io/ipns/$IPNS"
-echo
-echo " Add these DNS records at your registrar for freethebird.co:"
-echo "   _dnslink   TXT   \"dnslink=/ipns/$IPNS\""
-echo
-echo " Then https://freethebird.co can serve the IPFS site and"
-echo " any gateway resolves it via dnslink."
+echo "   ipns://$IPNS  (stable name, just repointed)"
+echo " Deploy logged to ftb/ops/ipfs/DEPLOYS.md"
 echo "=============================================================="
