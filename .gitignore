@@ -19,3 +19,6 @@ cmd/deploy/.pass
 
 # local deploy binary (build with: go build ./cmd/deploy)
 /deploy
+
+# IPNS node identity — never commit
+ops/ipfs/keys/
