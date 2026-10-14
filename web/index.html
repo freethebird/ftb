@@ -38,11 +38,12 @@
   --col:760px;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+/* dark is the default for everyone; explicit data-theme / OS-light still honored via toggle */
+:root:not([data-theme="light"]){
   --paper:#0a0a0a; --ink:#ededed; --ink-2:#a9a9a9; --faint:#6f6f6f;
   --hair:#2b2b2b; --panel:#151515; --sel:#ededed; --sel-ink:#0a0a0a;
   color-scheme:dark;
-}}
+}
 :root[data-theme="dark"]{
   --paper:#0a0a0a; --ink:#ededed; --ink-2:#a9a9a9; --faint:#6f6f6f;
   --hair:#2b2b2b; --panel:#151515; --sel:#ededed; --sel-ink:#0a0a0a;
@@ -795,7 +796,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   // ---------- theme: full color swap (every color flows through the tokens) ----------
   var root=document.documentElement;
   function eff(){ var t=root.getAttribute('data-theme'); if(t) return t;
-    return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+    return 'dark'; }
   function paintThemeBtn(){
     var t = eff();
     document.getElementById('themeBtn').textContent = 'invert [ ' + t + ' ]';
