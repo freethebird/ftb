@@ -552,14 +552,22 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 (function(){
   'use strict';
 
-  // ---------- theme (from the design system) ----------
+  // ---------- theme: full color swap (every color flows through the tokens) ----------
   var root=document.documentElement;
   function eff(){ var t=root.getAttribute('data-theme'); if(t) return t;
     return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+  function paintThemeBtn(){
+    var t = eff();
+    document.getElementById('themeBtn').textContent = 'invert [ ' + t + ' ]';
+    var s = document.getElementById('shiftLine');
+    if (s) s.textContent = '// ' + (t==='dark' ? 'night shift' : 'day shift');
+  }
   try{ var s=localStorage.getItem('theme'); if(s==='dark'||s==='light') root.setAttribute('data-theme', s); }catch(e){}
   document.getElementById('themeBtn').addEventListener('click', function(){
     var n = eff()==='dark' ? 'light' : 'dark'; root.setAttribute('data-theme', n);
-    try{ localStorage.setItem('theme', n); }catch(e){} });
+    try{ localStorage.setItem('theme', n); }catch(e){}
+    paintThemeBtn(); });
+  paintThemeBtn();
 
   // ---------- tiny helpers ----------
   function $(id){ return document.getElementById(id); }
@@ -639,6 +647,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
     rpcCall(RPC, 'getblockcount').then(function(h){ tickBlock=h; paintTicker(); }).catch(function(){});
     refreshRatios();
     refreshGov();
+    refreshBoard();
     refreshBalances();
   }
 
@@ -814,6 +823,60 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   });
   paintSels();
 
+  // ---------- dividends (template 2 EARN panel; inert where the panel is absent) ----------
+  if ($('dvStakeAmt')) {
+    var divReady = function(){ return C.dividends && C.dividends.indexOf('0x0000')!==0; };
+    var divNotWired = function(){
+      showPlan('dividends not wired', 'the dividends module hash is a placeholder in this deployment. the panel goes live when the TestNet hash lands in config.js.',
+        [['status','dividends hash not configured']], null);
+      $('ovGo').disabled = true;
+    };
+    var dvAmount = function(id){
+      var v = ($(id).value || '').trim();
+      if (!/^[0-9]+(\.[0-9]+)?$/.test(v) || parseFloat(v) <= 0) return null;
+      return v;
+    };
+    $('dvStakeGo').addEventListener('click', function(){
+      if (!divReady()){ divNotWired(); return; }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var amt = dvAmount('dvStakeAmt');
+      if (!amt){ $('dvHint').textContent = 'enter an amount of FTB to stake'; return; }
+      var plan = dapi.stakeFtb(account, FtbDapi.util.toBaseUnits(amt));
+      $('ovGo').disabled = false;
+      showPlan('stake '+amt+' FTB',
+        'staked FTB earns the holders\' 2/9 of every fee. unstake any time; dividends already earned stay claimable.',
+        [['you stake', amt+' FTB'],
+         ['earns', 'pro-rata share of every sweep into the dividends module'],
+         ['lockup', 'none — unstake any time'],
+         ['what you sign', plan.summary]],
+        plan);
+    });
+    $('dvUnstakeGo').addEventListener('click', function(){
+      if (!divReady()){ divNotWired(); return; }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var amt = dvAmount('dvUnstakeAmt');
+      if (!amt){ $('dvHint').textContent = 'enter an amount of FTB to unstake'; return; }
+      var plan = dapi.unstakeFtb(account, FtbDapi.util.toBaseUnits(amt));
+      $('ovGo').disabled = false;
+      showPlan('unstake '+amt+' FTB',
+        'principal returns to your wallet. dividends earned up to this block stay claimable.',
+        [['you unstake', amt+' FTB'],
+         ['dividends', 'unaffected — claim whenever you like'],
+         ['what you sign', plan.summary]],
+        plan);
+    });
+    $('dvClaimGo').addEventListener('click', function(){
+      if (!divReady()){ divNotWired(); return; }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var plan = dapi.claimDividends(account);
+      $('ovGo').disabled = false;
+      showPlan('claim dividends',
+        'pays out everything your stake has earned up to this block.',
+        [['what you sign', plan.summary]],
+        plan);
+    });
+  }
+
   // ---------- pool ratios (asset vs asset; no fiat, no oracle) ----------
   var SPARK = '▁▂▃▄▅▆▇█';
   var tick={}, tickBlock=null;
@@ -949,6 +1012,89 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
     });
   }
   $('govRefresh').addEventListener('click', refreshGov);
+
+  // ---------- proposals board (registry v2: bonded proposals, escrowed on-chain) ----------
+  // inert where the board markup is absent; refreshBoard() self-guards on $('boardBody')
+  var pKind='ballot', boardBond=null;
+  function boardReady(){ return !!(configured && C.registry && C.registry.indexOf('0x0000')!==0); }
+  function b64ToStr(s){ try{ return decodeURIComponent(escape(atob(s))); }catch(e){ return atob(s); } }
+  function hashFromItem(it){
+    return (it && it.value) ? '0x'+FtbDapi.util.reverseHex(FtbDapi.util.b64ToHex(it.value)) : '—';
+  }
+  function paintKindSel(){
+    var box=$('pKindSel'); box.innerHTML='';
+    ['ballot','listing'].forEach(function(k){
+      var b=el('button', k===pKind?'on':null, k);
+      b.addEventListener('click', function(){ pKind=k; paintKindSel(); });
+      box.appendChild(b);
+    });
+  }
+  function refreshBoard(){
+    var body=$('boardBody'); if(!body) return;
+    if (!RPC || !boardReady()) return; // standby markup already in place
+    readInt(C.registry,'proposalBond').then(function(v){
+      boardBond=v;
+      $('pMetaHint').textContent='bond: '+fmt(v)+' FTB · exact, escrowed — refunded on a legitimate close, kept against spam';
+    }).catch(function(){});
+    readInt(C.registry,'proposalCount').then(function(n){
+      body.innerHTML='';
+      var count=Number(n);
+      if (!count){
+        body.appendChild(el('div','small muted','no proposals yet — the board is open; the first one costs the bond.'));
+        return;
+      }
+      for (var id=count; id>=1; id--){ (function(pid){ // newest first
+        readFn(C.registry,'proposal',[{type:'Integer',value:String(pid)}]).then(function(st){
+          var items=st[0].value;
+          var kind=b64ToStr(items[0].value);
+          var ref=hashFromItem(items[1]);
+          var meta=b64ToStr(items[2].value);
+          var bond=BigInt(items[4].value||'0');
+          var open=items[5].type==='Boolean' ? items[5].value : (items[5].value && items[5].value!=='');
+          var row=el('div','entry');
+          row.appendChild(el('span','idx',String(pid).padStart(2,'0')));
+          var mid=el('div'); mid.appendChild(el('span','ttl',meta)); row.appendChild(mid);
+          var m=el('div','meta');
+          m.appendChild(el('span','tag '+(open?'pub':'sealed'), open?'open':'closed'));
+          m.appendChild(el('span','tag',kind));
+          m.appendChild(el('span',null,short(ref)));
+          m.appendChild(el('span',null,'bond '+fmt(bond)+' FTB'));
+          row.appendChild(m);
+          body.appendChild(row);
+        }).catch(function(){});
+      })(id); }
+    }).catch(function(e){
+      body.innerHTML=''; body.appendChild(el('div','small','board unavailable: '+(e.message||e)));
+    });
+  }
+  if ($('boardBody')) {
+    $('boardRefresh').addEventListener('click', refreshBoard);
+    $('pGo').addEventListener('click', function(){
+      if (!boardReady()){
+        showPlan('board not wired','the registry hash is a placeholder in this deployment. proposals go live with the TestNet contracts.',
+          [['status','registry not configured']],null);
+        $('ovGo').disabled=true; return;
+      }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var meta=$('pMeta').value.trim(), ref=$('pRef').value.trim();
+      if (!meta){ $('pMetaHint').textContent='write the proposal first'; return; }
+      if (!/^0x[0-9a-fA-F]{40}$/.test(ref)){ $('pMetaHint').textContent='reference must be a 0x contract hash (20 bytes)'; return; }
+      readInt(C.registry,'proposalBond').then(function(bond){
+        if (bond<=0n) throw new Error('proposal bond not configured on-chain');
+        var plan=dapi.submitProposal(account, pKind, ref, meta, bond.toString());
+        $('ovGo').disabled=false;
+        showPlan('submit '+pKind+' proposal',
+          'the bond is escrowed by the registry. a legitimate close refunds it to you; spam forfeits it to the committee. the record stays on-chain either way.',
+          [['kind',pKind],
+           ['reference',ref],
+           ['meta',meta.length>80?meta.slice(0,77)+'…':meta],
+           ['bond',fmt(bond)+' FTB'],
+           ['what you sign', plan.summary]],
+          plan);
+      }).catch(function(e){ $('pMetaHint').textContent='bond read failed: '+(e.message||e); });
+    });
+    paintKindSel();
+  }
 
   // ---------- own node ----------
   $('ownRpcBtn').addEventListener('click', function(){ openOv('ovRpc'); });

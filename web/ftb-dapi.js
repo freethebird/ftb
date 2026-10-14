@@ -271,6 +271,20 @@
       [A.h160(liquidator), A.h160(this._need('lend')), A.int(repayBase), A.arr([A.str('liq'), A.h160(borrower)])],
       'Liquidate ' + borrower + ', repaying up to ' + fromBaseUnits(repayBase) + ' FTB');
   };
+  // dividends module: stake FTB to earn the holders' 2/9; claim and unstake any time
+  FtbDapi.prototype.stakeFtb = function (user, amountBase) {
+    return this._w(this._need('ftb'), 'transfer',
+      [A.h160(user), A.h160(this._need('dividends')), A.int(amountBase), A.arr([A.str('stake')])],
+      'Stake ' + fromBaseUnits(amountBase) + ' FTB for dividends');
+  };
+  FtbDapi.prototype.claimDividends = function (user) {
+    return this._w(this._need('dividends'), 'claim', [A.h160(user)],
+      'Claim earned dividends');
+  };
+  FtbDapi.prototype.unstakeFtb = function (user, amountBase) {
+    return this._w(this._need('dividends'), 'unstake', [A.h160(user), A.int(amountBase)],
+      'Unstake ' + fromBaseUnits(amountBase) + ' FTB (earned dividends stay claimable)');
+  };
   FtbDapi.prototype.vote = function (voter, choice) {
     var to = this.cfg.vote[choice];
     if (!to) throw new Error('vote address for "' + choice + '" is not set in config.vote');

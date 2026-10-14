@@ -420,13 +420,15 @@ body{font-size:15px}
     <a href="#board">board</a>
     <a href="#market">market</a>
     <a href="#swap">swap</a>
+    <a href="#lend">lend</a>
+    <a href="#earn">earn</a>
     <a href="#claim">claim</a>
     <a href="#verify">verify</a>
   </nav>
   <div class="railfoot">
     <span class="idstate" id="idstate">[ no wallet ]</span>
     <button id="connectBtn">connect -&gt;</button>
-    <button class="linkish" id="themeBtn">invert</button>
+    <button class="linkish" id="themeBtn">theme</button>
     <span class="muted" id="rpcNote">rpc: connecting...</span>
     <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
   </div>
@@ -531,6 +533,67 @@ body{font-size:15px}
     </div>
   </div>
 
+  <!-- ============ LEND ============ -->
+  <section class="act2" id="lend">
+    <div class="col-h"><span class="no">LEND</span>
+      <span class="lede">no mint — interest splits 2/3 suppliers, 1/3 FTB holders</span>
+      <button class="read linkish" id="lendRefresh">refresh -&gt;</button></div>
+    <div class="entry">
+      <span class="idx">01</span>
+      <div><span class="ttl">Pool — utilization <b id="lUtil">—</b> · borrow APY <b id="lBApy">—</b> · supply APY <b id="lSApy">—</b></span></div>
+      <div class="meta">
+        <span class="tag">borrows</span><span id="lBorrows">—</span>
+        <span class="tag">holder reserve</span><span id="lReserve">—</span>
+      </div>
+    </div>
+    <div class="entry" id="lendPos" hidden>
+      <span class="idx">02</span>
+      <div><span class="ttl">Your position <span class="tag pub" id="pHealth">—</span></span></div>
+      <div class="meta">
+        <span class="tag">NEO posted</span><span id="pNeo">—</span>
+        <span class="tag">GAS posted</span><span id="pGas">—</span>
+        <span class="tag">debt</span><span id="pDebt">—</span>
+        <span class="tag">max borrow</span><span id="pMax">—</span>
+        <span class="tag">shares</span><span id="pShares">—</span>
+      </div>
+    </div>
+    <div class="entry" id="lendOff">
+      <span class="idx">03</span>
+      <div><span class="ttl">standby — the panel goes live when the lend contract hash is configured for this network</span></div>
+    </div>
+  </section>
+
+  <!-- ============ EARN (dividends) ============ -->
+  <section class="act2" id="earn">
+    <div class="col-h"><span class="no">EARN</span>
+      <span class="lede">FTB is dividend-bearing — stake it, earn the holders' 2/9 of every fee</span>
+      <button class="read linkish" id="earnRefresh">refresh -&gt;</button></div>
+    <div class="entry">
+      <span class="idx">01</span>
+      <div><span class="ttl">Pool — <b id="dTotal">—</b> staked · dividend APY <b id="dApy">—</b></span></div>
+      <div class="meta">
+        <span class="tag">growth</span><span id="dAcc">—</span>
+        <span class="tag muted">apy samples daily from the on-chain accumulator</span>
+      </div>
+    </div>
+    <div class="entry" id="earnPos" hidden>
+      <span class="idx">02</span>
+      <div><span class="ttl">Your stake — <b id="dStaked">—</b> staked · <b id="dPending">—</b> claimable</span></div>
+      <div class="meta">
+        <span class="tag">stake</span><input id="dvStakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0" style="width:9ch">
+        <button class="linkish" id="dvStakeGo">stake -&gt;</button>
+        <span class="tag">unstake</span><input id="dvUnstakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0" style="width:9ch">
+        <button class="linkish" id="dvUnstakeGo">unstake -&gt;</button>
+        <button class="linkish" id="dvClaimGo">claim -&gt;</button>
+      </div>
+      <div class="meta"><span class="muted" id="dvHint">every action is review-and-sign in your wallet; the page never holds keys</span></div>
+    </div>
+    <div class="entry" id="earnOff">
+      <span class="idx">03</span>
+      <div><span class="ttl">standby — the panel goes live when the dividends module hash is configured for this network</span></div>
+    </div>
+  </section>
+
   <!-- ============ CLAIM ============ -->
   <section class="act2" id="claim">
     <div class="col-h"><span class="no">CLAIM</span>
@@ -568,7 +631,6 @@ body{font-size:15px}
       <dt>migrator</dt><dd id="vMigrator">—</dd>
       <dt>registry</dt><dd id="vRegistry">—</dd>
       <dt>ballot</dt><dd id="vBallot">—</dd>
-      <dt>bond vault</dt><dd id="vBondvault">—</dd>
       <dt>merkle root</dt><dd id="vRoot">—</dd>
       <dt>max supply</dt><dd id="vCap">—</dd>
       <dt>mint sealed</dt><dd id="vSealed">—</dd>
@@ -810,7 +872,7 @@ body{font-size:15px}
   }
   $('connectBtn').addEventListener('click', function(){
     if (account || !dapi) return;
-    dapi.connect().then(function(){ account = dapi.account; setState(); refresh(); })
+    dapi.connect().then(function(){ account = dapi.account; window.FTB_ACCOUNT = acctHash160(); setState(); refresh(); })
       .catch(function(e){ $('idstate').textContent = '[ ' + (e.message||'wallet error') + ' ]'; });
   });
 
@@ -904,6 +966,60 @@ body{font-size:15px}
       plan);
   });
   paintSels();
+
+  // ---------- dividends (template 2 EARN panel; inert where the panel is absent) ----------
+  if ($('dvStakeAmt')) {
+    var divReady = function(){ return C.dividends && C.dividends.indexOf('0x0000')!==0; };
+    var divNotWired = function(){
+      showPlan('dividends not wired', 'the dividends module hash is a placeholder in this deployment. the panel goes live when the TestNet hash lands in config.js.',
+        [['status','dividends hash not configured']], null);
+      $('ovGo').disabled = true;
+    };
+    var dvAmount = function(id){
+      var v = ($(id).value || '').trim();
+      if (!/^[0-9]+(\.[0-9]+)?$/.test(v) || parseFloat(v) <= 0) return null;
+      return v;
+    };
+    $('dvStakeGo').addEventListener('click', function(){
+      if (!divReady()){ divNotWired(); return; }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var amt = dvAmount('dvStakeAmt');
+      if (!amt){ $('dvHint').textContent = 'enter an amount of FTB to stake'; return; }
+      var plan = dapi.stakeFtb(account, FtbDapi.util.toBaseUnits(amt));
+      $('ovGo').disabled = false;
+      showPlan('stake '+amt+' FTB',
+        'staked FTB earns the holders\' 2/9 of every fee. unstake any time; dividends already earned stay claimable.',
+        [['you stake', amt+' FTB'],
+         ['earns', 'pro-rata share of every sweep into the dividends module'],
+         ['lockup', 'none — unstake any time'],
+         ['what you sign', plan.summary]],
+        plan);
+    });
+    $('dvUnstakeGo').addEventListener('click', function(){
+      if (!divReady()){ divNotWired(); return; }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var amt = dvAmount('dvUnstakeAmt');
+      if (!amt){ $('dvHint').textContent = 'enter an amount of FTB to unstake'; return; }
+      var plan = dapi.unstakeFtb(account, FtbDapi.util.toBaseUnits(amt));
+      $('ovGo').disabled = false;
+      showPlan('unstake '+amt+' FTB',
+        'principal returns to your wallet. dividends earned up to this block stay claimable.',
+        [['you unstake', amt+' FTB'],
+         ['dividends', 'unaffected — claim whenever you like'],
+         ['what you sign', plan.summary]],
+        plan);
+    });
+    $('dvClaimGo').addEventListener('click', function(){
+      if (!divReady()){ divNotWired(); return; }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var plan = dapi.claimDividends(account);
+      $('ovGo').disabled = false;
+      showPlan('claim dividends',
+        'pays out everything your stake has earned up to this block.',
+        [['what you sign', plan.summary]],
+        plan);
+    });
+  }
 
   // ---------- pool ratios (asset vs asset; no fiat, no oracle) ----------
   var SPARK = '▁▂▃▄▅▆▇█';
@@ -1042,6 +1158,7 @@ body{font-size:15px}
   $('govRefresh').addEventListener('click', refreshGov);
 
   // ---------- proposals board (registry v2: bonded proposals, escrowed on-chain) ----------
+  // inert where the board markup is absent; refreshBoard() self-guards on $('boardBody')
   var pKind='ballot', boardBond=null;
   function boardReady(){ return !!(configured && C.registry && C.registry.indexOf('0x0000')!==0); }
   function b64ToStr(s){ try{ return decodeURIComponent(escape(atob(s))); }catch(e){ return atob(s); } }
@@ -1094,32 +1211,34 @@ body{font-size:15px}
       body.innerHTML=''; body.appendChild(el('div','small','board unavailable: '+(e.message||e)));
     });
   }
-  $('boardRefresh').addEventListener('click', refreshBoard);
-  $('pGo').addEventListener('click', function(){
-    if (!boardReady()){
-      showPlan('board not wired','the registry hash is a placeholder in this deployment. proposals go live with the TestNet contracts.',
-        [['status','registry not configured']],null);
-      $('ovGo').disabled=true; return;
-    }
-    if (!account){ $('idstate').textContent='[ connect first ]'; return; }
-    var meta=$('pMeta').value.trim(), ref=$('pRef').value.trim();
-    if (!meta){ $('pMetaHint').textContent='write the proposal first'; return; }
-    if (!/^0x[0-9a-fA-F]{40}$/.test(ref)){ $('pMetaHint').textContent='reference must be a 0x contract hash (20 bytes)'; return; }
-    readInt(C.registry,'proposalBond').then(function(bond){
-      if (bond<=0n) throw new Error('proposal bond not configured on-chain');
-      var plan=dapi.submitProposal(account, pKind, ref, meta, bond.toString());
-      $('ovGo').disabled=false;
-      showPlan('submit '+pKind+' proposal',
-        'the bond is escrowed by the registry. a legitimate close refunds it to you; spam forfeits it to the committee. the record stays on-chain either way.',
-        [['kind',pKind],
-         ['reference',ref],
-         ['meta',meta.length>80?meta.slice(0,77)+'…':meta],
-         ['bond',fmt(bond)+' FTB'],
-         ['what you sign', plan.summary]],
-        plan);
-    }).catch(function(e){ $('pMetaHint').textContent='bond read failed: '+(e.message||e); });
-  });
-  paintKindSel();
+  if ($('boardBody')) {
+    $('boardRefresh').addEventListener('click', refreshBoard);
+    $('pGo').addEventListener('click', function(){
+      if (!boardReady()){
+        showPlan('board not wired','the registry hash is a placeholder in this deployment. proposals go live with the TestNet contracts.',
+          [['status','registry not configured']],null);
+        $('ovGo').disabled=true; return;
+      }
+      if (!account){ $('idstate').textContent='[ connect first ]'; return; }
+      var meta=$('pMeta').value.trim(), ref=$('pRef').value.trim();
+      if (!meta){ $('pMetaHint').textContent='write the proposal first'; return; }
+      if (!/^0x[0-9a-fA-F]{40}$/.test(ref)){ $('pMetaHint').textContent='reference must be a 0x contract hash (20 bytes)'; return; }
+      readInt(C.registry,'proposalBond').then(function(bond){
+        if (bond<=0n) throw new Error('proposal bond not configured on-chain');
+        var plan=dapi.submitProposal(account, pKind, ref, meta, bond.toString());
+        $('ovGo').disabled=false;
+        showPlan('submit '+pKind+' proposal',
+          'the bond is escrowed by the registry. a legitimate close refunds it to you; spam forfeits it to the committee. the record stays on-chain either way.',
+          [['kind',pKind],
+           ['reference',ref],
+           ['meta',meta.length>80?meta.slice(0,77)+'…':meta],
+           ['bond',fmt(bond)+' FTB'],
+           ['what you sign', plan.summary]],
+          plan);
+      }).catch(function(e){ $('pMetaHint').textContent='bond read failed: '+(e.message||e); });
+    });
+    paintKindSel();
+  }
 
   // ---------- own node ----------
   $('ownRpcBtn').addEventListener('click', function(){ openOv('ovRpc'); });
@@ -1146,7 +1265,6 @@ body{font-size:15px}
   $('vMigrator').textContent = C.migrator || '—';
   $('vRegistry').textContent = C.registry || '—';
   $('vBallot').textContent = C.ballot || '—';
-  $('vBondvault').textContent = C.bondvault || '—';
   $('vRoot').textContent = MERKLE_ROOT || '—';
   $('rootLine').textContent = MERKLE_ROOT ? short(MERKLE_ROOT) : '—';
 
@@ -1162,7 +1280,8 @@ body{font-size:15px}
     dapi = new FtbDapi(Object.assign({}, CFG));
     dapi.init().catch(function(){ $('idstate').textContent='[ install NeoLine or a dApi wallet ]'; });
     dapi.on && dapi.on('accountChanged', function(a){
-      account = a && a.address ? a.address : null; if(dapi) dapi.account = account; setState(); refreshBalances();
+      account = a && a.address ? a.address : null; if(dapi) dapi.account = account;
+      window.FTB_ACCOUNT = account ? acctHash160() : null; setState(); refreshBalances();
     });
   } else {
     $('idstate').textContent = configured ? '[ adapter missing ]' : '[ hashes not configured ]';
@@ -1203,6 +1322,80 @@ body{font-size:15px}
         set('tVoted', fmt(t)+' FTB');
       }).catch(function(){});
     }
+  }).catch(function(){});
+// ---------- lend pool + position (Launch 2) ----------
+  function readVal(url,h,op,args){ return rpc(url,'invokefunction',[h,op,args||[]]).then(function(r){
+    if(r.state!=='HALT') throw new Error('fault'); var it=r.stack&&r.stack[0];
+    return it?it.value:null; }); }
+  function bps(v){ return (Number(v)/100).toFixed(2)+'%'; }
+  function loadLend(url){
+    var lend=C.lend;
+    if (!lend || lend.indexOf('0x0000')===0){ var off=document.getElementById('lendOff'); if(off) off.hidden=false; return; }
+    var off=document.getElementById('lendOff'); if(off) off.hidden=true;
+    readInt(url,lend,'utilizationBps').then(function(v){ set('lUtil', bps(v)); }).catch(function(){});
+    readInt(url,lend,'borrowApyBps').then(function(v){ set('lBApy', bps(v)); }).catch(function(){});
+    readInt(url,lend,'supplyApyBps').then(function(v){ set('lSApy', bps(v)); }).catch(function(){});
+    readInt(url,lend,'totalBorrows').then(function(v){ set('lBorrows', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,lend,'reserveAccrued').then(function(v){ set('lReserve', fmt(v)+' FTB'); }).catch(function(){});
+    var acct=null;
+    try{ acct=window.FTB_ACCOUNT||null; }catch(e){}
+    if (!acct) return;
+    var pos=document.getElementById('lendPos'); if(pos) pos.hidden=false;
+    var hu=[{type:'Hash160',value:acct}];
+    readInt(url,lend,'collateralOf',hu.concat([{type:'Boolean',value:true}])).then(function(v){ set('pNeo', v.toString()+' NEO'); }).catch(function(){});
+    readInt(url,lend,'collateralOf',hu.concat([{type:'Boolean',value:false}])).then(function(v){ set('pGas', fmt(v)+' GAS'); }).catch(function(){});
+    readInt(url,lend,'debtOf',hu).then(function(v){ set('pDebt', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,lend,'maxBorrow',hu).then(function(v){ set('pMax', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,lend,'sharesOf',hu).then(function(v){ set('pShares', v.toString()); }).catch(function(){});
+    readVal(url,lend,'isUnhealthy',hu).then(function(v){
+      var el=document.getElementById('pHealth'); if(!el) return;
+      var bad=(v===true||v==='true'||v==='1');
+      el.textContent = bad ? 'LIQUIDATABLE' : 'healthy';
+    }).catch(function(){});
+  }
+  // ---------- dividends (the holders' 2/9) ----------
+  function loadEarn(url){
+    var dv=C.dividends;
+    if (!dv || dv.indexOf('0x0000')===0){ var off=document.getElementById('earnOff'); if(off) off.hidden=false; return; }
+    var off=document.getElementById('earnOff'); if(off) off.hidden=true;
+    readInt(url,dv,'totalStaked').then(function(v){ set('dTotal', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,dv,'accPerShare').then(function(v){
+      set('dAcc', '1 staked FTB has earned '+(Number(v)/1e18).toFixed(8)+' FTB');
+      // dividend APY: sample the accumulator, compare with a sample at least 20h old
+      try{
+        var now=Date.now(), prev=JSON.parse(localStorage.getItem('ftb_div_acc')||'null');
+        if (prev && prev.v && (now-prev.t) > 20*3600*1000){
+          var perDay=(Number(v)-Number(prev.v))/1e18 / ((now-prev.t)/(24*3600*1000));
+          if (perDay >= 0) set('dApy', (perDay*365*100).toFixed(2)+'%');
+          localStorage.setItem('ftb_div_acc', JSON.stringify({v:v.toString(),t:now}));
+        } else if (!prev){
+          localStorage.setItem('ftb_div_acc', JSON.stringify({v:v.toString(),t:now}));
+          set('dApy', 'sampling — check back tomorrow');
+        }
+      }catch(e){}
+    }).catch(function(){});
+    var acct=null;
+    try{ acct=window.FTB_ACCOUNT||null; }catch(e){}
+    if (!acct) return;
+    var pos=document.getElementById('earnPos'); if(pos) pos.hidden=false;
+    var hu=[{type:'Hash160',value:acct}];
+    readInt(url,dv,'stakedOf',hu).then(function(v){ set('dStaked', fmt(v)+' FTB'); }).catch(function(){});
+    readInt(url,dv,'pendingOf',hu).then(function(v){ set('dPending', fmt(v)+' FTB'); }).catch(function(){});
+  }
+  pick().then(function(url){
+    loadLend(url); loadEarn(url);
+    var lb=document.getElementById('lendRefresh');
+    if(lb) lb.addEventListener('click', function(){ loadLend(url); });
+    var eb=document.getElementById('earnRefresh');
+    if(eb) eb.addEventListener('click', function(){ loadEarn(url); });
+    // a wallet can connect after page load; pick the position panels up then
+    setInterval(function(){
+      if (!window.FTB_ACCOUNT) return;
+      var lp=document.getElementById('lendPos'), ep=document.getElementById('earnPos');
+      if ((lp && lp.hidden) || (ep && ep.hidden)) { loadLend(url); loadEarn(url); }
+    }, 5000);
+    // keep the pools fresh while the page is open
+    setInterval(function(){ loadLend(url); loadEarn(url); }, 60000);
   }).catch(function(){});
 })();
 
