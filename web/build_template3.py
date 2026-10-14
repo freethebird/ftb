@@ -433,7 +433,7 @@ MARKUP = """<header class="topbar">
   <footer class="foot3">
     <span class="disp" style="font-size:20px">free the bird</span><br>
     <span class="muted" id="shiftLine">// day shift</span><br>
-    Reference implementation pending external audit. Not financial advice.
+    Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
     MIT code, public proofs — a gift to the Flamingo community.
   </footer>
 </div>

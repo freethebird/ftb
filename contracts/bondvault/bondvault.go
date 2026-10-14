@@ -11,7 +11,8 @@
 // this contract holds the money, the committee turns the key. There is no vesting clock
 // and no good-behavior unlock: listed = bonded, delisted = released, nothing in between.
 //
-// Reference implementation pending audit.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package bondvault
 
 import (
@@ -39,6 +40,7 @@ var (
 	prefixProject = []byte{0x13} // + listed token -> project address (first payer)
 )
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return

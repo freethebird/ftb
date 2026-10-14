@@ -22,18 +22,6 @@ func proofArg(p [][]byte) []any {
 	return a
 }
 
-func deployBallot(t *testing.T, leaves [][]byte, numOpts int) (*neotest.Executor, *neotest.ContractInvoker, [][][]byte) {
-	bc, validator := chain.NewSingle(t)
-	e := neotest.NewExecutor(t, bc, validator, validator)
-	owner := e.NewAccount(t)
-	c := neotest.CompileFile(t, e.Validator.ScriptHash(), "ballot.go", "ballot.yml")
-	e.DeployContract(t, c, owner.ScriptHash().BytesBE())
-	root, proofs := merkle.Build(leaves)
-	b := e.NewInvoker(c.Hash, owner)
-	b.Invoke(t, stackitem.Null{}, "configure", root, numOpts)
-	return e, b, proofs
-}
-
 func TestWeightedVoteFlow(t *testing.T) {
 	bc, validator := chain.NewSingle(t)
 	e := neotest.NewExecutor(t, bc, validator, validator)
@@ -82,6 +70,12 @@ func TestWeightedVoteFlow(t *testing.T) {
 
 	// the bound root is publicly readable and matches what was published
 	b.Invoke(t, stackitem.NewBuffer(root), "root")
+
+	// tally rejects out-of-range options instead of silently aliasing onto another
+	// option's byte-keyed slot (FTB-31, gosec G115)
+	b.InvokeFail(t, "tally: no such option", "tally", 0)
+	b.InvokeFail(t, "tally: no such option", "tally", 17)
+	b.InvokeFail(t, "tally: no such option", "tally", 257) // would alias option 1
 }
 
 func freshBallot(t *testing.T) (*neotest.Executor, *neotest.ContractInvoker, neotest.Signer) {

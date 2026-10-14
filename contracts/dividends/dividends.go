@@ -15,7 +15,8 @@
 //
 // No committee, no owner knob after Configure: this contract is pure accounting.
 //
-// Reference implementation pending audit.
+// Reference implementation. Internal audit lineage only - no external audit was
+// performed (DECISIONS.md, Decision 7). Verify before trusting value.
 package dividends
 
 import (
@@ -38,6 +39,7 @@ var (
 	prefixPend = []byte{0x12} // + account -> settled but unclaimed dividends
 )
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return
