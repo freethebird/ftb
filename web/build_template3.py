@@ -138,9 +138,9 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 .topbar .bird3, .topbar .wordmark{background:transparent; color:var(--ink);
   border:0; padding:0; font-size:inherit; letter-spacing:.08em; text-transform:none}
 .topbar .bird3:hover, .topbar .wordmark:hover{background:transparent; color:var(--keyfg)}
-/* selected pill/tab = pressed key: same well, double phosphor ring */
-.tsel button.on, .ctabs span.cur{background:var(--keybg); color:var(--keyfg);
-  border:1px solid var(--keyfg); box-shadow:inset 0 0 0 2px var(--keybg), inset 0 0 0 3px var(--keyfg)}
+/* selected pill/tab = key fully engaged: solid phosphor, dark legend */
+.tsel button.on, .ctabs span.cur{background:var(--keyfg); color:var(--keybg);
+  border:1px solid var(--keyfg)}
 /* tab + card-tab rows: keys sit flush like a keyboard */
 .tabs a, .ctabs a, .ctabs span.cur{margin-left:-1px}
 .tabs a:first-child, .ctabs a:first-child, .ctabs span.cur:first-child{margin-left:0}
