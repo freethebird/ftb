@@ -274,3 +274,39 @@ keep). Class B: submission is permissionless and the board is replicated chain s
 no one hosts the vote page.
 
 (c) 2026 — internal audit lineage; reference implementation pending external audit.
+
+## Addendum 3: lend v2 economics (14 October 2026)
+
+**New subject:** `contracts/lend` rewritten for the classic-economics mandate (ECONOMICS.md):
+collateral is the two native assets only — NEO (whole units) and GAS — bNEO/NeoBurger is
+dropped entirely; loans and interest are FTB; the borrow rate follows a kinked utilization
+curve (`setRates` with a per-block ceiling and a 50% reserve-factor cap); interest splits
+2/3 to suppliers through share value and 1/3 to the FTB-holder dividend reserve, swept by
+the anyone-callable `sweepDividends` to the registry-bound `dividends` module, fail-closed
+while unbound. NEO-first liquidation seize with floor whole-unit math (dust value stays with
+the borrower), GAS spillover. New safe views: `collateralOf`, `utilizationBps`,
+`borrowRatePerBlock`, `supplyRatePerBlock`, `borrowApyBps`, `supplyApyBps`, `reserveAccrued`.
+
+**FTB-29 — the native-GAS claim callback (found by the suite, fixed same session).** On Neo
+N3, any change to a contract's NEO balance mints the accrued GAS claim *to the contract*,
+and because the lend contract is a contract, the GAS native invokes its `onNEP17Payment`
+with a **null sender**. The pre-fix router treated every inbound GAS transfer as user
+collateral and called `colKey(null, false)`, faulting with `CAT: invalid conversion:
+Null/ByteString` — which would have bricked every NEO withdrawal and liquidation the moment
+the contract held NEO across blocks: a protocol-level DoS on the money path, invisible to
+the old mock-bNEO suite because the mock never triggered native claim semantics. The fix
+accepts null-sender mints (GAS only; anything else panics) into an unaccounted contract
+balance — it is not user collateral — and is documented in the code, in
+`web/invocations.md`, and here. Rejecting the callback was considered and rejected: a fault
+there breaks withdrawals. Four regression tests now exercise real native NEO in and out of
+the contract (deposit, withdrawal, liquidation, spillover), which is the only environment
+where this class exists. Recorded as a hardening-canon lesson: *test with the real native
+assets from day one; a mock cannot betray you, and that is precisely the problem.*
+
+**QRN classes:** the fix adds no authority and no new seam — the claim path is a receive-only
+branch with no state writes. Annex B DoS class: the bricked-withdrawal mode is closed and
+covered by `TestDebtFreeWithdrawDuringOraclePause` and both liquidation tests.
+
+Full matrix after the pass: `make conformance` green end to end — 62 tests + 3 fuzz targets
+across 8 packages, race clean, govulncheck clean, all seven contracts recompiled and their
+NEF hashes recorded.

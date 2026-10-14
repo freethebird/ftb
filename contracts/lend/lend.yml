@@ -2,11 +2,18 @@ name: FtbLend
 safemethods:
   - debtOf
   - collateralValue
+  - collateralOf
   - maxBorrow
   - isUnhealthy
   - sharesOf
   - totalShares
   - totalBorrows
+  - utilizationBps
+  - borrowRatePerBlock
+  - supplyRatePerBlock
+  - borrowApyBps
+  - supplyApyBps
+  - reserveAccrued
 events:
   - name: Configured
     parameters:
@@ -14,9 +21,7 @@ events:
         type: Hash160
       - name: ftb
         type: Hash160
-      - name: bneo
-        type: Hash160
-  - name: ParamsSet
+  - name: RiskSet
     parameters:
       - name: ltv
         type: Integer
@@ -24,7 +29,23 @@ events:
         type: Integer
       - name: bonus
         type: Integer
-      - name: rate
+  - name: RatesSet
+    parameters:
+      - name: base
+        type: Integer
+      - name: slope1
+        type: Integer
+      - name: slope2
+        type: Integer
+      - name: kink
+        type: Integer
+      - name: reserveBps
+        type: Integer
+  - name: DividendsSwept
+    parameters:
+      - name: to
+        type: Hash160
+      - name: amount
         type: Integer
 permissions:
   - contract: '*'

@@ -1,7 +1,9 @@
-// Reference neotest suite for the lend market. Wires the whole system (token, mint-caller,
-// mock bNEO, oracle, registry, lend) and exercises supply, collateral, borrow within and
-// over the LTV, repay, and a liquidation triggered by a price drop. Everything is no-mint:
-// the lend contract only ever moves FTB that suppliers deposited.
+// Reference neotest suite for the lend market (v2: NEO+GAS collateral, utilization curve,
+// 2/3 : 1/3 fee split). Wires the whole system (token, mint-caller, oracle, registry,
+// lend) and exercises supply, NEO/GAS collateral, borrow within and over the LTV, repay,
+// liquidations (NEO-first seize, spillover into GAS), interest accrual, the reserve
+// split, the dividend sweep, and the APY views. NEO collateral is posted by transferring
+// whole NEO from the chain validator — the real native asset, not a mock.
 //
 // This is the highest-risk module and ships behind its own audit; treat this suite as a
 // starting point for a far more exhaustive one (interest accrual over time, rounding,
@@ -14,6 +16,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/nspcc-dev/neo-go/pkg/core/native/nativenames"
 	"github.com/nspcc-dev/neo-go/pkg/neotest"
 	"github.com/nspcc-dev/neo-go/pkg/neotest/chain"
 	"github.com/nspcc-dev/neo-go/pkg/util"
@@ -23,16 +26,17 @@ import (
 const dec = 100_000_000
 
 type sys struct {
-	e                             *neotest.Executor
-	owner, rep                    neotest.Signer
-	ftb, caller, bneo, orac, lend util.Uint160
+	e                            *neotest.Executor
+	owner, rep                   neotest.Signer
+	ftb, caller, orac, reg, lend util.Uint160
+	neo, gas                     util.Uint160
 }
 
 func setup(t *testing.T) *sys {
 	bc, validator := chain.NewSingle(t)
 	e := neotest.NewExecutor(t, bc, validator, validator)
 	owner := e.NewAccount(t)
-	s := &sys{e: e, owner: owner}
+	s := &sys{e: e, owner: owner, neo: e.NativeHash(t, nativenames.Neo), gas: e.NativeHash(t, nativenames.Gas)}
 
 	tokC := neotest.CompileFile(t, e.Validator.ScriptHash(), "../ftb_token/ftb_token.go", "../ftb_token/ftb_token.yml")
 	e.DeployContract(t, tokC, owner.ScriptHash().BytesBE())
@@ -43,10 +47,6 @@ func setup(t *testing.T) *sys {
 	s.caller = callC.Hash
 	e.NewInvoker(s.ftb, owner).Invoke(t, stackitem.Null{}, "setMigrator", s.caller.BytesBE())
 
-	bneoC := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/mocktoken/mocktoken.go", "testdata/mocktoken/mocktoken.yml")
-	e.DeployContract(t, bneoC, nil)
-	s.bneo = bneoC.Hash
-
 	oracC := neotest.CompileFile(t, e.Validator.ScriptHash(), "../oracle/oracle.go", "../oracle/oracle.yml")
 	e.DeployContract(t, oracC, owner.ScriptHash().BytesBE())
 	s.orac = oracC.Hash
@@ -54,11 +54,15 @@ func setup(t *testing.T) *sys {
 	oOwner.Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 1)
 	s.rep = e.NewAccount(t)
 	oOwner.Invoke(t, stackitem.Null{}, "setReporter", s.rep.ScriptHash().BytesBE(), true)
-	e.NewInvoker(s.orac, s.rep).Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.bneo.BytesBE(), 50*dec)
+	// NEO at 50 FTB (per whole NEO), GAS at 5 FTB (per whole GAS)
+	rep := e.NewInvoker(s.orac, s.rep)
+	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 50*dec)
+	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.gas.BytesBE(), 5*dec)
 
 	regC := neotest.CompileFile(t, e.Validator.ScriptHash(), "../registry/registry.go", "../registry/registry.yml")
 	e.DeployContract(t, regC, owner.ScriptHash().BytesBE())
-	rOwner := e.NewInvoker(regC.Hash, owner)
+	s.reg = regC.Hash
+	rOwner := e.NewInvoker(s.reg, owner)
 	rOwner.Invoke(t, stackitem.Null{}, "setInitialDelay", 1)
 	rOwner.Invoke(t, stackitem.Null{}, "bootstrap", "oracle", s.orac.BytesBE())
 
@@ -66,19 +70,39 @@ func setup(t *testing.T) *sys {
 	e.DeployContract(t, lendC, owner.ScriptHash().BytesBE())
 	s.lend = lendC.Hash
 	lOwner := e.NewInvoker(s.lend, owner)
-	lOwner.Invoke(t, stackitem.Null{}, "configure", regC.Hash.BytesBE(), s.ftb.BytesBE(), s.bneo.BytesBE())
-	lOwner.Invoke(t, stackitem.Null{}, "setParams", 6000, 7500, 800, 0)
+	lOwner.Invoke(t, stackitem.Null{}, "configure", s.reg.BytesBE(), s.ftb.BytesBE())
+	lOwner.Invoke(t, stackitem.Null{}, "setRisk", 6000, 7500, 800)
+	lOwner.Invoke(t, stackitem.Null{}, "setRates", 0, 0, 0, 8000, 3333)
 	return s
 }
 
 func (s *sys) mintFTB(t *testing.T, to util.Uint160, amt int) {
 	s.e.NewInvoker(s.caller, s.owner).Invoke(t, stackitem.Null{}, "mint", s.ftb.BytesBE(), to.BytesBE(), amt)
 }
-func (s *sys) mintBNEO(t *testing.T, to util.Uint160, amt int) {
-	s.e.NewInvoker(s.bneo, s.owner).Invoke(t, stackitem.Null{}, "mint", to.BytesBE(), amt)
+
+// fundNeo sends whole NEO (0 decimals) from the validator to an account.
+func (s *sys) fundNeo(t *testing.T, to util.Uint160, wholeNeo int) {
+	s.e.NewInvoker(s.neo, s.e.Validator).Invoke(t, stackitem.Make(true), "transfer",
+		s.e.Validator.ScriptHash().BytesBE(), to.BytesBE(), wholeNeo, nil)
 }
-func (s *sys) ftbBal(t *testing.T, who util.Uint160) *neotest.ContractInvoker {
-	return s.e.NewInvoker(s.ftb, s.owner)
+
+// postNeo posts whole NEO as collateral.
+func (s *sys) postNeo(t *testing.T, who neotest.Signer, wholeNeo int) {
+	s.e.NewInvoker(s.neo, who).Invoke(t, stackitem.Make(true), "transfer",
+		who.ScriptHash().BytesBE(), s.lend.BytesBE(), wholeNeo, nil)
+}
+
+func (s *sys) supply(t *testing.T, who neotest.Signer, amt int) {
+	s.e.NewInvoker(s.ftb, who).Invoke(t, stackitem.Make(true), "transfer",
+		who.ScriptHash().BytesBE(), s.lend.BytesBE(), amt, []any{"supply"})
+}
+
+func (s *sys) neoBal(t *testing.T, who util.Uint160, want int) {
+	s.e.NewInvoker(s.neo, s.owner).Invoke(t, stackitem.Make(want), "balanceOf", who.BytesBE())
+}
+
+func (s *sys) ftbBal(t *testing.T, who util.Uint160, want int) {
+	s.e.NewInvoker(s.ftb, s.owner).Invoke(t, stackitem.Make(want), "balanceOf", who.BytesBE())
 }
 
 func TestSupplyBorrowRepay(t *testing.T) {
@@ -88,20 +112,18 @@ func TestSupplyBorrowRepay(t *testing.T) {
 
 	// supplier deposits 4000 FTB
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
-	s.e.NewInvoker(s.ftb, supplier).Invoke(t, stackitem.Make(true), "transfer",
-		supplier.ScriptHash().BytesBE(), s.lend.BytesBE(), 4000*dec, []any{"supply"})
+	s.supply(t, supplier, 4000*dec)
 
-	// borrower posts 100 bNEO (price 50 -> value 5000 FTB, max borrow 60% = 3000)
-	s.mintBNEO(t, borrower.ScriptHash(), 100*dec)
-	s.e.NewInvoker(s.bneo, borrower).Invoke(t, stackitem.Make(true), "transfer",
-		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil)
+	// borrower posts 100 whole NEO (price 50 -> value 5000 FTB, max borrow 60% = 3000)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
 
 	lendBorrower := s.e.NewInvoker(s.lend, borrower)
 	lendOwner := s.e.NewInvoker(s.lend, s.owner)
 
 	// borrow 1000 ok
 	lendBorrower.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1000*dec)
-	s.ftbBal(t, borrower.ScriptHash()).Invoke(t, stackitem.Make(1000*dec), "balanceOf", borrower.ScriptHash().BytesBE())
+	s.ftbBal(t, borrower.ScriptHash(), 1000*dec)
 	lendOwner.Invoke(t, stackitem.Make(1000*dec), "debtOf", borrower.ScriptHash().BytesBE())
 
 	// borrowing past the LTV is rejected (1000 + 2500 = 3500 > 3000)
@@ -113,6 +135,17 @@ func TestSupplyBorrowRepay(t *testing.T) {
 	lendOwner.Invoke(t, stackitem.Make(0), "debtOf", borrower.ScriptHash().BytesBE())
 }
 
+// GAS prices through the same oracle with 8-decimal scaling; NEO stays whole-unit.
+func TestGasCollateralValues(t *testing.T) {
+	s := setup(t)
+	user := s.e.NewAccount(t) // 100 GAS from NewAccount
+	s.e.NewInvoker(s.gas, user).Invoke(t, stackitem.Make(true), "transfer",
+		user.ScriptHash().BytesBE(), s.lend.BytesBE(), 40*dec, nil)
+
+	// 40 GAS at 5 FTB -> 200 FTB of collateral value
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Make(200*dec), "collateralValue", user.ScriptHash().BytesBE())
+}
+
 func TestLiquidationOnPriceDrop(t *testing.T) {
 	s := setup(t)
 	supplier := s.e.NewAccount(t)
@@ -120,12 +153,10 @@ func TestLiquidationOnPriceDrop(t *testing.T) {
 	liquidator := s.e.NewAccount(t)
 
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
-	s.e.NewInvoker(s.ftb, supplier).Invoke(t, stackitem.Make(true), "transfer",
-		supplier.ScriptHash().BytesBE(), s.lend.BytesBE(), 4000*dec, []any{"supply"})
+	s.supply(t, supplier, 4000*dec)
 
-	s.mintBNEO(t, borrower.ScriptHash(), 100*dec)
-	s.e.NewInvoker(s.bneo, borrower).Invoke(t, stackitem.Make(true), "transfer",
-		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
 
 	lendBorrower := s.e.NewInvoker(s.lend, borrower)
 	lendOwner := s.e.NewInvoker(s.lend, s.owner)
@@ -134,27 +165,75 @@ func TestLiquidationOnPriceDrop(t *testing.T) {
 	lendBorrower.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2500*dec)
 	lendOwner.Invoke(t, stackitem.Make(false), "isUnhealthy", borrower.ScriptHash().BytesBE())
 
-	// bNEO price falls 50 -> 20. Collateral value 2000, threshold 75% = 1500, debt 2500 -> unhealthy
-	s.e.NewInvoker(s.orac, s.rep).Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.bneo.BytesBE(), 20*dec)
+	// NEO price falls 50 -> 20. Collateral value 2000, threshold 75% = 1500, debt 2500 -> unhealthy
+	s.e.NewInvoker(s.orac, s.rep).Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 20*dec)
 	lendOwner.Invoke(t, stackitem.Make(true), "isUnhealthy", borrower.ScriptHash().BytesBE())
 
-	// liquidator repays 1000 FTB and seizes bNEO at an 8% bonus:
-	// seizeFTB = 1080, at price 20 that is 54 bNEO
+	// liquidator repays 1000 FTB and seizes NEO at an 8% bonus:
+	// seizeFTB = 1080, at price 20 that is exactly 54 whole NEO
 	s.mintFTB(t, liquidator.ScriptHash(), 2000*dec)
 	s.e.NewInvoker(s.ftb, liquidator).Invoke(t, stackitem.Make(true), "transfer",
 		liquidator.ScriptHash().BytesBE(), s.lend.BytesBE(), 1000*dec, []any{"liq", borrower.ScriptHash()})
 
-	// borrower debt down to 1500, liquidator holds 54 bNEO
+	// borrower debt down to 1500, liquidator holds 54 whole NEO
 	lendOwner.Invoke(t, stackitem.Make(1500*dec), "debtOf", borrower.ScriptHash().BytesBE())
-	s.e.NewInvoker(s.bneo, s.owner).Invoke(t, stackitem.Make(54*dec), "balanceOf", liquidator.ScriptHash().BytesBE())
+	s.neoBal(t, liquidator.ScriptHash(), 54)
 }
 
-// FTB-07: the liquidation bonus is capped at 30%; above that SetParams must reject.
+// When NEO alone cannot cover the seize, the remainder spills into GAS.
+func TestLiquidationSpillsIntoGas(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t, 200*dec) // posts 100 GAS as collateral, keeps the rest for fees
+	liquidator := s.e.NewAccount(t)
+
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+
+	// 10 NEO (500 FTB) + 100 GAS (500 FTB) = 1000 FTB; LTV 60% -> borrow 600
+	s.fundNeo(t, borrower.ScriptHash(), 10)
+	s.postNeo(t, borrower, 10)
+	s.e.NewInvoker(s.gas, borrower).Invoke(t, stackitem.Make(true), "transfer",
+		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil) // 100 GAS = 500 FTB
+	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 600*dec)
+
+	// NEO 50 -> 20 (10 NEO = 200), GAS 5 -> 2 (100 GAS = 200): cv 400 < debt 600 -> underwater
+	rep := s.e.NewInvoker(s.orac, s.rep)
+	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 20*dec)
+	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.gas.BytesBE(), 2*dec)
+
+	// liquidator repays 300: seize = 300 * 1.08 = 324 FTB. NEO covers only 200 -> all 10 NEO
+	// seized, and the remaining 124 FTB spills into GAS at 2 FTB/GAS -> exactly 62 GAS.
+	s.mintFTB(t, liquidator.ScriptHash(), 1000*dec)
+	s.e.NewInvoker(s.ftb, liquidator).Invoke(t, stackitem.Make(true), "transfer",
+		liquidator.ScriptHash().BytesBE(), s.lend.BytesBE(), 300*dec, []any{"liq", borrower.ScriptHash()})
+
+	s.neoBal(t, liquidator.ScriptHash(), 10)
+	// wallet GAS balances are polluted by funding and fees, so assert on the contract's
+	// own collateral bookkeeping: the borrower keeps exactly the unseized 38 GAS.
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Make(0), "collateralOf", borrower.ScriptHash().BytesBE(), true)
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Make(38*dec), "collateralOf", borrower.ScriptHash().BytesBE(), false)
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Make(300*dec), "debtOf", borrower.ScriptHash().BytesBE())
+}
+
+// FTB-07: the liquidation bonus is capped at 30%; above that SetRisk must reject.
 func TestLiquidationBonusIsBounded(t *testing.T) {
 	s := setup(t)
 	lOwner := s.e.NewInvoker(s.lend, s.owner)
-	lOwner.Invoke(t, stackitem.Null{}, "setParams", 6000, 7500, 3000, 0) // at the cap, allowed
-	lOwner.InvokeFail(t, "bad params", "setParams", 6000, 7500, 3001, 0) // over the cap, rejected
+	lOwner.Invoke(t, stackitem.Null{}, "setRisk", 6000, 7500, 3000) // at the cap, allowed
+	lOwner.InvokeFail(t, "bad risk params", "setRisk", 6000, 7500, 3001)
+}
+
+// The rate curve and the holders' share are both capped (FTB-07 for economics).
+func TestRateParamsAreBounded(t *testing.T) {
+	s := setup(t)
+	lOwner := s.e.NewInvoker(s.lend, s.owner)
+	lOwner.Invoke(t, stackitem.Null{}, "setRates", 0, 0, 0, 8000, 5000) // reserve at the 50% cap, allowed
+	lOwner.InvokeFail(t, "bad rate params", "setRates", 0, 0, 0, 8000, 5001)
+	lOwner.InvokeFail(t, "bad rate params", "setRates", 0, 0, 0, 0, 3333) // kink must be inside (0, 100%)
+	lOwner.InvokeFail(t, "bad rate params", "setRates", 0, 0, 0, 10000, 3333)
+	// a curve peaking above the per-block ceiling is rejected
+	lOwner.InvokeFail(t, "ceiling", "setRates", 0, 0, 2_000_000_000_000_000_000, 8000, 3333)
 }
 
 // FTB-08: a supply that would mint zero shares (here a zero-value supply) is rejected rather
@@ -173,10 +252,9 @@ func TestDebtFreeWithdrawDuringOraclePause(t *testing.T) {
 	s := setup(t)
 	user := s.e.NewAccount(t)
 
-	// user posts 100 bNEO as collateral and takes no loan (debt-free)
-	s.mintBNEO(t, user.ScriptHash(), 100*dec)
-	s.e.NewInvoker(s.bneo, user).Invoke(t, stackitem.Make(true), "transfer",
-		user.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil)
+	// user posts 10 whole NEO as collateral and takes no loan (debt-free)
+	s.fundNeo(t, user.ScriptHash(), 10)
+	s.postNeo(t, user, 10)
 
 	// pause the oracle: require 2 fresh reports when only 1 reporter is configured
 	s.e.NewInvoker(s.orac, s.owner).Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 2)
@@ -187,8 +265,8 @@ func TestDebtFreeWithdrawDuringOraclePause(t *testing.T) {
 
 	// the debt-free user still withdraws all collateral (no oracle call on this path)
 	s.e.NewInvoker(s.lend, user).Invoke(t, stackitem.Null{}, "withdrawCollateral",
-		user.ScriptHash().BytesBE(), 100*dec, 0)
-	s.e.NewInvoker(s.bneo, s.owner).Invoke(t, stackitem.Make(100*dec), "balanceOf", user.ScriptHash().BytesBE())
+		user.ScriptHash().BytesBE(), 10, 0)
+	s.neoBal(t, user.ScriptHash(), 10)
 }
 
 // FTB-07: when a position is NOT underwater, a single liquidation is capped at half the debt.
@@ -199,18 +277,16 @@ func TestCloseFactorCapsLiquidation(t *testing.T) {
 	liquidator := s.e.NewAccount(t)
 
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
-	s.e.NewInvoker(s.ftb, supplier).Invoke(t, stackitem.Make(true), "transfer",
-		supplier.ScriptHash().BytesBE(), s.lend.BytesBE(), 4000*dec, []any{"supply"})
+	s.supply(t, supplier, 4000*dec)
 
-	// borrower posts 100 bNEO at price 50 (value 5000) and borrows 2500 (within 60% LTV = 3000)
-	s.mintBNEO(t, borrower.ScriptHash(), 100*dec)
-	s.e.NewInvoker(s.bneo, borrower).Invoke(t, stackitem.Make(true), "transfer",
-		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil)
+	// borrower posts 100 NEO at price 50 (value 5000) and borrows 2500 (within 60% LTV = 3000)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
 	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2500*dec)
 
 	// price dips 50 -> 30: collateral value 3000 (>= debt 2500, so NOT underwater); threshold
 	// 75% = 2250, debt 2500 -> unhealthy. Close factor caps one repay at 2500/2 = 1250.
-	s.e.NewInvoker(s.orac, s.rep).Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.bneo.BytesBE(), 30*dec)
+	s.e.NewInvoker(s.orac, s.rep).Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 30*dec)
 
 	// liquidator offers 2000 FTB, but only 1250 is accepted; the rest is refunded
 	s.mintFTB(t, liquidator.ScriptHash(), 2000*dec)
@@ -219,13 +295,13 @@ func TestCloseFactorCapsLiquidation(t *testing.T) {
 
 	lendOwner := s.e.NewInvoker(s.lend, s.owner)
 	lendOwner.Invoke(t, stackitem.Make(1250*dec), "debtOf", borrower.ScriptHash().BytesBE()) // 2500 - 1250
-	// seize = 1250 * 1.08 = 1350 FTB-value, at price 30 -> 45 bNEO
-	s.e.NewInvoker(s.bneo, s.owner).Invoke(t, stackitem.Make(45*dec), "balanceOf", liquidator.ScriptHash().BytesBE())
+	// seize = 1250 * 1.08 = 1350 FTB-value, at price 30 -> exactly 45 whole NEO
+	s.neoBal(t, liquidator.ScriptHash(), 45)
 	// liquidator refunded 2000 - 1250 = 750 FTB
-	s.e.NewInvoker(s.ftb, s.owner).Invoke(t, stackitem.Make(750*dec), "balanceOf", liquidator.ScriptHash().BytesBE())
+	s.ftbBal(t, liquidator.ScriptHash(), 750*dec)
 }
 
-// Two suppliers get shares in proportion; at price 1 (no interest) a share is worth one FTB.
+// Two suppliers get shares in proportion; with a zero rate a share is worth one FTB.
 func TestMultipleSuppliersShareProportionally(t *testing.T) {
 	s := setup(t)
 	a := s.e.NewAccount(t)
@@ -234,18 +310,16 @@ func TestMultipleSuppliersShareProportionally(t *testing.T) {
 	s.mintFTB(t, b.ScriptHash(), 3000*dec)
 	lo := s.e.NewInvoker(s.lend, s.owner)
 
-	s.e.NewInvoker(s.ftb, a).Invoke(t, stackitem.Make(true), "transfer",
-		a.ScriptHash().BytesBE(), s.lend.BytesBE(), 1000*dec, []any{"supply"})
+	s.supply(t, a, 1000*dec)
 	lo.Invoke(t, stackitem.Make(1000*dec), "sharesOf", a.ScriptHash().BytesBE())
 
-	s.e.NewInvoker(s.ftb, b).Invoke(t, stackitem.Make(true), "transfer",
-		b.ScriptHash().BytesBE(), s.lend.BytesBE(), 3000*dec, []any{"supply"})
+	s.supply(t, b, 3000*dec)
 	lo.Invoke(t, stackitem.Make(3000*dec), "sharesOf", b.ScriptHash().BytesBE())
 	lo.Invoke(t, stackitem.Make(4000*dec), "totalShares")
 
 	// a withdraws all its shares and gets its 1000 FTB back
 	s.e.NewInvoker(s.lend, a).Invoke(t, stackitem.Null{}, "withdrawSupply", a.ScriptHash().BytesBE(), 1000*dec)
-	s.e.NewInvoker(s.ftb, s.owner).Invoke(t, stackitem.Make(1000*dec), "balanceOf", a.ScriptHash().BytesBE())
+	s.ftbBal(t, a.ScriptHash(), 1000*dec)
 	lo.Invoke(t, stackitem.Make(0), "sharesOf", a.ScriptHash().BytesBE())
 }
 
@@ -255,17 +329,15 @@ func TestWithdrawSupplyUtilizationLock(t *testing.T) {
 	supplier := s.e.NewAccount(t)
 	borrower := s.e.NewAccount(t)
 	s.mintFTB(t, supplier.ScriptHash(), 2000*dec)
-	s.e.NewInvoker(s.ftb, supplier).Invoke(t, stackitem.Make(true), "transfer",
-		supplier.ScriptHash().BytesBE(), s.lend.BytesBE(), 2000*dec, []any{"supply"})
-	s.mintBNEO(t, borrower.ScriptHash(), 100*dec)
-	s.e.NewInvoker(s.bneo, borrower).Invoke(t, stackitem.Make(true), "transfer",
-		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil)
+	s.supply(t, supplier, 2000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
 	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1000*dec)
 
 	ls := s.e.NewInvoker(s.lend, supplier)
 	ls.InvokeFail(t, "not enough cash", "withdrawSupply", supplier.ScriptHash().BytesBE(), 2000*dec)
 	ls.Invoke(t, stackitem.Null{}, "withdrawSupply", supplier.ScriptHash().BytesBE(), 1000*dec)
-	s.e.NewInvoker(s.ftb, s.owner).Invoke(t, stackitem.Make(1000*dec), "balanceOf", supplier.ScriptHash().BytesBE())
+	s.ftbBal(t, supplier.ScriptHash(), 1000*dec)
 }
 
 // Withdrawing collateral that would push the borrower past the LTV is rejected; a safe amount is allowed.
@@ -274,33 +346,28 @@ func TestWithdrawCollateralHealthCheck(t *testing.T) {
 	supplier := s.e.NewAccount(t)
 	borrower := s.e.NewAccount(t)
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
-	s.e.NewInvoker(s.ftb, supplier).Invoke(t, stackitem.Make(true), "transfer",
-		supplier.ScriptHash().BytesBE(), s.lend.BytesBE(), 4000*dec, []any{"supply"})
-	s.mintBNEO(t, borrower.ScriptHash(), 100*dec)
-	s.e.NewInvoker(s.bneo, borrower).Invoke(t, stackitem.Make(true), "transfer",
-		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
 	lb := s.e.NewInvoker(s.lend, borrower)
 	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2500*dec)
-	// 50 bNEO out would leave value 2500, max borrow 1500 < debt 2500 -> rejected
-	lb.InvokeFail(t, "undercollateralized", "withdrawCollateral", borrower.ScriptHash().BytesBE(), 50*dec, 0)
-	// 10 bNEO out leaves value 4500, max borrow 2700 >= debt 2500 -> allowed
-	lb.Invoke(t, stackitem.Null{}, "withdrawCollateral", borrower.ScriptHash().BytesBE(), 10*dec, 0)
-	s.e.NewInvoker(s.bneo, s.owner).Invoke(t, stackitem.Make(10*dec), "balanceOf", borrower.ScriptHash().BytesBE())
+	// 50 NEO out would leave value 2500, max borrow 1500 < debt 2500 -> rejected
+	lb.InvokeFail(t, "undercollateralized", "withdrawCollateral", borrower.ScriptHash().BytesBE(), 50, 0)
+	// 10 NEO out leaves value 4500, max borrow 2700 >= debt 2500 -> allowed
+	lb.Invoke(t, stackitem.Null{}, "withdrawCollateral", borrower.ScriptHash().BytesBE(), 10, 0)
+	s.neoBal(t, borrower.ScriptHash(), 10)
 }
 
-// With a non-zero rate, debt grows over blocks: accrue books interest with no mint. Asserted as
-// a strict increase to stay robust to the exact block delta (uses InvokeAndCheck).
+// With a non-zero base rate, debt grows over blocks: accrue books interest with no mint.
 func TestInterestAccrues(t *testing.T) {
 	s := setup(t)
 	supplier := s.e.NewAccount(t)
 	borrower := s.e.NewAccount(t)
-	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setParams", 6000, 7500, 800, 1_000_000_000_000) // 1e12/block, under maxRate
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setRates", 1_000_000_000_000, 0, 0, 8000, 3333)
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
-	s.e.NewInvoker(s.ftb, supplier).Invoke(t, stackitem.Make(true), "transfer",
-		supplier.ScriptHash().BytesBE(), s.lend.BytesBE(), 4000*dec, []any{"supply"})
-	s.mintBNEO(t, borrower.ScriptHash(), 100*dec)
-	s.e.NewInvoker(s.bneo, borrower).Invoke(t, stackitem.Make(true), "transfer",
-		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 100*dec, nil)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
 	lb := s.e.NewInvoker(s.lend, borrower)
 	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1000*dec)
 	for i := 0; i < 50; i++ {
@@ -314,4 +381,116 @@ func TestInterestAccrues(t *testing.T) {
 			t.Fatalf("expected debt > %s after accrual, got %s", want, got)
 		}
 	}, "debtOf", borrower.ScriptHash().BytesBE())
+}
+
+// The 1/3 holders' share accrues to the reserve and sweeps to the dividends module,
+// callable by anyone; the reserve is excluded from suppliers' share value.
+func TestReserveSplitAndSweep(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	dividends := s.e.NewAccount(t)
+
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setRates", 1_000_000_000_000, 0, 0, 8000, 3333)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lb := s.e.NewInvoker(s.lend, borrower)
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1000*dec)
+	for i := 0; i < 50; i++ {
+		s.e.AddNewBlock(t)
+	}
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1*dec) // accrue
+
+	lo := s.e.NewInvoker(s.lend, s.owner)
+	// reserve = floor(interest * 3333 / 10000), interest = totalBorrows - principal
+	lo.InvokeAndCheck(t, func(t testing.TB, stack []stackitem.Item) {
+		reserve := stack[0].Value().(*big.Int)
+		requirePositive(t, "reserve", reserve)
+		tb := readBig(t, s, "totalBorrows")
+		interest := new(big.Int).Sub(tb, big.NewInt(1001*dec))
+		// floor(interest*3333/10000) == reserve  <=>  reserve*10000 <= interest*3333 < (reserve+1)*10000
+		lhs := new(big.Int).Mul(reserve, big.NewInt(10000))
+		rhs := new(big.Int).Mul(interest, big.NewInt(3333))
+		rhsHi := new(big.Int).Mul(new(big.Int).Add(reserve, big.NewInt(1)), big.NewInt(10000))
+		if lhs.Cmp(rhs) > 0 || rhs.Cmp(rhsHi) >= 0 {
+			t.Fatalf("reserve split wrong: reserve %s, interest %s", reserve, interest)
+		}
+	}, "reserveAccrued")
+
+	// sweep before the dividends module is bound fails closed
+	lo.InvokeFail(t, "dividends module not bound", "sweepDividends")
+
+	// bind it, sweep from a random caller, and the reserve lands there exactly
+	s.e.NewInvoker(s.reg, s.owner).Invoke(t, stackitem.Null{}, "bootstrap", "dividends", dividends.ScriptHash().BytesBE())
+	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "sweepDividends")
+	lo.Invoke(t, stackitem.Make(0), "reserveAccrued")
+	reserve := dividendsBalance(t, s, dividends.ScriptHash())
+	if reserve.Sign() <= 0 {
+		t.Fatalf("dividends module received nothing")
+	}
+}
+
+// APY views: utilization and both APYs are pure functions of pool state.
+func TestApyViews(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	base := int64(1_000_000_000_000) // 1e12 per block
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setRates", base, 0, 0, 8000, 3333)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1000*dec)
+
+	lo := s.e.NewInvoker(s.lend, s.owner)
+	lo.Invoke(t, stackitem.Make(2500), "utilizationBps") // 1000 / (3000 + 1000)
+
+	// borrowApyBps = rate * blocksPerYear * 1e4 / 1e18
+	blocksPerYear := big.NewInt(2_102_400)
+	scaleI := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	wantBorrow := new(big.Int).Mul(big.NewInt(base), blocksPerYear)
+	wantBorrow.Mul(wantBorrow, big.NewInt(10000))
+	wantBorrow.Div(wantBorrow, scaleI)
+	lo.Invoke(t, stackitem.Make(wantBorrow), "borrowApyBps")
+
+	// supplyRate = rate * u * (1 - reserveBps); supplyApy likewise
+	supplyRate := new(big.Int).Mul(big.NewInt(base), big.NewInt(2500))
+	supplyRate.Div(supplyRate, big.NewInt(10000))
+	supplyRate.Mul(supplyRate, big.NewInt(6667))
+	supplyRate.Div(supplyRate, big.NewInt(10000))
+	wantSupply := new(big.Int).Mul(supplyRate, blocksPerYear)
+	wantSupply.Mul(wantSupply, big.NewInt(10000))
+	wantSupply.Div(wantSupply, scaleI)
+	lo.Invoke(t, stackitem.Make(wantSupply), "supplyApyBps")
+
+	// suppliers always earn strictly less than borrowers pay
+	if wantSupply.Cmp(wantBorrow) >= 0 {
+		t.Fatalf("supply APY must be below borrow APY")
+	}
+}
+
+func readBig(t testing.TB, s *sys, method string) *big.Int {
+	var out *big.Int
+	s.e.NewInvoker(s.lend, s.owner).InvokeAndCheck(t, func(t testing.TB, stack []stackitem.Item) {
+		out = stack[0].Value().(*big.Int)
+	}, method)
+	return out
+}
+
+func dividendsBalance(t *testing.T, s *sys, who util.Uint160) *big.Int {
+	var out *big.Int
+	s.e.NewInvoker(s.ftb, s.owner).InvokeAndCheck(t, func(t testing.TB, stack []stackitem.Item) {
+		out = stack[0].Value().(*big.Int)
+	}, "balanceOf", who.BytesBE())
+	return out
+}
+
+func requirePositive(t testing.TB, name string, v *big.Int) {
+	t.Helper()
+	if v.Sign() <= 0 {
+		t.Fatalf("%s must be positive, got %s", name, v)
+	}
 }

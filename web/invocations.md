@@ -18,7 +18,8 @@ The NeoLine N3 dApi (and O3, OneGate) take each argument as `{ type, value }`. T
 | `Array` | list of the above | proof list, transfer `data` |
 | `Any` | `null` | the `data` slot when a contract ignores it |
 
-Amounts are base units: FTB, bNEO, and GAS are 8 decimals, so 1 FTB is `100000000`.
+Amounts are base units: FTB and GAS are 8 decimals, so 1 FTB is `100000000`. NEO is 0
+decimals — always whole units, never scaled.
 
 ## Signers and scope
 
@@ -32,7 +33,8 @@ scope, which the wallet applies by default. Only the external swap, which hops t
 into token and pair contracts, needs `CustomContracts` (16) listing those hashes. Never sign with
 `Global` unless you have a specific reason.
 
-Hashes shown as `<ftb>`, `<lend>`, etc. are per deployment; set them in `config.js`. `<gas>` is the
+Hashes shown as `<ftb>`, `<lend>`, etc. are per deployment; set them in `config.js`. `<neo>` is
+the native `0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5`, `<gas>` is the
 native `0xd2a4cff31913016155e38e474a2c06d08be276cf`.
 
 ## Token (`<ftb>`)
@@ -61,29 +63,40 @@ no proof.
 
 Supply, repay, liquidate, and adding collateral are NOT direct lend calls. They are NEP-17
 transfers into the lend contract, which routes on the `data` tag. Borrow and the withdrawals are
-direct calls.
+direct calls. Collateral is the two native assets only: NEO (whole units) and GAS (base units).
+Loans and interest are FTB. The borrow rate follows a kinked utilization curve; interest splits
+2/3 to suppliers and 1/3 to the FTB-holder dividend reserve (see `../ECONOMICS.md`).
 
 | action | kind | target | operation | args |
 |--------|------|--------|-----------|------|
 | supply FTB | write | `<ftb>` | `transfer` | `from, <lend>, amount, Array[String "supply"]` |
 | repay FTB | write | `<ftb>` | `transfer` | `from, <lend>, amount, Array[String "repay"]` |
 | liquidate | write | `<ftb>` | `transfer` | `liquidator, <lend>, repay, Array[String "liq", Hash160 borrower]` |
-| add bNEO collateral | write | `<bneo>` | `transfer` | `from, <lend>, amount, Any null` |
+| add NEO collateral | write | `<neo>` | `transfer` | `from, <lend>, wholeNeo, Any null` |
 | add GAS collateral | write | `<gas>` | `transfer` | `from, <lend>, amount, Any null` |
 | borrow | write | `<lend>` | `borrow` | `Hash160 user, Integer amount` |
 | withdraw supply | write | `<lend>` | `withdrawSupply` | `Hash160 user, Integer shares` |
-| withdraw collateral | write | `<lend>` | `withdrawCollateral` | `Hash160 user, Integer bneo, Integer gas` |
+| withdraw collateral | write | `<lend>` | `withdrawCollateral` | `Hash160 user, Integer neoWhole, Integer gas` |
+| sweep dividends | write | `<lend>` | `sweepDividends` | none (anyone; pays the reserve to the bound dividends module) |
 | my debt | read | `<lend>` | `debtOf` | `Hash160 user` |
 | my collateral value | read | `<lend>` | `collateralValue` | `Hash160 user` |
+| my posted collateral | read | `<lend>` | `collateralOf` | `Hash160 user, Boolean isNeo` |
 | my max borrow | read | `<lend>` | `maxBorrow` | `Hash160 user` |
 | am I liquidatable? | read | `<lend>` | `isUnhealthy` | `Hash160 user` |
 | my supply shares | read | `<lend>` | `sharesOf` | `Hash160 user` |
+| pool utilization | read | `<lend>` | `utilizationBps` | none |
+| borrow / supply APY | read | `<lend>` | `borrowApyBps` / `supplyApyBps` | none |
+| reserve awaiting sweep | read | `<lend>` | `reserveAccrued` | none |
+
+GAS-claim note: whenever the contract's NEO balance moves, the chain mints the accrued GAS claim
+to the contract with a null sender. The contract accepts it into an unaccounted balance (it is
+not user collateral) — rejecting it would brick every NEO withdrawal and liquidation.
 
 ## Oracle (`<oracle>`), Launch 2
 
 | call | kind | operation | args |
 |------|------|-----------|------|
-| price of asset | read | `price` | `Hash160 asset` (bNEO or GAS) |
+| price of asset | read | `price` | `Hash160 asset` (NEO or GAS for lend collateral; any voted listing for ratios) |
 | is a reporter? | read | `enabled` | `Hash160 reporter` |
 | report a price | write | `report` | `Hash160 reporter, Hash160 asset, Integer price` (reporter only) |
 

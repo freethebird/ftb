@@ -25,7 +25,8 @@
   var MAGIC = { MainNet: 860833102, TestNet: 894710606 };
   var WITNESS = { None: 0, CalledByEntry: 1, CustomContracts: 16, CustomGroups: 32, Global: 128 };
   var GAS = '0xd2a4cff31913016155e38e474a2c06d08be276cf'; // native GAS, 8 decimals
-  var DEC = 8; // FTB, bNEO, GAS are all 8 decimals
+  var NEO = '0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5'; // native NEO, 0 decimals (whole units)
+  var DEC = 8; // FTB and GAS are 8 decimals; NEO is whole-unit, never scale it
 
   // ---------------- byte / number helpers (no deps) ----------------
   function hexToBytes(hex) {
@@ -242,10 +243,11 @@
       [A.h160(user), A.h160(this._need('lend')), A.int(amountBase), A.arr([A.str('repay')])],
       'Repay ' + fromBaseUnits(amountBase) + ' FTB of debt');
   };
-  FtbDapi.prototype.addCollateralBneo = function (user, amountBase) {
-    return this._w(this._need('bneo'), 'transfer',
-      [A.h160(user), A.h160(this._need('lend')), A.int(amountBase), A.any(null)],
-      'Add ' + fromBaseUnits(amountBase) + ' bNEO as collateral');
+  // NEO collateral is whole units: 0 decimals, no base-unit scaling.
+  FtbDapi.prototype.addCollateralNeo = function (user, wholeNeo) {
+    return this._w(NEO, 'transfer',
+      [A.h160(user), A.h160(this._need('lend')), A.int(wholeNeo), A.any(null)],
+      'Add ' + wholeNeo + ' NEO as collateral');
   };
   FtbDapi.prototype.addCollateralGas = function (user, amountBase) {
     return this._w(this.cfg.assets.gas, 'transfer',
@@ -260,9 +262,9 @@
     return this._w(this._need('lend'), 'withdrawSupply', [A.h160(user), A.int(shares)],
       'Withdraw ' + shares + ' supply shares');
   };
-  FtbDapi.prototype.withdrawCollateral = function (user, bneoBase, gasBase) {
-    return this._w(this._need('lend'), 'withdrawCollateral', [A.h160(user), A.int(bneoBase), A.int(gasBase)],
-      'Withdraw collateral: ' + fromBaseUnits(bneoBase) + ' bNEO, ' + fromBaseUnits(gasBase) + ' GAS');
+  FtbDapi.prototype.withdrawCollateral = function (user, neoWhole, gasBase) {
+    return this._w(this._need('lend'), 'withdrawCollateral', [A.h160(user), A.int(neoWhole), A.int(gasBase)],
+      'Withdraw collateral: ' + neoWhole + ' NEO, ' + fromBaseUnits(gasBase) + ' GAS');
   };
   FtbDapi.prototype.liquidate = function (liquidator, repayBase, borrower) {
     return this._w(this._need('ftb'), 'transfer',

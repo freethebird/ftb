@@ -111,6 +111,7 @@
           <option value="supply">Supply FTB (lend)</option>
           <option value="repay">Repay FTB (lend)</option>
           <option value="borrow">Borrow FTB (lend)</option>
+          <option value="addNeo">Add NEO collateral (whole NEO)</option>
           <option value="addGas">Add GAS collateral</option>
           <option value="voteFtb">Vote: Free the Bird</option>
           <option value="voteWait">Vote: keep waiting</option>
@@ -234,6 +235,7 @@
       } else if(act==='supply'){ p = dapi.supply(me, u.toBaseUnits(val('amount')));
       } else if(act==='repay'){ p = dapi.repay(me, u.toBaseUnits(val('amount')));
       } else if(act==='borrow'){ p = dapi.borrow(me, u.toBaseUnits(val('amount')));
+      } else if(act==='addNeo'){ p = dapi.addCollateralNeo(me, parseInt(val('amount'), 10)); // NEO is whole-unit
       } else if(act==='addGas'){ p = dapi.addCollateralGas(me, u.toBaseUnits(val('amount')));
       } else if(act==='voteFtb'){ p = dapi.vote(me, 'ftb');
       } else if(act==='voteWait'){ p = dapi.vote(me, 'wait');
