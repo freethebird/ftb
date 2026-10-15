@@ -1272,7 +1272,14 @@ body{font-size:15px}
 
   // ---------- boot ----------
   pickRpc().then(function(url){
-    $('rpcNote').textContent = 'rpc: ' + url + (RPCS[0]===url && RPCS.length>2 ? ' (your node)' : '');
+    // say WHICH source won and, for a public fallback, why that is — the community
+    // node list comes first in RPCS, so landing on a public endpoint means every
+    // configured community node refused (still syncing, or down).
+    var ci=(CFG.rpcs||[]).indexOf(url), note;
+    if (ci>=0) note=' (community node #'+(ci+1)+')';
+    else if ((CFG.rpcs||[]).length) note=' (public fallback — community node unreachable or still syncing)';
+    else note=' (public testnet endpoint)';
+    $('rpcNote').textContent = 'rpc: ' + url + note;
     $('dateline').textContent = '// NEO N3 // ' + NET.toUpperCase() + ' // MMXXVI //';
     refresh();
   }).catch(function(e){
