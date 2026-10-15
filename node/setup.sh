@@ -40,35 +40,11 @@ mkdir -p "$CONF_DIR" "$DATA_DIR/chain"
 chown -R ftb:ftb "$DATA_DIR"
 
 echo "==> protocol config"
-cat > "$CONF_DIR/protocol.testnet.yml" <<'YML'
-# Neo N3 TestNet protocol config for the FTB community node (neo-go v0.123+).
-ProtocolConfiguration:
-  Magic: 894710606
-  SeedList:
-    - seed1t.neo.org:20333
-    - seed2t.neo.org:20333
-    - seed3t.neo.org:20333
-    - seed4t.neo.org:20333
-    - seed5t.neo.org:20333
-  StandbyCommittee: []
-  ValidatorsCount: 7
-
-ApplicationConfiguration:
-  DBConfiguration:
-    Type: leveldb
-    LevelDBOptions:
-      DataDirectoryPath: /var/lib/ftb-node/chain
-  # RPC is bound to localhost only; Caddy fronts it with TLS and CORS.
-  RPC:
-    Enabled: true
-    Bind: 127.0.0.1
-    Port: 10332
-    MaxGasInvoke: 50
-    MaxIteratorResultItems: 100
-  # No wallet unlocking, no sessions: this node never holds keys.
-  UnlockWallet:
-    Enabled: false
-YML
+# single source of truth: the config reviewed in the repo, next to this script.
+# (never embed a copy here — a drifted duplicate config once produced a node that
+# would not start; FTB-ops lesson 2026-10-15)
+SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+cp "$SRC_DIR/protocol.testnet.yml" "$CONF_DIR/protocol.testnet.yml"
 
 echo "==> systemd unit"
 cat > /etc/systemd/system/ftb-node.service <<'UNIT'
@@ -112,34 +88,48 @@ if ! command -v caddy >/dev/null 2>&1; then
   fi
 fi
 
-if [ ! -f /etc/caddy/Caddyfile ] || ! grep -q "ftb-node" /etc/caddy/Caddyfile 2>/dev/null; then
-  cat > /etc/caddy/Caddyfile <<'CADDY'
-# ftb-node: replace node.example.invalid with your domain (A record -> this VM),
-# then: sudo systemctl reload caddy
-node.example.invalid
+if ! grep -q "ftb-node" /etc/caddy/Caddyfile 2>/dev/null; then
+  # never clobber an existing Caddyfile (this VM may already serve other sites,
+  # e.g. freethebird.co itself) — append the RPC front as a commented template.
+  cat >> /etc/caddy/Caddyfile <<'CADDY'
 
-# browsers preflight cross-origin RPC calls; answer them here
-@options method OPTIONS
-respond @options 204
-
-header {
-	Access-Control-Allow-Origin *
-	Access-Control-Allow-Methods "POST, OPTIONS"
-	Access-Control-Allow-Headers "Content-Type"
-	-Server
-}
-
-reverse_proxy 127.0.0.1:10332
+# ftb-node: two ways to front the node RPC (127.0.0.1:20332) with TLS + CORS.
+#
+# A) path route on an existing site (no new DNS needed) — add INSIDE that site block:
+#      handle_path /rpc* {
+#        @options method OPTIONS
+#        respond @options 204
+#        header Access-Control-Allow-Origin *
+#        header Access-Control-Allow-Methods "POST, OPTIONS"
+#        header Access-Control-Allow-Headers "Content-Type"
+#        reverse_proxy 127.0.0.1:20332
+#      }
+#    then the RPC URL is https://<that-domain>/rpc
+#
+# B) dedicated subdomain (needs an A record pointing here):
+#      rpc.example.invalid {
+#        @options method OPTIONS
+#        respond @options 204
+#        header Access-Control-Allow-Origin *
+#        header Access-Control-Allow-Methods "POST, OPTIONS"
+#        header Access-Control-Allow-Headers "Content-Type"
+#        reverse_proxy 127.0.0.1:20332
+#      }
+#
+# either way: sudo systemctl reload caddy, then verify:
+#   curl -s -X POST <url> -H 'Content-Type: application/json' \
+#     -d '{"jsonrpc":"2.0","id":1,"method":"getblockcount","params":[]}'
 CADDY
 fi
 systemctl enable caddy >/dev/null 2>&1 || true
-systemctl restart caddy || true
+# reload, never restart: this VM may already be serving live sites
+systemctl reload caddy 2>/dev/null || systemctl restart caddy || true
 
 echo
 echo "done. next:"
-echo "  1. edit /etc/caddy/Caddyfile — replace node.example.invalid with your domain"
+echo "  1. pick an RPC front in /etc/caddy/Caddyfile (appended template, option A or B)"
 echo "  2. sudo systemctl reload caddy"
-echo "  3. verify: curl -s -X POST https://<your-domain>/ -H 'Content-Type: application/json' \\"
+echo "  3. verify: curl -s -X POST https://<your-domain>/rpc -H 'Content-Type: application/json' \\"
 echo "       -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getblockcount\",\"params\":[]}'"
 echo "  4. hand your URL to the front-end maintainer for web/config.js"
 echo
