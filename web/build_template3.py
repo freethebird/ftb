@@ -202,6 +202,8 @@ MARKUP = """<header class="topbar">
     <div class="tile"><div class="tl">hard cap</div><div class="tn" id="tCap">—</div></div>
     <div class="tile"><div class="tl">weight voted</div><div class="tn" id="tVoted">—</div></div>
     <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">—</div></div>
+    <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">—</div></div>
+    <div class="tile"><div class="tl">tvl locked</div><div class="tn" id="tTvl">—</div></div>
   </div>
 
   <div class="ticker" id="ticker" style="margin-top:12px">// market: waiting for the pools</div>
