@@ -595,17 +595,23 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
       .then(function(r){ return r.json(); })
       .then(function(j){ if(j.error) throw new Error(j.error.message||'rpc error'); return j.result; });
   }
+  // probe every endpoint's height, then serve reads from the first one at tip.
+  // a node that answers but is far behind is still syncing: alive for the
+  // counter, but its chain state is from the past — contracts deployed later
+  // are "not found" there, so it must not serve reads until it catches up.
+  var SYNC_SLACK = 1000; // blocks (~4 h at 15 s); anything further behind is syncing
   function pickRpc(){
-    var i = 0;
-    function tryNext(){
-      if (i >= RPCS.length) return Promise.reject(new Error('no healthy RPC node answered'));
-      var url = RPCS[i++];
-      return rpcCall(url, 'getblockcount').then(function(h){
-        if (h > 0){ RPC = url; return url; }
-        return tryNext();
-      }).catch(function(){ return tryNext(); });
-    }
-    return tryNext();
+    return Promise.all(RPCS.map(function(url){
+      return rpcCall(url, 'getblockcount')
+        .then(function(h){ return { url: url, h: +h || 0 }; })
+        .catch(function(){ return { url: url, h: 0 }; });
+    })).then(function(rs){
+      var tip = rs.reduce(function(m, r){ return Math.max(m, r.h); }, 0);
+      for (var i = 0; i < rs.length; i++){
+        if (rs[i].h > 0 && rs[i].h >= tip - SYNC_SLACK){ RPC = rs[i].url; return RPC; }
+      }
+      throw new Error('no healthy RPC node answered');
+    });
   }
   function readFn(hash, op, args){
     return rpcCall(RPC, 'invokefunction', [hash, op, args||[]]).then(function(r){

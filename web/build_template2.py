@@ -361,8 +361,17 @@ TILES_SCRIPT = """
   function rpc(url,m,p){ return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({jsonrpc:'2.0',id:1,method:m,params:p||[]})}).then(function(r){return r.json()})
     .then(function(j){ if(j.error) throw new Error(j.error.message||'rpc'); return j.result; }); }
-  function pick(i){ i=i||0; if(i>=RPCS.length) return Promise.reject(new Error('no rpc'));
-    return rpc(RPCS[i],'getblockcount').then(function(h){ return h>0?RPCS[i]:pick(i+1); }).catch(function(){ return pick(i+1); }); }
+  // tip-aware pick: a node that answers but lags by more than SYNC_SLACK blocks is
+  // still syncing — alive for the counter, but it must not serve reads (its state
+  // predates our contracts, so calls fault with "not found").
+  var SYNC_SLACK=1000;
+  function pick(){ return Promise.all(RPCS.map(function(u){
+    return rpc(u,'getblockcount').then(function(h){ return {u:u,h:+h||0}; }).catch(function(){ return {u:u,h:0}; });
+  })).then(function(rs){
+    var tip=rs.reduce(function(m,r){ return Math.max(m,r.h); },0);
+    for (var i=0;i<rs.length;i++) if (rs[i].h>0 && rs[i].h>=tip-SYNC_SLACK) return rs[i].u;
+    throw new Error('no rpc');
+  }); }
   function readInt(url,h,op,args){ return rpc(url,'invokefunction',[h,op,args||[]]).then(function(r){
     if(r.state!=='HALT') throw new Error('fault'); var it=r.stack&&r.stack[0];
     return (it&&it.value!=null)?BigInt(it.value):0n; }); }
