@@ -31,7 +31,7 @@ node -e '
 const fs = require("fs");
 const h = JSON.parse(process.argv[1]);
 let s = fs.readFileSync("web/config.js", "utf8");
-for (const k of ["ftb","migrator","registry","ballot"]) {
+for (const k of ["ftb","migrator","registry","ballot","oracle","lend","bondvault","treasury","dividends"]) {
   if (!h[k]) continue;
   s = s.replace(new RegExp("(" + k + ":\\s*)'"'"'0x[0-9a-f]{40}'"'"'"), "$1'"'"'" + h[k] + "'"'"'");
 }
