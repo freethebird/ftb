@@ -1,0 +1,369 @@
+{
+ "NTRGiigCG7M3RsyBJRc1WoZDV2cfvZDwp8": {
+  "neo_at_snap": 0.0,
+  "gas_at_snap": 46.53811309,
+  "recent_transfer_count": 17,
+  "latest_ts": 1791327851401,
+  "recent_distinct_cp": 1,
+  "earliest_in_window": 1711801589066,
+  "window_count": 1000,
+  "portfolio_now": [
+   [
+    "GAS",
+    45.69
+   ],
+   [
+    "FLM",
+    113828689.59
+   ],
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "ngasx.com",
+    330.0
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ]
+  ]
+ },
+ "NiU7ic68RHF4oo5QK8Li5JbXx22rs2V3DS": {
+  "neo_at_snap": 26889.0,
+  "gas_at_snap": 1520.42575392,
+  "recent_transfer_count": 1,
+  "latest_ts": 1791324510492,
+  "recent_distinct_cp": 1,
+  "earliest_in_window": 1776914740463,
+  "window_count": 9,
+  "portfolio_now": [
+   [
+    "FLM",
+    20083298.57
+   ],
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "ngasx.com",
+    1672.47
+   ],
+   [
+    "NEO",
+    26889.0
+   ],
+   [
+    "GAS",
+    1520.43
+   ]
+  ]
+ },
+ "NTWC7Hh5VYMQ5K8YJbyCLbmJ4RhfQ1Ej64": {
+  "neo_at_snap": 138242.0,
+  "gas_at_snap": 30195.34417441,
+  "recent_transfer_count": 131,
+  "latest_ts": 1791574253590,
+  "recent_distinct_cp": 1,
+  "earliest_in_window": 1778614232324,
+  "window_count": 1000,
+  "portfolio_now": [
+   [
+    "FLM",
+    15988613.16
+   ],
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "SWTH",
+    22696269.53
+   ],
+   [
+    "TIPS",
+    110.0
+   ],
+   [
+    "NEO",
+    143220.0
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ],
+   [
+    "GAS",
+    133608.03
+   ]
+  ]
+ },
+ "NWu2ng1hBxU6w6AUmGy4QDkscQTXY3pnVM": {
+  "neo_at_snap": 0.0,
+  "gas_at_snap": 2.0,
+  "recent_transfer_count": 0,
+  "earliest_in_window": 1719731096510,
+  "window_count": 1000,
+  "portfolio_now": [
+   [
+    "FLM",
+    15500000.0
+   ],
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "FLOCKS",
+    1000000.0
+   ],
+   [
+    "GAS",
+    2.0
+   ]
+  ]
+ },
+ "NLdYPXACYPKa6zTvoThPuJxd3uEmeMg93t": {
+  "neo_at_snap": 480199.0,
+  "gas_at_snap": 4300.59496846,
+  "recent_transfer_count": 311,
+  "latest_ts": 1791578945696,
+  "recent_distinct_cp": 1,
+  "earliest_in_window": 1778234093759,
+  "window_count": 1000,
+  "portfolio_now": [
+   [
+    "GAS",
+    4767.26
+   ],
+   [
+    "FLM",
+    12953605.58
+   ],
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "ngasx.com",
+    5186.82
+   ],
+   [
+    "NEO",
+    415781.0
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ]
+  ]
+ },
+ "NXF8xBeBaXSrrvTAHWK6xuGTyutAX9mcVH": {
+  "neo_at_snap": 138862.0,
+  "gas_at_snap": 2559.03524644,
+  "recent_transfer_count": 140,
+  "latest_ts": 1791562864592,
+  "recent_distinct_cp": 1,
+  "earliest_in_window": 1778898982634,
+  "window_count": 1000,
+  "portfolio_now": [
+   [
+    "SWTH",
+    7497698.09
+   ],
+   [
+    "TIPS",
+    37052093513342.97
+   ],
+   [
+    "MCC",
+    1156975970.18
+   ],
+   [
+    "NEO",
+    129762.0
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ],
+   [
+    "GAS",
+    2705.21
+   ],
+   [
+    "FLM",
+    10352702.02
+   ],
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "ngasx.com",
+    2956.93
+   ]
+  ]
+ },
+ "NQSbtd1YYCe1d6gHubwt275QzNTbcP9JUC": {
+  "neo_at_snap": 1.0,
+  "gas_at_snap": 0.03763446,
+  "recent_transfer_count": 0,
+  "earliest_in_window": 1658123140029,
+  "window_count": 411,
+  "portfolio_now": [
+   [
+    "NEO",
+    1.0
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ],
+   [
+    "GAS",
+    0.04
+   ],
+   [
+    "FLM",
+    8000000.0
+   ],
+   [
+    "GAS",
+    100000000.0
+   ]
+  ]
+ },
+ "NUN32id3LKcSTEcfyiGCBKg6puCijwe4ZZ": {
+  "neo_at_snap": 1.0,
+  "gas_at_snap": 0.18027769,
+  "recent_transfer_count": 0,
+  "earliest_in_window": 1751776971454,
+  "window_count": 952,
+  "portfolio_now": [
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "NEO",
+    1.0
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ],
+   [
+    "FLOCKS",
+    5030925.75
+   ],
+   [
+    "GAS",
+    0.18
+   ],
+   [
+    "FLM",
+    6989116.71
+   ]
+  ]
+ },
+ "Nfps2rFwD9VZ8kd6GRkgWix8LH8A5Y4S4a": {
+  "neo_at_snap": 0.0,
+  "gas_at_snap": 1.86866938,
+  "recent_transfer_count": 0,
+  "earliest_in_window": 1735280346218,
+  "window_count": 384,
+  "portfolio_now": [
+   [
+    "pONT",
+    224280.45
+   ],
+   [
+    "fUSDT",
+    4939883.03
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ],
+   [
+    "GAS",
+    1.87
+   ],
+   [
+    "FTW",
+    399242398.96
+   ],
+   [
+    "fWBTC",
+    0.0
+   ],
+   [
+    "FLM",
+    6324107.88
+   ],
+   [
+    "GAS",
+    100000000.0
+   ],
+   [
+    "fWETH",
+    52.31
+   ]
+  ]
+ },
+ "NiF2ukjNVxrLbP7XScPBfKLxyyh8s8ifwA": {
+  "neo_at_snap": 1.0,
+  "gas_at_snap": 0.05650534,
+  "portfolio_now": [
+   [
+    "NEO",
+    1.0
+   ],
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ],
+   [
+    "GAS",
+    0.06
+   ],
+   [
+    "FLM",
+    5000000.0
+   ],
+   [
+    "GAS",
+    100000000.0
+   ]
+  ],
+  "window_count": 616,
+  "first_received": 1658206805089
+ },
+ "NRfDCVn3zFJ9XkXnYYHSTJaqSXNxvGgfGR": {
+  "neo_at_snap": 0.0,
+  "gas_at_snap": 0.92096332,
+  "portfolio_now": [
+   [
+    "$GAS Airdrop | stadlelabs.com",
+    400.0
+   ],
+   [
+    "GAS",
+    0.92
+   ],
+   [
+    "FLM",
+    4836421.34
+   ],
+   [
+    "GAS",
+    100000000.0
+   ]
+  ],
+  "window_count": 11,
+  "first_received": 1723422817470
+ }
+}

@@ -1,0 +1,69 @@
+{
+ "top12": [
+  {
+   "address": "NTRGiigCG7M3RsyBJRc1WoZDV2cfvZDwp8",
+   "flm_raw": "8510319842087441",
+   "flocks_raw": "2035558845545963"
+  },
+  {
+   "address": "NiU7ic68RHF4oo5QK8Li5JbXx22rs2V3DS",
+   "flm_raw": "2008329857400015",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NTWC7Hh5VYMQ5K8YJbyCLbmJ4RhfQ1Ej64",
+   "flm_raw": "1843176701715381",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NWu2ng1hBxU6w6AUmGy4QDkscQTXY3pnVM",
+   "flm_raw": "1550000000000000",
+   "flocks_raw": "100000000000000"
+  },
+  {
+   "address": "NLdYPXACYPKa6zTvoThPuJxd3uEmeMg93t",
+   "flm_raw": "1296126827523994",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NXF8xBeBaXSrrvTAHWK6xuGTyutAX9mcVH",
+   "flm_raw": "1038534233058267",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NQSbtd1YYCe1d6gHubwt275QzNTbcP9JUC",
+   "flm_raw": "800000000000000",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NUN32id3LKcSTEcfyiGCBKg6puCijwe4ZZ",
+   "flm_raw": "698911670690074",
+   "flocks_raw": "503092575169795"
+  },
+  {
+   "address": "Nfps2rFwD9VZ8kd6GRkgWix8LH8A5Y4S4a",
+   "flm_raw": "632410788439678",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NiF2ukjNVxrLbP7XScPBfKLxyyh8s8ifwA",
+   "flm_raw": "500000000000000",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NRfDCVn3zFJ9XkXnYYHSTJaqSXNxvGgfGR",
+   "flm_raw": "483642134358979",
+   "flocks_raw": "0"
+  },
+  {
+   "address": "NjEFZv4p3ascRwBcKcoTjbSAJtegiAupFm",
+   "flm_raw": "426686591497650",
+   "flocks_raw": "0"
+  }
+ ],
+ "ntrg_latest": {
+  "flm": 11382868958911132,
+  "flocks": 0
+ },
+ "latest_block": 14044760
+}
