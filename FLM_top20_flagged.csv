@@ -1,0 +1,21 @@
+rank,address,pre_exploit_flm,pre_exploit_flocks,pct_flm_supply,now_flm,transfers,kind,label,recommend_exclude,reason
+1,NhVnpBxSRjkScZKHGzsEreYAMS1qRrNdaH,118238798,0,20.6%,210421577,466660,contract,FlamingoSwapPair,yes,Protocol pool (auto-excluded as contract)
+2,NTRGiigCG7M3RsyBJRc1WoZDV2cfvZDwp8,85103198,20355588,14.8%,113828690,386,wallet,likely team/treasury,yes,"Huge FLM+FLOCKS, few counterparties, almost no other assets; classic treasury/founder pattern"
+3,NMQSkzqhhF3DdPSQhJapV7BywXao6U3nAt,44769958,0,7.8%,44769958,107,contract,FTokenVault,yes,Protocol lending vault (auto-excluded)
+4,NSy3Gffa2X45rzEP8x5wwLBbukEUVCg4KE,35352487,2383292,6.2%,597574317,169737,contract,FlamingoBroker,yes,Protocol broker (auto-excluded)
+5,NiU7ic68RHF4oo5QK8Li5JbXx22rs2V3DS,20083299,0,3.5%,20083299,3,wallet,likely allocation/cold,yes,"20M FLM + 26.9k NEO, only 3 lifetime tx; dormant large allocation"
+6,NTWC7Hh5VYMQ5K8YJbyCLbmJ4RhfQ1Ej64,18431767,0,3.2%,15988613,7478,wallet,likely CEX / market maker,yes,"133k GAS + 143k NEO/bNEO, holds SWTH/TIPS, 7.5k tx; professional liquidity, not an individual"
+7,Nf7xBDaqZJqwLEwMj32V5NDbYeLaHWJ455,16250148,0,2.8%,80690828,73746,contract,FlamingoSwapPair,yes,Protocol pool (auto-excluded)
+8,NWu2ng1hBxU6w6AUmGy4QDkscQTXY3pnVM,15500000,1000000,2.7%,15500000,239,wallet,likely team/allocation,yes,"Round 15.5M FLM + 1.0M FLOCKS, holds nothing else; allocation pattern"
+9,NUfgAZ2kjywPUtJMDun3ajZ2uSZDEr7ifm,13531784,0,2.4%,13531784,1012,contract,FTokenVault,yes,Protocol lending vault (auto-excluded)
+10,NLdYPXACYPKa6zTvoThPuJxd3uEmeMg93t,12961268,0,2.3%,12953606,5079,wallet,likely CEX / market maker,yes,"421k NEO/bNEO + 4.8k GAS, 5k tx; large liquidity desk, not an individual"
+11,NXF8xBeBaXSrrvTAHWK6xuGTyutAX9mcVH,10385342,0,1.8%,10352702,8152,wallet,likely CEX / market maker,yes,"130k NEO/bNEO, holds SWTH/TIPS/MCC, 8k tx; diversified desk"
+12,NQSbtd1YYCe1d6gHubwt275QzNTbcP9JUC,8000000,0,1.4%,8000000,2,wallet,likely allocation/OTC,yes,"Round 8.0M FLM, only 2 lifetime tx, nothing else held; allocation/OTC"
+13,NSuUJyZrVvQmNGRbshCiVpVCVgCjTu4KwC,7295673,0,1.3%,7271924,2792,contract,FLOCKS (contract),yes,Protocol contract (auto-excluded)
+14,NLXTWhgiWZyNKhbvaJnasYcxTG4vQjwFjH,7112355,0,1.2%,7112355,212252,contract,FlamingoSwapPair,yes,Protocol pool (auto-excluded)
+15,NUN32id3LKcSTEcfyiGCBKg6puCijwe4ZZ,6989117,5030926,1.2%,6989117,307,wallet,likely team/investor,yes,"7M FLM + 5M FLOCKS (4.1% of FLOCKS), low activity; large aligned holder"
+16,Nfps2rFwD9VZ8kd6GRkgWix8LH8A5Y4S4a,6324108,0,1.1%,6324108,22,wallet,likely community/DeFi user,review,"Holds Flamingo wrapped assets (FWETH/FWBTC/FUSDT/FTW) + PONT, 22 tx; looks like a real early LP"
+17,NRwXs5yZRMuuXUo7AqvetHQ4GDHe3pV7Mb,5991168,0,1.0%,5991168,116693,contract,FlamingoSwapPair,yes,Protocol pool (auto-excluded)
+18,NaHC6xx4NDcq1xr3BKGYwzUjdSbVxyTztD,5178853,0,0.9%,5178853,91131,contract,FlamingoSwapPair,yes,Protocol pool (auto-excluded)
+19,NanYZRm6m6sa6Z6F3RBRYSXqdpg5rZqxdZ,5128677,0,0.9%,5243560,413981,contract,FLUND,yes,Protocol staking (FLUND) contract (auto-excluded)
+20,NRj5m5jLDuJVsmGZwdZSeiFYzJfaQEGX4G,3961533,0,0.7%,8842839,585,wallet,review (CEX/MM-ish),review,"46k NEO/bNEO + 7k GAS, 585 tx; sizable desk-like wallet, confirm before excluding"
