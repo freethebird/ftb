@@ -31,6 +31,23 @@ final `maxSupply` is set at launch: re-run `merkleroot` on the updated claim lis
 final dev-wallet allocation, and compile that exact sum in. The compiled-in value
 below is superseded.
 
+**Tree built and cap compiled in, 16 October 2026:** ran
+`cmd/merkleroot -snapshot ftb_claim_list.csv -r1 1 -r2 1`:
+
+- Merkle root: `0x9b4be5c9052570deccd7ce4fb90d1edb439d5f7f31c5c692e41a638904630cc8`
+- Tree total: `30035929794660360` base units (4,830 wallets, integer math — no floor dust at r1 = r2 = 1)
+- maxSupply = tree + dev allocation (`7336189899000000`) = **`37372119693660360` base units**
+  (373,721,196.93660360 FTB), now the constant in `ftb_token.go`
+- TestNet token updated IN PLACE (owner-guarded `update`, pre-launch fix path — hash
+  `0xdc82bb0c…73044c` unchanged, storage preserved), tx
+  `0x7cc8eabe0c6cd700ec890bc429eff98eb3104607cb66febbc07a5e01a8a6e9d9`. Verified
+  on-chain: `maxSupply()` returns the new value.
+- STILL OPEN: the TestNet migrator + ballot are bound write-once to the OLD root
+  (`0x639aaa78…`, FTB-02). Moving them means a migrator redeploy + `setMigrator`
+  repoint + seam-board propose/apply and a ballot redeploy (~21 GAS). Until then
+  TestNet claims/votes keep using the 4,847-wallet tree — consistent, just the old
+  electorate. MainNet deploys fresh with the new root, so this is a TestNet-only gap.
+
 **Superseded status, 10 October 2026:** computed and compiled in, pending the vote on
 ratios. Ran
 `cmd/merkleroot -snapshot snapshot.csv -r1 1 -r2 4` against the final snapshot (4,847 holders):

@@ -27,11 +27,13 @@ const (
 	symbol   = "FTB"
 	decimals = 8
 	one      = 100_000_000 // 1 FTB in base units
-	// Audit item FTB-01: exact sum of all snapshot entitlements, printed by
-	// cmd/merkleroot -snapshot snapshot.csv -r1 1 -r2 4 (root 0x639aaa78...a8bba).
-	// If the community vote changes r1/r2 or the snapshot, re-run merkleroot and
-	// reset this constant to the new printed total before compiling for launch.
-	maxSupply = 78326783050305942
+	// Audit item FTB-01: exact sum of all entitlements plus the dev-team allocation.
+	// Tree: cmd/merkleroot -snapshot ftb_claim_list.csv -r1 1 -r2 1
+	// (4,830 wallets, root 0x9b4be5c9...630cc8) printed 30,035,929,794,660,360;
+	// dev allocation 7,336,189,899,000,000 (68,330,973.24 FLM-equiv + 5,030,925.75
+	// FLOCKS at r1 = r2 = 1) is added on top — the committed cap, DECISIONS.md 16 Oct.
+	// The dev wallet is still accumulating, so this is reset once more at MainNet launch.
+	maxSupply = 37372119693660360
 )
 
 // Single-byte prefixes keep storage tight (MO: weight).
