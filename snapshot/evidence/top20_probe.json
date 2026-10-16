@@ -1,0 +1,189 @@
+[
+ {
+  "address": "NhVnpBxSRjkScZKHGzsEreYAMS1qRrNdaH",
+  "flm_raw": 11823879752621897,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FlamingoSwapPair"
+ },
+ {
+  "address": "NTRGiigCG7M3RsyBJRc1WoZDV2cfvZDwp8",
+  "flm_raw": 8510319842087441,
+  "flocks_raw": 2035558845545963,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NMQSkzqhhF3DdPSQhJapV7BywXao6U3nAt",
+  "flm_raw": 4476995813817886,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FTokenVault"
+ },
+ {
+  "address": "NSy3Gffa2X45rzEP8x5wwLBbukEUVCg4KE",
+  "flm_raw": 3535248737439197,
+  "flocks_raw": 238329150606412,
+  "is_contract": true,
+  "contract_name": "FlamingoBroker"
+ },
+ {
+  "address": "NiU7ic68RHF4oo5QK8Li5JbXx22rs2V3DS",
+  "flm_raw": 2008329857400015,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NTWC7Hh5VYMQ5K8YJbyCLbmJ4RhfQ1Ej64",
+  "flm_raw": 1843176701715381,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "Nf7xBDaqZJqwLEwMj32V5NDbYeLaHWJ455",
+  "flm_raw": 1625014782257742,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FlamingoSwapPair"
+ },
+ {
+  "address": "NWu2ng1hBxU6w6AUmGy4QDkscQTXY3pnVM",
+  "flm_raw": 1550000000000000,
+  "flocks_raw": 100000000000000,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NUfgAZ2kjywPUtJMDun3ajZ2uSZDEr7ifm",
+  "flm_raw": 1353178350696100,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FTokenVault"
+ },
+ {
+  "address": "NLdYPXACYPKa6zTvoThPuJxd3uEmeMg93t",
+  "flm_raw": 1296126827523994,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NXF8xBeBaXSrrvTAHWK6xuGTyutAX9mcVH",
+  "flm_raw": 1038534233058267,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NQSbtd1YYCe1d6gHubwt275QzNTbcP9JUC",
+  "flm_raw": 800000000000000,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NSuUJyZrVvQmNGRbshCiVpVCVgCjTu4KwC",
+  "flm_raw": 729567341015472,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FLOCKS"
+ },
+ {
+  "address": "NLXTWhgiWZyNKhbvaJnasYcxTG4vQjwFjH",
+  "flm_raw": 711235521805080,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FlamingoSwapPair"
+ },
+ {
+  "address": "NUN32id3LKcSTEcfyiGCBKg6puCijwe4ZZ",
+  "flm_raw": 698911670690074,
+  "flocks_raw": 503092575169795,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "Nfps2rFwD9VZ8kd6GRkgWix8LH8A5Y4S4a",
+  "flm_raw": 632410788439678,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NRwXs5yZRMuuXUo7AqvetHQ4GDHe3pV7Mb",
+  "flm_raw": 599116771170032,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FlamingoSwapPair"
+ },
+ {
+  "address": "NRbVXs55RnzfvyJ5pANJ8qRuEbSKnpepAY",
+  "flm_raw": 560319250468784,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "Flamingo Swap-Pair Contract"
+ },
+ {
+  "address": "NaHC6xx4NDcq1xr3BKGYwzUjdSbVxyTztD",
+  "flm_raw": 517885337685675,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FlamingoSwapPair"
+ },
+ {
+  "address": "NanYZRm6m6sa6Z6F3RBRYSXqdpg5rZqxdZ",
+  "flm_raw": 512867701425017,
+  "flocks_raw": 0,
+  "is_contract": true,
+  "contract_name": "FLUND"
+ },
+ {
+  "address": "NiF2ukjNVxrLbP7XScPBfKLxyyh8s8ifwA",
+  "flm_raw": 500000000000000,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ },
+ {
+  "address": "NRfDCVn3zFJ9XkXnYYHSTJaqSXNxvGgfGR",
+  "flm_raw": 483642134358979,
+  "flocks_raw": 0,
+  "is_contract": false,
+  "tokens_now": [],
+  "nep17_transfers": 0,
+  "first_seen": null,
+  "last_seen": null
+ }
+]
