@@ -24,6 +24,11 @@ body{font-size:15px}
 .topbar{position:sticky; top:0; z-index:50; background:var(--paper);
   border-bottom:1px solid var(--ink); display:flex; align-items:center;
   gap:18px; padding:10px 20px; flex-wrap:wrap}
+/* launch countdown strip: status, not a button — strict grayscale, one line */
+.launchbar{border-bottom:1px solid var(--ink); background:var(--paper); color:var(--ink);
+  text-align:center; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+  padding:6px 12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.launchbar .tminus{font-weight:bold}
 .topbar .bird3{line-height:0; color:var(--ink); border:0}
 .topbar .bird3:hover{background:transparent}
 .topbar .bird3 svg{height:34px; width:auto; display:block}
@@ -181,6 +186,27 @@ MARKUP = """<header class="topbar">
     <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
   </div>
 </header>
+
+<div class="launchbar" id="launchbar">TESTNET: LIVE &nbsp;·&nbsp; MAIN-NET NOV 7 &nbsp;·&nbsp; <span class="tminus" id="tminus">T-…</span></div>
+<script>
+// countdown to the MainNet window, 7 Nov 2026 00:00 UTC — ticks once a second,
+// flips to a window-open notice at zero. Self-contained: no config, no chain.
+(function(){
+  var el=document.getElementById('tminus'); if(!el) return;
+  var target=Date.UTC(2026,10,7,0,0,0);
+  function pad(n){ return (n<10?'0':'')+n; }
+  function tick(){
+    var ms=target-Date.now();
+    if(ms<=0){ el.textContent='T-0 — MAIN-NET WINDOW OPEN'; return; }
+    var s=Math.floor(ms/1000);
+    var d=Math.floor(s/86400); s-=d*86400;
+    var h=Math.floor(s/3600);  s-=h*3600;
+    var m=Math.floor(s/60);    s-=m*60;
+    el.textContent='T-'+d+'D '+pad(h)+':'+pad(m)+':'+pad(s);
+  }
+  tick(); setInterval(tick,1000);
+})();
+</script>
 
 <div id="top"></div>
 <span id="dateline" hidden>// CONNECTING //</span>
