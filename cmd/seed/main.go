@@ -145,7 +145,9 @@ func mustU160(s string) util.Uint160 {
 	)
 	switch {
 	case strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X"):
-		u, err = util.Uint160DecodeStringBE(s[2:])
+		// 0x means the canonical RPC/explorer form — StringLE in this SDK (see the
+		// byte-order note in cmd/deploy). Decoding it as BE silently reverses the hash.
+		u, err = util.Uint160DecodeStringLE(s[2:])
 	case strings.HasPrefix(s, "N"):
 		u, err = address.StringToUint160(s)
 	default:
