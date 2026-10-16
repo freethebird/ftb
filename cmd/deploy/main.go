@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/nspcc-dev/neo-go/pkg/core/state"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/hash"
@@ -61,11 +62,33 @@ type config struct {
 	// write-once with the same Merkle root (single-key path only; with a multisig owner
 	// the ballot deploy/configure is printed as multisig calls instead).
 	BallotOptions int `json:"ballot_options"`
+	// Launch2, when true, also deploys the Launch-2 suite (oracle, lend, bondvault,
+	// treasury, dividends), configures each against the core, and registers them on
+	// the seam board: Propose now, Apply once the timelock elapses (the driver waits).
+	// Single-key path only; a multisig owner gets the core printed wiring instead.
+	Launch2 bool `json:"launch2"`
+	// Core, when set, skips deploying the core and reuses already-deployed contract
+	// hashes — resume mode for Launch 2 on a chain where the core is already live
+	// (N3 contract hashes are deterministic on sender+nef+name, so a redeploy of an
+	// unchanged core would be rejected as "already exists"). Every hash is verified
+	// with getcontractstate before any wiring call uses it.
+	Core *coreReuse `json:"core"`
+}
+
+type coreReuse struct {
+	FTB      string `json:"ftb"`
+	Migrator string `json:"migrator"`
+	Registry string `json:"registry"`
+	Ballot   string `json:"ballot"` // optional; skips the ballot deploy when set
 }
 
 func main() {
 	cfgPath := flag.String("config", "config.json", "deploy config JSON")
+	phase := flag.String("phase", "all", "launch-2 step: all | deploy | wire | apply (see launch-2 comment)")
 	flag.Parse()
+	if *phase != "all" && *phase != "deploy" && *phase != "wire" && *phase != "apply" {
+		check(fmt.Errorf("unknown phase %q: want all, deploy, wire, or apply", *phase))
+	}
 
 	var cfg config
 	raw, err := os.ReadFile(*cfgPath)
@@ -111,27 +134,6 @@ func main() {
 		return h
 	}
 
-	// 1. deploy core (owner passed explicitly as deploy data; the multisig does not need
-	// to sign anything yet, _deploy just stores the hash)
-	token := deploy("ftb_token", owner.BytesBE())
-	migrator := deploy("ftb_migrator", owner.BytesBE())
-	registry := deploy("registry", owner.BytesBE())
-
-	// 2. validate the migrator's snapshot root here so both wiring paths, automatic and
-	// printed, use the same checked value
-	root, err := hex.DecodeString(strip0x(cfg.MerkleRootHex))
-	check(err)
-	if len(root) != 32 {
-		check(fmt.Errorf("merkle root must be 32 bytes, got %d", len(root)))
-	}
-
-	if !ownerIsSigner {
-		// The owner is the multisig and this wallet cannot sign for it, which is exactly
-		// the point. Print the wiring as ready-to-execute calls for the multisig members.
-		printMultisigWiring(cfg, token, migrator, registry, root, owner)
-		return
-	}
-
 	call := func(hash util.Uint160, method string, args ...any) {
 		txh, vub, err := act.SendCall(hash, method, args...)
 		check(err)
@@ -140,35 +142,189 @@ func main() {
 		fmt.Printf("  wired %-16s tx 0x%s\n", method, txh.StringBE())
 	}
 
-	// 2. the token's only minter is the migrator
-	call(token, "setMigrator", migrator)
+	var token, migrator, registry, ballot util.Uint160
+	hasBallot := false
 
-	// 3. configure the migrator (write-once, FTB-02: double-check root before running)
-	call(migrator, "configure", token, root)
+	if cfg.Core != nil {
+		// Resume mode: the core is already live on this chain (a redeploy of the
+		// unchanged core would be rejected — the hash is deterministic), so reuse the
+		// published hashes after verifying each one answers getcontractstate.
+		cr := cfg.Core
+		token = mustHash("core.ftb", cr.FTB)
+		migrator = mustHash("core.migrator", cr.Migrator)
+		registry = mustHash("core.registry", cr.Registry)
+		existing := map[string]util.Uint160{"ftb": token, "migrator": migrator, "registry": registry}
+		if cr.Ballot != "" {
+			ballot = mustHash("core.ballot", cr.Ballot)
+			existing["ballot"] = ballot
+			hasBallot = true
+		}
+		for name, h := range existing {
+			if _, err := cli.GetContractStateByHash(h); err != nil {
+				check(fmt.Errorf("core %s 0x%s not found on-chain: %w", name, h.StringBE(), err))
+			}
+		}
+		fmt.Printf("core: reusing live contracts (ftb 0x%s, migrator 0x%s, registry 0x%s)\n",
+			token.StringBE(), migrator.StringBE(), registry.StringBE())
+		if !cfg.Launch2 {
+			check(fmt.Errorf("core reuse is set but launch2 is false: nothing to do"))
+		}
+		if !ownerIsSigner {
+			check(fmt.Errorf("reuse mode: the launch-2 wiring needs the owner's witness, and this wallet is not the owner; run the launch-2 calls from the owner (see ops/DECENTRALIZED_OPS.md)"))
+		}
+	} else {
+		// 1. deploy core (owner passed explicitly as deploy data; the multisig does not need
+		// to sign anything yet, _deploy just stores the hash)
+		token = deploy("ftb_token", owner.BytesBE())
+		migrator = deploy("ftb_migrator", owner.BytesBE())
+		registry = deploy("registry", owner.BytesBE())
 
-	// 4. seam board: set the timelock, record the modules, finish bootstrap
-	call(registry, "setInitialDelay", cfg.TimelockBlocks)
-	call(registry, "bootstrap", "token", token)
-	call(registry, "bootstrap", "migrator", migrator)
-	call(registry, "finishBootstrap")
+		// 2. validate the migrator's snapshot root here so both wiring paths, automatic and
+		// printed, use the same checked value
+		root, err := hex.DecodeString(strip0x(cfg.MerkleRootHex))
+		check(err)
+		if len(root) != 32 {
+			check(fmt.Errorf("merkle root must be 32 bytes, got %d", len(root)))
+		}
 
-	// 5. governance ballot (optional): one deployment per proposal, configured
-	// write-once with the SAME Merkle root, so holders vote with their claim proof.
-	var ballot util.Uint160
-	if cfg.BallotOptions >= 2 {
-		ballot = deploy("ballot", owner.BytesBE())
-		call(ballot, "configure", root, cfg.BallotOptions)
+		if !ownerIsSigner {
+			// The owner is the multisig and this wallet cannot sign for it, which is exactly
+			// the point. Print the wiring as ready-to-execute calls for the multisig members.
+			printMultisigWiring(cfg, token, migrator, registry, root, owner)
+			return
+		}
+
+		// 2. the token's only minter is the migrator
+		call(token, "setMigrator", migrator)
+
+		// 3. configure the migrator (write-once, FTB-02: double-check root before running)
+		call(migrator, "configure", token, root)
+
+		// 4. seam board: set the timelock, record the modules, finish bootstrap
+		call(registry, "setInitialDelay", cfg.TimelockBlocks)
+		call(registry, "bootstrap", "token", token)
+		call(registry, "bootstrap", "migrator", migrator)
+		call(registry, "finishBootstrap")
+
+		// 5. governance ballot (optional): one deployment per proposal, configured
+		// write-once with the SAME Merkle root, so holders vote with their claim proof.
+		if cfg.BallotOptions >= 2 {
+			ballot = deploy("ballot", owner.BytesBE())
+			call(ballot, "configure", root, cfg.BallotOptions)
+			hasBallot = true
+		}
+	}
+
+	// 6. Launch-2 suite (optional): oracle, lend, bondvault, treasury, dividends.
+	// Bootstrap is already finished on-chain, so the modules join the seam board through
+	// the timelock: propose now, apply once the delay elapses.
+	//
+	// The phase flag splits this into operator-sized steps, because a full run (5
+	// deploys, 11 wiring calls, a 20-block timelock wait) outlives a single shell
+	// session. Hashes are deterministic (sender + nef checksum + manifest name), so
+	// each phase re-derives them from the build artifacts — no state file, and a
+	// re-run after a crash picks up exactly where the chain is:
+	//
+	//	go run ./cmd/deploy -config c.json -phase deploy   # deploy the 5 contracts
+	//	go run ./cmd/deploy -config c.json -phase wire     # configure + propose
+	//	# wait for the timelock (delay blocks), then:
+	//	go run ./cmd/deploy -config c.json -phase apply    # anyone can apply
+	//
+	// -phase all (default) does everything, waiting out the timelock itself.
+	l2 := map[string]util.Uint160{}
+	if cfg.Launch2 {
+		order := []string{"oracle", "lend", "bondvault", "treasury", "dividends"}
+		l2hash := func(name string) util.Uint160 {
+			ne, m := load(cfg.ContractsDir, name)
+			return state.CreateContractHash(sender, ne.Checksum, m.Name)
+		}
+		if *phase == "all" || *phase == "deploy" {
+			for _, n := range order {
+				h := l2hash(n)
+				if _, err := cli.GetContractStateByHash(h); err == nil {
+					fmt.Printf("reusing  %-12s -> 0x%x (already on-chain)\n", n, h.BytesBE())
+					l2[n] = h
+					continue
+				}
+				l2[n] = deploy(n, owner.BytesBE())
+			}
+		} else {
+			for _, n := range order {
+				h := l2hash(n)
+				if _, err := cli.GetContractStateByHash(h); err != nil {
+					check(fmt.Errorf("launch-2 %s 0x%s not on-chain; run -phase deploy first: %w", n, h.StringBE(), err))
+				}
+				l2[n] = h
+			}
+		}
+		if *phase == "all" || *phase == "wire" {
+			call(l2["oracle"], "setReporter", sender, true) // TestNet: deployer is the reporter; real quorum before MainNet
+			call(l2["lend"], "configure", registry, token)
+			call(l2["bondvault"], "configure", token, owner) // committee = owner on single-key TestNet
+			call(l2["treasury"], "configure", token, owner, registry)
+			call(l2["dividends"], "configure", token)
+			for _, n := range order {
+				call(registry, "propose", n, l2[n])
+			}
+		}
+		if *phase == "apply" {
+			// The caller has waited out the timelock; apply is permissionless.
+			for _, n := range order {
+				call(registry, "apply", n)
+			}
+		}
+		if *phase == "all" {
+			// Wait out the timelock, then apply. If the wait fails, print the manual
+			// calls — never hard-fail after successful deploys (anyone can apply).
+			start, err := cli.GetBlockCount()
+			if err != nil {
+				fmt.Println("could not read block height; apply manually after the timelock:")
+				for _, n := range order {
+					fmt.Printf("  %s apply %q\n", registry.StringBE(), n)
+				}
+			} else {
+				target := start + uint32(cfg.TimelockBlocks) + 1 // #nosec G115 -- timelock_blocks is a small positive operator config value
+				fmt.Printf("waiting out the %d-block timelock (target height %d)...\n", cfg.TimelockBlocks, target)
+				deadline := time.Now().Add(15 * time.Minute)
+				for {
+					h, err := cli.GetBlockCount()
+					if err == nil && h > target {
+						break
+					}
+					if time.Now().After(deadline) {
+						fmt.Println("timelock wait timed out; apply manually when ready:")
+						for _, n := range order {
+							fmt.Printf("  %s apply %q\n", registry.StringBE(), n)
+						}
+						break
+					}
+					time.Sleep(15 * time.Second)
+				}
+				if h, err := cli.GetBlockCount(); err == nil && h > target {
+					for _, n := range order {
+						call(registry, "apply", n)
+					}
+				}
+			}
+		}
 	}
 
 	fmt.Println("\nDeployed and wired.")
 	// machine-readable line for scripts/deploy_testnet.sh to build web/config.js;
 	// hashes are 0x-prefixed big-endian, the exact form RPC calls and config.js expect.
 	ballotStr := ""
-	if cfg.BallotOptions >= 2 {
+	if hasBallot {
 		ballotStr = "0x" + ballot.StringBE()
 	}
-	fmt.Printf("FTB_HASHES {\"ftb\":%q,\"migrator\":%q,\"registry\":%q,\"ballot\":%q}\n",
-		"0x"+token.StringBE(), "0x"+migrator.StringBE(), "0x"+registry.StringBE(), ballotStr)
+	l2h := func(k string) string {
+		if h, ok := l2[k]; ok {
+			return "0x" + h.StringBE()
+		}
+		return ""
+	}
+	fmt.Printf("FTB_HASHES {\"ftb\":%q,\"migrator\":%q,\"registry\":%q,\"ballot\":%q,\"oracle\":%q,\"lend\":%q,\"bondvault\":%q,\"treasury\":%q,\"dividends\":%q}\n",
+		"0x"+token.StringBE(), "0x"+migrator.StringBE(), "0x"+registry.StringBE(), ballotStr,
+		l2h("oracle"), l2h("lend"), l2h("bondvault"), l2h("treasury"), l2h("dividends"))
 	if cfg.OwnerMultisig == nil && cfg.OwnerScriptHash == "" {
 		fmt.Println("WARNING: the owner is the deployer's SINGLE key. Dev/TestNet only;")
 		fmt.Println("for any real launch set owner_multisig in the config and redeploy (FTB-14).")
@@ -194,6 +350,14 @@ func strip0x(s string) string {
 		return s[2:]
 	}
 	return s
+}
+
+// mustHash parses a 0x-prefixed (or bare) big-endian contract hash from a config field,
+// exiting on any malformed value — a wrong hash here would wire money to nothing.
+func mustHash(field, s string) util.Uint160 {
+	h, err := util.Uint160DecodeStringBE(strip0x(strings.TrimSpace(s)))
+	check(err)
+	return h
 }
 
 // resolvePassword reads the wallet password from the environment when password_env is set
