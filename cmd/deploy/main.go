@@ -115,6 +115,17 @@ func main() {
 	check(err)
 	mgmt := management.New(act)
 
+	// BYTE ORDER (verified on TestNet against the C# RPCs): this SDK's Uint160 stores
+	// the hash digest bytes as-is; the canonical "0x..." form that RPCs, explorers, and
+	// config.js use is StringLE() — the byte-reverse of StringBE(). All human-facing
+	// output and every RPC string query below use StringLE(). Contract hashes decoded
+	// FROM canonical strings must use Uint160DecodeStringLE for the same reason.
+	// (GetContractStateByHash is unusable against C# RPCs: it sends bare hex they
+	// reject as "Unknown contract" -102, so query by the canonical 0x string.)
+	getState := func(h util.Uint160) (*state.Contract, error) {
+		return cli.GetContractStateByAddressOrName("0x" + h.StringLE())
+	}
+
 	deploy := func(name string, data any) util.Uint160 {
 		ne, m := load(cfg.ContractsDir, name)
 		h := state.CreateContractHash(sender, ne.Checksum, m.Name) // hash derives from the deploy TX sender
@@ -124,13 +135,12 @@ func main() {
 		check(err)
 		// self-check: the contract must answer getcontractstate at the computed hash
 		// before anything downstream (wiring calls, config.js) uses it.
-		if _, err := cli.GetContractStateByHash(h); err != nil {
+		if _, err := getState(h); err != nil {
 			check(fmt.Errorf("deploy of %s: tx 0x%s HALTed but contract 0x%s not found on-chain: %w",
-				name, txh.StringBE(), h.StringBE(), err))
+				name, txh.StringLE(), h.StringLE(), err))
 		}
-		// print both byte orders so there is no 0x BE vs LE ambiguity when you paste it;
-		// the FIRST form (0x + BE) is the one RPC calls and explorers expect.
-		fmt.Printf("deployed %-12s -> 0x%x  (le 0x%x)  tx 0x%s\n", name, h.BytesBE(), h.BytesLE(), txh.StringBE())
+		// canonical 0x form (StringLE) — the one RPC calls and explorers expect.
+		fmt.Printf("deployed %-12s -> 0x%s  tx 0x%s\n", name, h.StringLE(), txh.StringLE())
 		return h
 	}
 
@@ -139,7 +149,7 @@ func main() {
 		check(err)
 		_, err = act.WaitSuccess(context.Background(), txh, vub, err)
 		check(err)
-		fmt.Printf("  wired %-16s tx 0x%s\n", method, txh.StringBE())
+		fmt.Printf("  wired %-16s tx 0x%s\n", method, txh.StringLE())
 	}
 
 	var token, migrator, registry, ballot util.Uint160
@@ -160,12 +170,12 @@ func main() {
 			hasBallot = true
 		}
 		for name, h := range existing {
-			if _, err := cli.GetContractStateByHash(h); err != nil {
-				check(fmt.Errorf("core %s 0x%s not found on-chain: %w", name, h.StringBE(), err))
+			if _, err := getState(h); err != nil {
+				check(fmt.Errorf("core %s 0x%s not found on-chain: %w", name, h.StringLE(), err))
 			}
 		}
 		fmt.Printf("core: reusing live contracts (ftb 0x%s, migrator 0x%s, registry 0x%s)\n",
-			token.StringBE(), migrator.StringBE(), registry.StringBE())
+			token.StringLE(), migrator.StringLE(), registry.StringLE())
 		if !cfg.Launch2 {
 			check(fmt.Errorf("core reuse is set but launch2 is false: nothing to do"))
 		}
@@ -241,8 +251,8 @@ func main() {
 		if *phase == "all" || *phase == "deploy" {
 			for _, n := range order {
 				h := l2hash(n)
-				if _, err := cli.GetContractStateByHash(h); err == nil {
-					fmt.Printf("reusing  %-12s -> 0x%x (already on-chain)\n", n, h.BytesBE())
+				if _, err := getState(h); err == nil {
+					fmt.Printf("reusing  %-12s -> 0x%s (already on-chain)\n", n, h.StringLE())
 					l2[n] = h
 					continue
 				}
@@ -251,8 +261,8 @@ func main() {
 		} else {
 			for _, n := range order {
 				h := l2hash(n)
-				if _, err := cli.GetContractStateByHash(h); err != nil {
-					check(fmt.Errorf("launch-2 %s 0x%s not on-chain; run -phase deploy first: %w", n, h.StringBE(), err))
+				if _, err := getState(h); err != nil {
+					check(fmt.Errorf("launch-2 %s 0x%s not on-chain; run -phase deploy first: %w", n, h.StringLE(), err))
 				}
 				l2[n] = h
 			}
@@ -280,7 +290,7 @@ func main() {
 			if err != nil {
 				fmt.Println("could not read block height; apply manually after the timelock:")
 				for _, n := range order {
-					fmt.Printf("  %s apply %q\n", registry.StringBE(), n)
+					fmt.Printf("  %s apply %q\n", registry.StringLE(), n)
 				}
 			} else {
 				target := start + uint32(cfg.TimelockBlocks) + 1 // #nosec G115 -- timelock_blocks is a small positive operator config value
@@ -294,7 +304,7 @@ func main() {
 					if time.Now().After(deadline) {
 						fmt.Println("timelock wait timed out; apply manually when ready:")
 						for _, n := range order {
-							fmt.Printf("  %s apply %q\n", registry.StringBE(), n)
+							fmt.Printf("  %s apply %q\n", registry.StringLE(), n)
 						}
 						break
 					}
@@ -311,19 +321,20 @@ func main() {
 
 	fmt.Println("\nDeployed and wired.")
 	// machine-readable line for scripts/deploy_testnet.sh to build web/config.js;
-	// hashes are 0x-prefixed big-endian, the exact form RPC calls and config.js expect.
+	// hashes are 0x-prefixed canonical (StringLE), the exact form RPC calls and
+	// config.js expect.
 	ballotStr := ""
 	if hasBallot {
-		ballotStr = "0x" + ballot.StringBE()
+		ballotStr = "0x" + ballot.StringLE()
 	}
 	l2h := func(k string) string {
 		if h, ok := l2[k]; ok {
-			return "0x" + h.StringBE()
+			return "0x" + h.StringLE()
 		}
 		return ""
 	}
 	fmt.Printf("FTB_HASHES {\"ftb\":%q,\"migrator\":%q,\"registry\":%q,\"ballot\":%q,\"oracle\":%q,\"lend\":%q,\"bondvault\":%q,\"treasury\":%q,\"dividends\":%q}\n",
-		"0x"+token.StringBE(), "0x"+migrator.StringBE(), "0x"+registry.StringBE(), ballotStr,
+		"0x"+token.StringLE(), "0x"+migrator.StringLE(), "0x"+registry.StringLE(), ballotStr,
 		l2h("oracle"), l2h("lend"), l2h("bondvault"), l2h("treasury"), l2h("dividends"))
 	if cfg.OwnerMultisig == nil && cfg.OwnerScriptHash == "" {
 		fmt.Println("WARNING: the owner is the deployer's SINGLE key. Dev/TestNet only;")
@@ -352,10 +363,13 @@ func strip0x(s string) string {
 	return s
 }
 
-// mustHash parses a 0x-prefixed (or bare) big-endian contract hash from a config field,
+// mustHash parses a 0x-prefixed (or bare) canonical contract hash from a config field,
 // exiting on any malformed value — a wrong hash here would wire money to nothing.
+// Canonical (RPC/explorer) form decodes with Uint160DecodeStringLE in this SDK; the
+// BE variant would silently yield the byte-reversed scripthash (see the byte-order
+// note in main).
 func mustHash(field, s string) util.Uint160 {
-	h, err := util.Uint160DecodeStringBE(strip0x(strings.TrimSpace(s)))
+	h, err := util.Uint160DecodeStringLE(strip0x(strings.TrimSpace(s)))
 	check(err)
 	return h
 }
@@ -396,8 +410,8 @@ func resolveOwner(cfg config, sender util.Uint160) (util.Uint160, bool) {
 		script, err := smartcontract.CreateMultiSigRedeemScript(mo.M, pubs)
 		check(err)
 		owner := hash.Hash160(script)
-		fmt.Printf("owner: %d-of-%d multisig  %s  (0x%x)\n", mo.M, n,
-			address.Uint160ToString(owner), owner.BytesBE())
+		fmt.Printf("owner: %d-of-%d multisig  %s  (0x%s)\n", mo.M, n,
+			address.Uint160ToString(owner), owner.StringLE())
 		fmt.Println("verify every member independently derives this SAME address from the pubkey set")
 		return owner, owner == sender
 	}
@@ -410,10 +424,10 @@ func resolveOwner(cfg config, sender util.Uint160) (util.Uint160, bool) {
 		if strings.HasPrefix(s, "N") {
 			owner, err = address.StringToUint160(s)
 		} else {
-			owner, err = util.Uint160DecodeStringBE(strip0x(s))
+			owner, err = util.Uint160DecodeStringLE(strip0x(s)) // canonical 0x form (see byte-order note)
 		}
 		check(err)
-		fmt.Printf("owner: %s  (0x%x)\n", address.Uint160ToString(owner), owner.BytesBE())
+		fmt.Printf("owner: %s  (0x%s)\n", address.Uint160ToString(owner), owner.StringLE())
 		return owner, owner == sender
 	}
 	fmt.Println("owner: deployer wallet Accounts[0] (single key) — acceptable for dev/TestNet only")
@@ -426,15 +440,15 @@ func printMultisigWiring(cfg config, token, migrator, registry util.Uint160, roo
 	fmt.Println("\nDeployed with the multisig as owner. The remaining wiring needs the owner's")
 	fmt.Println("witness, so the multisig members execute it (see ops/DECENTRALIZED_OPS.md).")
 	fmt.Println("Calls, in order, each signed by the multisig:")
-	fmt.Printf("  1. %s setMigrator 0x%x\n", token.StringBE(), migrator.BytesBE())
-	fmt.Printf("  2. %s configure 0x%x 0x%s\n", migrator.StringBE(), token.BytesBE(), hex.EncodeToString(root))
-	fmt.Printf("  3. %s setInitialDelay %d\n", registry.StringBE(), cfg.TimelockBlocks)
-	fmt.Printf("  4. %s bootstrap \"token\" 0x%x\n", registry.StringBE(), token.BytesBE())
-	fmt.Printf("  5. %s bootstrap \"migrator\" 0x%x\n", registry.StringBE(), migrator.BytesBE())
-	fmt.Printf("  6. %s finishBootstrap\n", registry.StringBE())
+	fmt.Printf("  1. %s setMigrator 0x%s\n", token.StringLE(), migrator.StringLE())
+	fmt.Printf("  2. %s configure 0x%s 0x%s\n", migrator.StringLE(), token.StringLE(), hex.EncodeToString(root))
+	fmt.Printf("  3. %s setInitialDelay %d\n", registry.StringLE(), cfg.TimelockBlocks)
+	fmt.Printf("  4. %s bootstrap \"token\" 0x%s\n", registry.StringLE(), token.StringLE())
+	fmt.Printf("  5. %s bootstrap \"migrator\" 0x%s\n", registry.StringLE(), migrator.StringLE())
+	fmt.Printf("  6. %s finishBootstrap\n", registry.StringLE())
 	fmt.Println("After the migration window, in order and multisig-signed:")
-	fmt.Printf("  7. %s close            (seals the mint forever)\n", migrator.StringBE())
-	fmt.Printf("  8. %s renounceOwnership (makes the token immutable; close FIRST, FTB-03)\n", token.StringBE())
+	fmt.Printf("  7. %s close            (seals the mint forever)\n", migrator.StringLE())
+	fmt.Printf("  8. %s renounceOwnership (makes the token immutable; close FIRST, FTB-03)\n", token.StringLE())
 	fmt.Println("Publish this output next to proofs.json so anyone can verify the wiring.")
 }
 
