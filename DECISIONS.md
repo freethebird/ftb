@@ -19,7 +19,20 @@ write-once snapshot root, supply guards, debt-free collateral withdrawal, lend e
 
 ## Decision 1: the cap number (FTB-01) is yours
 
-**Status 10 October 2026: computed and compiled in, pending the vote on ratios.** Ran
+**Status 16 October 2026: number COMMITTED by the owner — 373,721,196.93 FTB** (claim
+base 186,427,071.14 FLM + 113,932,226.80 FLOCKS at r1 = r2 = 1, with 16 flagged
+wallets excluded — the top-12 flags plus 6 inert desk sub-storage wallets from the
+#11–#20 sweep; 7 active desk-funded wallets were tested against the CEX-withdrawal
+hypothesis and judged legitimate — plus the dev-team wallet of 68,330,973.24
+FLM-equivalent + 5,030,925.75 FLOCKS; see `FLM_Top20_Ownership.md`). Supersedes the
+same-day 368,005,397.74. The dev-wallet FLM leg is still accumulating, so the
+final `maxSupply` is set at launch: re-run `merkleroot` on the updated claim list
+(`ftb_claim_list.csv`, 4,830 wallets) with `-r1 1 -r2 1`, add the
+final dev-wallet allocation, and compile that exact sum in. The compiled-in value
+below is superseded.
+
+**Superseded status, 10 October 2026:** computed and compiled in, pending the vote on
+ratios. Ran
 `cmd/merkleroot -snapshot snapshot.csv -r1 1 -r2 4` against the final snapshot (4,847 holders):
 
 - Merkle root: `0x639aaa7801f41c75d15c75aaad31aa6d6ede2b8bb81bd30f7ebf9560d50a8bba`

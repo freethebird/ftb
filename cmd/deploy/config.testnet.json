@@ -5,5 +5,12 @@
   "contracts_dir": "build",
   "merkle_root_hex": "639aaa7801f41c75d15c75aaad31aa6d6ede2b8bb81bd30f7ebf9560d50a8bba",
   "timelock_blocks": 20,
-  "ballot_options": 2
+  "ballot_options": 2,
+  "launch2": true,
+  "core": {
+    "ftb": "0xdc82bb0c89085dfeb81a40cebce786cb1b73044c",
+    "migrator": "0x48e5acca43dc76d4bad7f79c54c3c05e1a02854f",
+    "registry": "0x0d59f3bb8018f5668ac4448249f21927fe961614",
+    "ballot": "0x818db18d1b91b443413f6cad9d42d32a20f2b38d"
+  }
 }
