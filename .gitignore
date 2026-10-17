@@ -26,3 +26,4 @@ web/__pycache__/
 
 # version stamp written per deploy by ops/ipfs/ftb-push-ipfs.sh
 web/beat.json
+/rootswap
