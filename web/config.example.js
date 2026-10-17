@@ -55,7 +55,7 @@ window.FTB_CONFIG = {
 
   // the published migration proofs (also on IPFS; keep the CID in the repo)
   proofsUrl: './proofs.json',
-  merkleRoot: '0x639aaa7801f41c75d15c75aaad31aa6d6ede2b8bb81bd30f7ebf9560d50a8bba',
+  merkleRoot: '0x9b4be5c9052570deccd7ce4fb90d1edb439d5f7f31c5c692e41a638904630cc8',
 
   // set these only while a vote is live (the two published addresses)
   vote: { ftb: '', wait: '' },

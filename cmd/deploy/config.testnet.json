@@ -3,14 +3,14 @@
   "wallet": "cmd/deploy/testnet.wallet.json",
   "password_env": "FTB_DEPLOY_PASS",
   "contracts_dir": "build",
-  "merkle_root_hex": "639aaa7801f41c75d15c75aaad31aa6d6ede2b8bb81bd30f7ebf9560d50a8bba",
+  "merkle_root_hex": "9b4be5c9052570deccd7ce4fb90d1edb439d5f7f31c5c692e41a638904630cc8",
   "timelock_blocks": 20,
   "ballot_options": 2,
   "launch2": true,
   "core": {
     "ftb": "0xdc82bb0c89085dfeb81a40cebce786cb1b73044c",
-    "migrator": "0x48e5acca43dc76d4bad7f79c54c3c05e1a02854f",
+    "migrator": "0xdb1fa0b78e8c644a88d81529b536a7bf13e19377",
     "registry": "0x0d59f3bb8018f5668ac4448249f21927fe961614",
-    "ballot": "0x818db18d1b91b443413f6cad9d42d32a20f2b38d"
+    "ballot": "0x1aba1d7e2a9825e7217102591264a757489ec752"
   }
 }
