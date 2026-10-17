@@ -42,11 +42,15 @@ below is superseded.
   `0xdc82bb0c…73044c` unchanged, storage preserved), tx
   `0x7cc8eabe0c6cd700ec890bc429eff98eb3104607cb66febbc07a5e01a8a6e9d9`. Verified
   on-chain: `maxSupply()` returns the new value.
-- STILL OPEN: the TestNet migrator + ballot are bound write-once to the OLD root
-  (`0x639aaa78…`, FTB-02). Moving them means a migrator redeploy + `setMigrator`
-  repoint + seam-board propose/apply and a ballot redeploy (~21 GAS). Until then
-  TestNet claims/votes keep using the 4,847-wallet tree — consistent, just the old
-  electorate. MainNet deploys fresh with the new root, so this is a TestNet-only gap.
+- RESOLVED 17 October 2026: the swap shipped (cmd/rootswap). Renamed-manifest redeploys
+  (the N3 hash is sender+nef+name, so the rename is what makes a redeploy legal):
+  migrator R1 `0xdb1fa0b78e8c644a88d81529b536a7bf13e19377`, ballot R1
+  `0x1aba1d7e2a9825e7217102591264a757489ec752`, both configured write-once with the
+  corrected root `0x9b4be5c9…` (4,830 wallets). The token's minter moved via
+  `setMigrator` (effective immediately); the seam-board "migrator" entry followed
+  through propose/apply behind the 20-block timelock. Live `proofs.json` is now the
+  4,830-wallet set; the old 4,847 set is archived as `proofs_4847_oldroot.json`.
+  MainNet deploys fresh with the new root — no swap needed there.
 
 **Superseded status, 10 October 2026:** computed and compiled in, pending the vote on
 ratios. Ran

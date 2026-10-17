@@ -1,0 +1,11 @@
+{
+  "rpc": "https://testnet1.neo.coz.io:443",
+  "wallet": "cmd/deploy/testnet.wallet.json",
+  "password_env": "FTB_DEPLOY_PASS",
+  "contracts_dir": "build",
+  "merkle_root_hex": "9b4be5c9052570deccd7ce4fb90d1edb439d5f7f31c5c692e41a638904630cc8",
+  "timelock_blocks": 20,
+  "ballot_options": 2,
+  "token": "0xdc82bb0c89085dfeb81a40cebce786cb1b73044c",
+  "registry": "0x0d59f3bb8018f5668ac4448249f21927fe961614"
+}
