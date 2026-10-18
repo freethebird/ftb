@@ -49,7 +49,7 @@ web/
   index.html            # shell markup: one <section>/<div> root per module, nothing else
   ftb-dapi.js           # module 11 (the adapter) — unchanged role
   js/ftb-rpc.js         # module 10 — the one read seam
-  js/ftb-state.js       # the state seam (R7)
+  js/ftb-state.js       # the state seam (R7) + shared display helpers (grp, fmt, coalesce)
   js/shell.js           # module 12
   js/mod-token.js       # module 2
   js/mod-swap.js        # module 1
@@ -122,7 +122,14 @@ modules in any order (R2 makes order irrelevant among them).
   operator call, never a page write.
 - **Rules.** The lede states the mechanism plainly: the holders' 2/9 of every fee
   (Decision 6). Monthly figures are counted at receipt in 175200-block months and read
-  straight from contract storage — no indexer, no server, no estimation. The APY is
+  straight from contract storage — no indexer, no server, no estimation. The layout is
+  two uniform 4-stat grids: revenue (this month / last month / lifetime / sampled APY),
+  then the **stake board** — total staked, my stake, my share (`stakedOf ÷ totalStaked`,
+  one read pass), my claimable — with stake, unstake, and claim each on its own line
+  of one ticket. Disconnected, the my-side figures read `—` and the action ticket hides
+  — never a stale position painted over a logged-out page (R5). Loads coalesce through
+  `FtbUtil.coalesce`: a signed stake bursts `refresh` events, and without coalescing a
+  slower stale pass can resolve last and paint old numbers over fresh ones. The APY is
   **sampled, never asserted**: it appears only after two `accPerShare` samples at
   least 20 h apart (`localStorage.ftb_div_acc`); before that the panel says "sampling
   — check back tomorrow". Dividends accrue per block, so no "next payout" stat may
@@ -158,9 +165,9 @@ modules in any order (R2 makes order irrelevant among them).
   loan count) is summed from the same enumeration — never a second data path — and
   reads zero, not a stale sum, when no positions exist. Address rendering uses the
   adapter's `scriptHashToAddress` (pure-JS SHA-256, never `crypto.subtle`), so the
-  board works on plain-http mirrors. Refresh coalescing: `refresh` bursts after a
-  signed transaction collapse into one in-flight read pass plus at most one trailing
-  run, on a minimum interval.
+  board works on plain-http mirrors. Refresh coalescing (the shared `FtbUtil.coalesce`):
+  `refresh` bursts after a signed transaction collapse into one in-flight read pass
+  plus at most one trailing run, on a minimum interval.
 - **Standby:** lend hash placeholder → `#lendOff` names it.
 - **Anchors:** MO 5, 6, 10; QRN F; the launch-gating discipline of `ARCHITECTURE.md`.
 

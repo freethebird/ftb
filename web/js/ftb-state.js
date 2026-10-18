@@ -30,6 +30,29 @@
     return p.join('.');
   }
   function fmt(base) { return grp(FtbDapi.util.fromBaseUnits(base.toString())); }
+  // Refresh coalescing, shared by every module that loads on 'refresh' bursts:
+  // one read pass in flight, at most one trailing run queued, a minimum interval
+  // between passes. Without it, rapid events start overlapping reads and a slower
+  // STALE pass can resolve last — painting old numbers over fresh ones.
+  function coalesce(fn, minMs) {
+    var inflight = false, last = 0, timer = null, queued = false;
+    function done() {
+      inflight = false;
+      if (queued) timer = setTimeout(run, Math.max(0, last + minMs - Date.now()));
+    }
+    function run() {
+      queued = false;
+      if (timer) { clearTimeout(timer); timer = null; }
+      inflight = true; last = Date.now();
+      Promise.resolve(fn()).then(done, done);
+    }
+    return function () {
+      if (inflight) { queued = true; return; }
+      var wait = last + minMs - Date.now();
+      if (wait <= 0) run();
+      else if (!timer) timer = setTimeout(run, wait);
+    };
+  }
   // wallet errors are often plain objects ({type, description, data}) — never String()
   // them raw, or the user reads "[object Object]" and learns nothing.
   function errText(e) {
@@ -79,7 +102,7 @@
     return Promise.resolve(BigInt(FtbDapi.util.ftbOf(flmBase)));
   }
 
-  window.FtbUtil = { $: $, el: el, short: short, grp: grp, fmt: fmt, errText: errText };
+  window.FtbUtil = { $: $, el: el, short: short, grp: grp, fmt: fmt, errText: errText, coalesce: coalesce };
   window.FtbState = {
     CFG: CFG,
     C: C,

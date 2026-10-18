@@ -436,30 +436,11 @@
     return page(null);
   }
 
-  // Refresh coalescing: the shell emits 'refresh' in a burst around every signed
-  // transaction (optimistic, each 5 s confirmation poll, confirmed, the modal's
-  // ok & refresh) — up to ~17 events for one landing. Collapse them: one read
-  // pass in flight at a time, at most one trailing run queued, minimum interval
-  // between passes. The chain is never re-enumerated ten times for one landing.
-  function coalesce(fn, minMs) {
-    var inflight = false, last = 0, timer = null, queued = false;
-    function done() {
-      inflight = false;
-      if (queued) timer = setTimeout(run, Math.max(0, last + minMs - Date.now()));
-    }
-    function run() {
-      queued = false;
-      if (timer) { clearTimeout(timer); timer = null; }
-      inflight = true; last = Date.now();
-      Promise.resolve(fn()).then(done, done);
-    }
-    return function () {
-      if (inflight) { queued = true; return; }
-      var wait = last + minMs - Date.now();
-      if (wait <= 0) run();
-      else if (!timer) timer = setTimeout(run, wait);
-    };
-  }
+  // Refresh coalescing lives in the shared seam (FtbUtil.coalesce): the shell
+  // emits 'refresh' in a burst around every signed transaction (optimistic, each
+  // 5 s confirmation poll, confirmed, the modal's ok & refresh) — up to ~17 events
+  // for one landing — and without coalescing a slower STALE pass can resolve last
+  // and paint old numbers over fresh ones.
 
   // Addresses render through the adapter's scriptHashToAddress (pure-JS SHA-256,
   // no crypto.subtle) — the Article 10 single toolkit; this module keeps no codec.
@@ -592,7 +573,7 @@
 
   // every entry point goes through the coalesced pass — manual buttons included:
   // a click during an in-flight pass queues exactly one trailing run.
-  var loadLendC = coalesce(loadLend, 3000), loadLoansC = coalesce(loadLoans, 3000);
+  var loadLendC = FtbUtil.coalesce(loadLend, 3000), loadLoansC = FtbUtil.coalesce(loadLoans, 3000);
   var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', function () { flash(lb); loadLendC(); });
   var lr = $('loansRefresh'); if (lr) lr.addEventListener('click', function () { flash(lr); loadLoansC(); });
   FtbState.on('refresh', loadLoansC);

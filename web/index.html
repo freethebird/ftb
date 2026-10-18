@@ -402,8 +402,6 @@ body{font-size:15px}
 
 /* ---- earn over lend: same single column as every other module ---- */
 .earngrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
-.bign{font-family:var(--disp); font-size:clamp(44px,7vw,72px); line-height:1;
-  margin:6px 0 2px}
 .biglabel{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
 .flockstats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:14px}
 .flockstats .fs{border-top:1px solid var(--ink); padding-top:8px}
@@ -602,27 +600,28 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <button class="read linkish" id="earnRefresh">refresh -&gt;</button>
       </div>
       <div class="card-b">
-        <div class="flockstats">
+        <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
           <div class="fs"><div class="l">this month</div><div class="v" id="dMonth">—</div></div>
           <div class="fs"><div class="l">last month</div><div class="v" id="dLast">—</div></div>
           <div class="fs"><div class="l">lifetime</div><div class="v" id="dLife">—</div></div>
+          <div class="fs"><div class="l">dividend apy</div><div class="v" id="dApy">—</div></div>
         </div>
-        <div class="biglabel" style="margin-top:10px">dividend apy</div>
-        <div class="bign" id="dApy">—</div>
-        <div class="flockstats" style="grid-template-columns:1fr 1fr">
-          <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">—</div></div>
-          <div class="fs"><div class="l">you can claim</div><div class="v" id="dPending">—</div></div>
-        </div>
-        <div id="earnPos" hidden style="margin-top:14px">
-          <div class="meta" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-            <span class="tag">staked</span><span id="dStaked">—</span>
-            <span class="tag">stake</span><input id="dvStakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0" style="width:9ch">
-            <button class="linkish" id="dvStakeGo">stake -&gt;</button>
-            <span class="tag">unstake</span><input id="dvUnstakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0" style="width:9ch">
-            <button class="linkish" id="dvUnstakeGo">unstake -&gt;</button>
-            <button class="linkish" id="dvClaimGo">claim -&gt;</button>
+        <div id="stakeBoard" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
+          <span class="biglabel">stake board — the global pool and your share of it</span>
+          <div class="flockstats" style="margin-top:10px; grid-template-columns:repeat(4,1fr)">
+            <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">—</div></div>
+            <div class="fs"><div class="l">my stake</div><div class="v" id="dStaked">—</div></div>
+            <div class="fs"><div class="l">my share</div><div class="v" id="dShare">—</div></div>
+            <div class="fs"><div class="l">i can claim</div><div class="v" id="dPending">—</div></div>
           </div>
-          <p class="small muted" id="dvHint">review-and-sign in your wallet — the page never holds keys</p>
+          <div id="earnPos" hidden style="margin-top:12px">
+            <div class="ticket" style="margin-top:0">
+              <div class="trow"><label>stake</label><input id="dvStakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 FTB"><div class="tsel"><button id="dvStakeGo">stake -&gt;</button></div></div>
+              <div class="trow"><label>unstake</label><input id="dvUnstakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 FTB"><div class="tsel"><button id="dvUnstakeGo">unstake -&gt;</button></div></div>
+              <div class="trow"><label>claim</label><span class="gname" style="font-size:13px">everything your stake has earned to this block</span><div class="tsel"><button id="dvClaimGo">claim -&gt;</button></div></div>
+            </div>
+            <p class="small muted" id="dvHint">review-and-sign in your wallet — the page never holds keys</p>
+          </div>
         </div>
         <p class="small muted" id="earnOff">standby — goes live when the dividends module hash is configured for this network</p>
       </div>

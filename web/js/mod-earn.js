@@ -1,10 +1,12 @@
 // mod-earn.js — module 3: FTB dividends (MODULES.md).
 // The holders' 2/9 of every fee: monthly revenue (this month vs last month, from
-// the v2 on-chain ledger), lifetime received, stake, unstake, claim, APY sampler.
+// the v2 on-chain ledger), lifetime received, the sampled APY, and the stake
+// board — global pool, my stake, my % share, my claimable, with stake / unstake /
+// claim each on its own line.
 //
-// Owns (writes only these): #earn card — #dMonth, #dLast, #dLife, #dApy, #dTotal,
-// #dPending, #earnPos (#dStaked, #dvStakeAmt, #dvStakeGo, #dvUnstakeAmt,
-// #dvUnstakeGo, #dvClaimGo, #dvHint), #earnOff, #earnRefresh.
+// Owns (writes only these): #earn card — #dMonth, #dLast, #dLife, #dApy, the stake
+// board (#dTotal, #dStaked, #dShare, #dPending), #earnPos (#dvStakeAmt, #dvStakeGo,
+// #dvUnstakeAmt, #dvUnstakeGo, #dvClaimGo, #dvHint), #earnOff, #earnRefresh.
 (function () {
   'use strict';
   if (!FtbUtil.$('earn')) return; // R2: inert where the markup is absent
@@ -55,11 +57,24 @@
       } catch (e) {}
     }).catch(function () {});
     var acct = FtbState.acctHash160();
-    if (!acct) return;
+    if (!acct) {
+      // disconnected: my-side figures are absent, never stale (R5)
+      var p0 = $('earnPos'); if (p0) p0.hidden = true;
+      $('dStaked').textContent = '—'; $('dShare').textContent = '—'; $('dPending').textContent = '—';
+      return;
+    }
     var pos = $('earnPos'); if (pos) pos.hidden = false;
     var hu = [{ type: 'Hash160', value: acct }];
-    FtbRpc.readInt(dv, 'stakedOf', hu).then(function (v) { $('dStaked').textContent = fmt(v) + ' FTB'; }).catch(function () {});
-    FtbRpc.readInt(dv, 'pendingOf', hu).then(function (v) { $('dPending').textContent = fmt(v) + ' FTB'; }).catch(function () {});
+    Promise.all([
+      FtbRpc.readInt(dv, 'stakedOf', hu),
+      FtbRpc.readInt(dv, 'pendingOf', hu),
+      FtbRpc.readInt(dv, 'totalStaked', [])
+    ]).then(function (vs) {
+      $('dStaked').textContent = fmt(vs[0]) + ' FTB';
+      $('dPending').textContent = fmt(vs[1]) + ' FTB';
+      // my share of the pool = my stake ÷ total staked (chain numbers, one pass)
+      $('dShare').textContent = vs[2] > 0n ? (Number(vs[0] * 10000n / vs[2]) / 100).toFixed(2) + '%' : '—';
+    }).catch(function () {});
   }
 
   if ($('dvStakeAmt')) {
@@ -107,10 +122,13 @@
     var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
     setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
   }
-  var eb = $('earnRefresh'); if (eb) eb.addEventListener('click', function () { flash(eb); loadEarn(); });
-  FtbState.on('rpc', loadEarn);
-  FtbState.on('account', loadEarn);
-  FtbState.on('refresh', loadEarn);
+  // every load goes through the shared coalescer — a signed stake bursts 'refresh'
+  // events, and without this a slower stale pass can paint over the fresh one.
+  var loadEarnC = FtbUtil.coalesce(loadEarn, 3000);
+  var eb = $('earnRefresh'); if (eb) eb.addEventListener('click', function () { flash(eb); loadEarnC(); });
+  FtbState.on('rpc', loadEarnC);
+  FtbState.on('account', loadEarnC);
+  FtbState.on('refresh', loadEarnC);
   // keep the panel fresh while the page is open
-  setInterval(function () { if (FtbRpc.current()) loadEarn(); }, 60000);
+  setInterval(function () { if (FtbRpc.current()) loadEarnC(); }, 60000);
 })();
