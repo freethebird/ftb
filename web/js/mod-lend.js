@@ -154,34 +154,60 @@
     var priceDec = fromBase(price.toString());
     s.row.appendChild(el('span', 'gname', loanDec + ' FTB  against  ' + needDec + ' ' + which));
     var keys = keyWrap();
-    keys.appendChild(mkKey('1. lock ' + needDec + ' ' + which + ' ->', function () {
-      var plan = wholeNeo
-        ? FtbState.dapi.addCollateralNeo(FtbState.account, needArg)
-        : FtbState.dapi.addCollateralGas(FtbState.account, needArg);
-      FtbShell.showPlan('lock ' + needDec + ' ' + which + ' as collateral',
-        'transaction 1 of 2: your ' + which + ' moves into the lend contract as collateral. it stays yours — you get it back when the loan is repaid.',
-        [['collateral', needDec + ' ' + which], ['oracle ratio', '1 ' + which + ' = ' + priceDec + ' FTB'], ['what you sign', plan.summary]],
-        plan);
-    }));
-    keys.appendChild(mkKey('2. take ' + loanDec + ' ftb loan ->', function () {
-      var acct = FtbState.acctHash160();
-      FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]).then(function (maxB) {
-        FtbShell.showPlan('take a ' + loanDec + ' FTB loan',
-          'transaction 2 of 2: the contract sends you ' + loanDec + ' FTB. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.',
-          [['you receive', loanDec + ' FTB'],
-           ['your max borrow', fmt(maxB) + ' FTB'],
-           ['within limit', loanBase <= maxB ? 'yes' : 'NO — lock the collateral first'],
-           ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
-          FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
-      }).catch(function () {
-        FtbShell.showPlan('take a ' + loanDec + ' FTB loan', 'could not read max borrow — the chain enforces it regardless.',
-          [['you receive', loanDec + ' FTB']], FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
-      });
-    }));
     s.row.appendChild(keys);
     wizNote(s.box, 'a loan is two transactions, signed one after the other: 1) your ' + which +
       ' locks as collateral — wait for "confirmed on-chain" — 2) the loan lands in your wallet. your collateral is returned when you repay.');
     wiz.appendChild(s.box);
+
+    // Pre-read the position: if collateral already on-chain covers this loan
+    // (deposit confirmed, borrow failed or page reloaded), step 1 is DONE — never
+    // offer a second deposit. This is read from the chain, not remembered locally.
+    var acct0 = FtbState.acctHash160();
+    FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct0)]).then(function (maxB) {
+      if (maxB >= BigInt(loanBase)) {
+        var doneK = mkKey('1. collateral already locked ✓', function () {});
+        doneK.disabled = true;
+        keys.insertBefore(doneK, keys.firstChild);
+        return;
+      }
+      keys.insertBefore(mkKey('1. lock ' + needDec + ' ' + which + ' ->', function () {
+        var plan = wholeNeo
+          ? FtbState.dapi.addCollateralNeo(FtbState.account, needArg)
+          : FtbState.dapi.addCollateralGas(FtbState.account, needArg);
+        FtbShell.showPlan('lock ' + needDec + ' ' + which + ' as collateral',
+          'transaction 1 of 2: your ' + which + ' moves into the lend contract as collateral. it stays yours — you get it back when the loan is repaid.',
+          [['collateral', needDec + ' ' + which], ['oracle ratio', '1 ' + which + ' = ' + priceDec + ' FTB'], ['what you sign', plan.summary]],
+          plan);
+      }), keys.firstChild);
+    }).catch(function () {});
+
+    keys.appendChild(mkKey('2. take ' + loanDec + ' ftb loan ->', function () {
+      var acct = FtbState.acctHash160();
+      // Pre-check BOTH chain gates before asking for a signature: LTV headroom and
+      // pool liquidity. An empty pool faults the borrow with "not enough liquidity"
+      // — show it here, in words, instead of an opaque wallet error after signing.
+      Promise.all([
+        FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]),
+        FtbRpc.readInt(C.ftb, 'balanceOf', [h160(C.lend)]).catch(function () { return 0n; }),
+        FtbRpc.readInt(C.lend, 'reserveAccrued', []).catch(function () { return 0n; })
+      ]).then(function (vs) {
+        var maxB = vs[0], liquid = vs[1] - vs[2];
+        var okLtv = BigInt(loanBase) <= maxB;
+        var okLiq = BigInt(loanBase) <= liquid;
+        FtbShell.showPlan('take a ' + loanDec + ' FTB loan',
+          okLtv && okLiq
+            ? 'transaction 2 of 2: the contract sends you ' + loanDec + ' FTB. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.'
+            : 'this will be REJECTED on-chain — fix the failing check first.',
+          [['you receive', loanDec + ' FTB'],
+           ['your max borrow', fmt(maxB) + ' FTB — ' + (okLtv ? 'enough' : 'NO — lock the collateral first')],
+           ['pool liquidity', fmt(liquid) + ' FTB — ' + (okLiq ? 'enough' : 'NO — the pool is short. add liquidity (ADD LIQUIDITY below) or borrow less')],
+           ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
+          okLtv && okLiq ? FtbState.dapi.borrow(FtbState.account, loanBase.toString()) : null);
+      }).catch(function () {
+        FtbShell.showPlan('take a ' + loanDec + ' FTB loan', 'could not pre-check the chain — the contract enforces both limits regardless.',
+          [['you receive', loanDec + ' FTB']], FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
+      });
+    }));
   }
 
   // ----- B) pay loan -----
@@ -370,9 +396,21 @@
   function loadLoans() {
     var body = $('loansBody'); if (!body || !FtbRpc.current() || !C.lend) return;
     body.textContent = 'reading chain storage…';
-    FtbRpc.call('findstorage', [C.lend, 'MQ==']).then(function (r) { // 'MQ==' = base64(prefix 0x31)
-      var items = (r && r.results) || r || [];
-      var users = items.map(function (e) { return FtbDapi.util.b64ToHex(e.key).slice(2); }); // drop prefix byte
+    // Three prefixes, not one: 0x31 debt ('MQ=='), 0x32 NEO collateral ('Mg=='),
+    // 0x33 GAS collateral ('Mw=='). A deposit can land without its borrow (failed
+    // second signature) and collateral outlives a repaid loan — a collateral-only
+    // position must be VISIBLE, or its owner thinks the funds vanished.
+    Promise.all(['MQ==', 'Mg==', 'Mw=='].map(function (p) {
+      return FtbRpc.call('findstorage', [C.lend, p]).then(function (r) { return (r && r.results) || r || []; })
+        .catch(function () { return []; });
+    })).then(function (sets) {
+      var seen = {}, users = [];
+      sets.forEach(function (items) {
+        items.forEach(function (e) {
+          var le = FtbDapi.util.b64ToHex(e.key).slice(2); // drop prefix byte
+          if (!seen[le]) { seen[le] = 1; users.push(le); }
+        });
+      });
       if (!users.length) { body.textContent = 'no positions yet.'; return; }
       return Promise.all(users.map(function (le) {
         var be = '0x' + FtbDapi.util.reverseHex(le);
@@ -398,14 +436,19 @@
           row.style.padding = '8px 0';
           var idx = el('span', 'idx', r.bad ? '!!' : '//');
           var mid = el('div');
-          var ttl = el('span', 'ttl', r.addr.slice(0, 6) + '…' + r.addr.slice(-4));
+          var mine = FtbState.account && r.addr === FtbState.account;
+          var ttl = el('span', 'ttl', r.addr.slice(0, 6) + '…' + r.addr.slice(-4) + (mine ? ' (you)' : ''));
           ttl.title = r.addr;
           mid.appendChild(ttl);
           var meta = el('div', 'meta');
           meta.appendChild(el('span', null, 'debt ' + fmt(r.debt) + ' FTB'));
           meta.appendChild(el('span', null, r.neo.toString() + ' NEO'));
           meta.appendChild(el('span', null, fmt(r.gas) + ' GAS'));
-          var tag = el('span', r.bad ? 'tag pub' : 'tag', r.bad ? 'LIQUIDATABLE' : 'healthy');
+          // three states: liquidatable, active loan, or collateral sitting free
+          // (deposit landed but no borrow, or loan fully repaid) — claimable.
+          var tag = r.bad
+            ? el('span', 'tag pub', 'LIQUIDATABLE')
+            : (r.debt > 0n ? el('span', 'tag', 'healthy') : el('span', 'tag', 'collateral only — claimable'));
           meta.appendChild(tag);
           var btnWrap = el('div', 'read');
           if (r.bad) {
