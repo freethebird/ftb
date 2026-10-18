@@ -69,11 +69,17 @@
       var txid = res && res.txid;
       // the confirmation stays open: amount (from the plan summary) + tx id,
       // then a live on-chain confirmation once the tx lands in a block.
+      // "ok & refresh" closes the panel and forces a module refresh.
       msg.innerHTML = '';
       msg.appendChild(el('div', 'err ok', 'approved and relayed — ' + (plan.summary || 'see your wallet')));
       if (txid) msg.appendChild(el('div', 'keybox', 'tx: ' + txid));
       var st = el('div', 'small muted', 'waiting for a block — this panel updates itself, no need to refresh.');
       msg.appendChild(st);
+      var done = el('button', null, 'ok & refresh ->');
+      done.style.marginTop = '10px';
+      done.addEventListener('click', function () { $('ov').hidden = true; FtbState.emit('refresh'); });
+      msg.appendChild(done);
+      $('ovGo').style.display = 'none';
       FtbState.emit('refresh'); // optimistic; the confirmed one lands below
       var tries = 0;
       var iv = setInterval(function () {
@@ -117,6 +123,7 @@
     });
     $('ovMsg').innerHTML = '';
     pendingPlan = plan;
+    $('ovGo').style.display = '';
     $('ovGo').disabled = !plan;
     $('ov').hidden = false;
   }

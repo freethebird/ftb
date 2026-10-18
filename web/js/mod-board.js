@@ -64,7 +64,13 @@
     });
   }
 
-  $('boardRefresh').addEventListener('click', refreshBoard);
+
+  function flash(b) {
+    if (!b) return;
+    var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
+    setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
+  }
+  var bb = $('boardRefresh'); bb.addEventListener('click', function () { flash(bb); refreshBoard(); });
   $('pGo').addEventListener('click', function () {
     if (!boardReady()) {
       FtbShell.showPlan('board not wired', 'the registry hash is a placeholder in this deployment. proposals go live with the TestNet contracts.',

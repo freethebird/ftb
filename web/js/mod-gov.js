@@ -179,7 +179,13 @@
       FtbShell.showPlan('vote unavailable', errText(e), [], null);
     });
   }
-  $('govRefresh').addEventListener('click', refreshGov);
+
+  function flash(b) {
+    if (!b) return;
+    var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
+    setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
+  }
+  var gb = $('govRefresh'); gb.addEventListener('click', function () { flash(gb); refreshGov(); });
 
   // ---------- the "weight voted" tile (same tallies, summed) ----------
   function refreshVotedTile() {

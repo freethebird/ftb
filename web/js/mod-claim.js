@@ -63,7 +63,13 @@
   $('checkBtn').addEventListener('click', checkAndClaim);
   if ($('claimGo')) $('claimGo').addEventListener('click', checkAndClaim);
   $('proofsBtn').addEventListener('click', function () { window.open(FtbState.PROOFS_URL, '_blank'); });
-  $('refreshBtn').addEventListener('click', refresh);
+
+  function flash(b) {
+    if (!b) return;
+    var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
+    setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
+  }
+  var rb = $('refreshBtn'); rb.addEventListener('click', function () { flash(rb); refresh(); });
 
   FtbState.on('rpc', refresh);
   FtbState.on('refresh', refresh);

@@ -278,16 +278,16 @@
       if (vs[2] > 0n) {
         note.textContent = 'you still owe ' + fmt(vs[2]) + ' FTB — even dust debt locks collateral. repay it first (PAY LOAN over-prefills and the contract refunds the excess), or take back only what stays free.';
         keys.appendChild(mkKey('pay loan first ->', wizPay));
-        keys.appendChild(mkKey('return what\'s free ->', function () { wizWdFree(state); }));
+        keys.appendChild(mkKey('claim collateral ->', function () { wizWdFree(state); }));
       } else {
         note.textContent = 'locked: ' + vs[0].toString() + ' NEO · ' + fmt(vs[1]) + ' GAS — debt is zero, so everything comes back in one transaction.';
-        keys.appendChild(mkKey('return my collateral ->', function () {
+        keys.appendChild(mkKey('claim collateral ->', function () {
           if (state.neo === 0n && state.gas === 0n) {
             FtbShell.showPlan('nothing locked', 'you have no collateral in the lend contract.', [], null);
             return;
           }
           var plan = FtbState.dapi.withdrawCollateral(FtbState.account, state.neo.toString(), state.gas.toString());
-          FtbShell.showPlan('return ' + state.neo.toString() + ' NEO + ' + fmt(state.gas) + ' GAS',
+          FtbShell.showPlan('claim ' + state.neo.toString() + ' NEO + ' + fmt(state.gas) + ' GAS',
             'one transaction returns everything you have locked.',
             [['NEO back', state.neo.toString()], ['GAS back', fmt(state.gas)], ['what you sign', plan.summary]],
             plan);
@@ -320,7 +320,7 @@
         return;
       }
       var plan = FtbState.dapi.withdrawCollateral(FtbState.account, freeNeo.toString(), freeGas.toString());
-      FtbShell.showPlan('return ' + freeNeo.toString() + ' NEO + ' + fmt(freeGas) + ' GAS',
+      FtbShell.showPlan('claim ' + freeNeo.toString() + ' NEO + ' + fmt(freeGas) + ' GAS',
         'the most that can leave while your ' + fmt(state.debt) + ' FTB debt stays covered (60% LTV + 5% margin). repay to free the rest.',
         [['NEO back', freeNeo.toString()], ['GAS back', fmt(freeGas)], ['what you sign', plan.summary]],
         plan);
@@ -336,7 +336,109 @@
   wire('lnWizAdd', wizAdd);
   wire('lnWizRemove', wizRemove);
 
-  var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', loadLend);
+  // ----- loans board: every position enumerated from contract storage -----
+  // prefix 0x31 (borrower debt) via findstorage; per open position: address,
+  // debt, health, and a liquidation key when the chain says LIQUIDATABLE.
+  var B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  function b58enc(bytes) {
+    var zeros = 0; while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+    var digits = [0];
+    for (var i = zeros; i < bytes.length; i++) {
+      var carry = bytes[i];
+      for (var j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; }
+      while (carry) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+    }
+    var s = '';
+    for (var z = 0; z < zeros; z++) s += '1';
+    for (var q = digits.length - 1; q >= 0; q--) s += B58[digits[q]];
+    return s;
+  }
+  function hexBytes(hex) {
+    var b = []; for (var i = 0; i < hex.length; i += 2) b.push(parseInt(hex.substr(i, 2), 16));
+    return b;
+  }
+  function scriptHashToAddress(leHex) {
+    var payload = [0x35].concat(hexBytes(leHex));
+    var u8 = new Uint8Array(payload);
+    return crypto.subtle.digest('SHA-256', u8).then(function (h1) {
+      return crypto.subtle.digest('SHA-256', h1);
+    }).then(function (h2) {
+      var chk = Array.prototype.slice.call(new Uint8Array(h2), 0, 4);
+      return b58enc(payload.concat(chk));
+    });
+  }
+  function loadLoans() {
+    var body = $('loansBody'); if (!body || !FtbRpc.current() || !C.lend) return;
+    body.textContent = 'reading chain storage…';
+    FtbRpc.call('findstorage', [C.lend, 'MQ==']).then(function (r) { // 'MQ==' = base64(prefix 0x31)
+      var items = (r && r.results) || r || [];
+      var users = items.map(function (e) { return FtbDapi.util.b64ToHex(e.key).slice(2); }); // drop prefix byte
+      if (!users.length) { body.textContent = 'no positions yet.'; return; }
+      return Promise.all(users.map(function (le) {
+        var be = '0x' + FtbDapi.util.reverseHex(le);
+        return Promise.all([
+          FtbRpc.readInt(C.lend, 'debtOf', [h160(be)]),
+          FtbRpc.readInt(C.lend, 'collateralOf', [h160(be), { type: 'Boolean', value: true }]),
+          FtbRpc.readInt(C.lend, 'collateralOf', [h160(be), { type: 'Boolean', value: false }]),
+          FtbRpc.read(C.lend, 'isUnhealthy', [h160(be)]).then(function (st) {
+            var it = st && st[0];
+            return it && (it.type === 'Boolean' ? it.value : (it.value && it.value !== '0' && it.value !== ''));
+          }).catch(function () { return false; })
+        ]).then(function (vs) {
+          return scriptHashToAddress(le).then(function (addr) {
+            return { addr: addr, be: be, debt: vs[0], neo: vs[1], gas: vs[2], bad: !!vs[3] };
+          });
+        });
+      })).then(function (rows) {
+        var open = rows.filter(function (r) { return r.debt > 0n || r.neo > 0n || r.gas > 0n; });
+        body.innerHTML = '';
+        if (!open.length) { body.textContent = 'no open positions — ' + rows.length + ' closed.'; return; }
+        open.forEach(function (r) {
+          var row = el('div', 'entry');
+          row.style.padding = '8px 0';
+          var idx = el('span', 'idx', r.bad ? '!!' : '//');
+          var mid = el('div');
+          var ttl = el('span', 'ttl', r.addr.slice(0, 6) + '…' + r.addr.slice(-4));
+          ttl.title = r.addr;
+          mid.appendChild(ttl);
+          var meta = el('div', 'meta');
+          meta.appendChild(el('span', null, 'debt ' + fmt(r.debt) + ' FTB'));
+          meta.appendChild(el('span', null, r.neo.toString() + ' NEO'));
+          meta.appendChild(el('span', null, fmt(r.gas) + ' GAS'));
+          var tag = el('span', r.bad ? 'tag pub' : 'tag', r.bad ? 'LIQUIDATABLE' : 'healthy');
+          meta.appendChild(tag);
+          var btnWrap = el('div', 'read');
+          if (r.bad) {
+            var lb = el('button', 'linkish', 'liquidate ->');
+            lb.addEventListener('click', function () {
+              if (!needAcct()) return;
+              var plan = FtbState.dapi.liquidate(FtbState.account, r.debt.toString(), r.be);
+              FtbShell.showPlan('liquidate ' + r.addr.slice(0, 6) + '…' + r.addr.slice(-4),
+                'you repay up to ' + fmt(r.debt) + ' FTB of their debt and seize collateral at an 8% bonus. the pool stays solvent; the borrower keeps any excess collateral.',
+                [['borrower', r.addr], ['debt covered', fmt(r.debt) + ' FTB'], ['what you sign', plan.summary]],
+                plan);
+            });
+            btnWrap.appendChild(lb);
+          }
+          row.appendChild(idx); row.appendChild(mid); row.appendChild(btnWrap);
+          mid.appendChild(meta);
+          body.appendChild(row);
+        });
+        body.appendChild(el('div', 'small muted', open.length + ' open · ' + (rows.length - open.length) + ' closed — enumerated from contract storage, not a server.'));
+      });
+    }).catch(function (e) { body.textContent = 'board unavailable: ' + FtbUtil.errText(e); });
+  }
+
+  function flash(b) {
+    if (!b) return;
+    var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
+    setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
+  }
+
+  var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', function () { flash(lb); loadLend(); });
+  var lr = $('loansRefresh'); if (lr) lr.addEventListener('click', function () { flash(lr); loadLoans(); });
+  FtbState.on('refresh', loadLoans);
+  FtbState.on('rpc', loadLoans);
   FtbState.on('rpc', loadLend);
   FtbState.on('account', loadLend);
   FtbState.on('refresh', loadLend);

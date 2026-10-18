@@ -127,7 +127,13 @@
       });
     });
   }
-  $('ratioBtn').addEventListener('click', refreshRatios);
+
+  function flash(b) {
+    if (!b) return;
+    var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
+    setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
+  }
+  var rtb = $('ratioBtn'); rtb.addEventListener('click', function () { flash(rtb); refreshRatios(); });
 
   // ---------- TVL: total value locked in liquidity, in FTB terms ----------
   // No AMM exists on TestNet (neo#3285), so the router is a placeholder there and

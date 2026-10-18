@@ -675,6 +675,15 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
           <div id="lnWizard" style="margin-top:12px"></div>
           <p class="small muted">review-and-sign in your wallet — the page never holds keys. NEO collateral is whole units. oracle ratios: 1 NEO = 100 FTB, 1 GAS = 40 FTB · 60% LTV · 75% liquidation.</p>
         </div>
+        <div id="loansBoard" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; flex-wrap:wrap">
+            <span class="biglabel">loans board — every position, read from chain storage</span>
+            <button class="linkish" id="loansRefresh">refresh -&gt;</button>
+          </div>
+          <div id="loansBody" style="margin-top:8px" class="small">—</div>
+          <p class="small muted">health = collateral × 75% vs debt. anyone can liquidate an unhealthy
+          position and earn the 8% bonus — that is what keeps the pool solvent.</p>
+        </div>
         <p class="small muted" id="lendOff">standby — goes live when the lend contract hash is configured for this network</p>
       </div>
     </div>

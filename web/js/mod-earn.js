@@ -89,7 +89,13 @@
     });
   }
 
-  var eb = $('earnRefresh'); if (eb) eb.addEventListener('click', loadEarn);
+
+  function flash(b) {
+    if (!b) return;
+    var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
+    setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
+  }
+  var eb = $('earnRefresh'); if (eb) eb.addEventListener('click', function () { flash(eb); loadEarn(); });
   FtbState.on('rpc', loadEarn);
   FtbState.on('account', loadEarn);
   FtbState.on('refresh', loadEarn);
