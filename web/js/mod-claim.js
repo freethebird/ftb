@@ -3,7 +3,7 @@
 // One claim per address, verified on-chain against the published merkle root.
 //
 // Owns (writes only these): #claim card — #migState, #supplyLine, #capLine,
-// #refreshBtn, #checkBtn, #proofsBtn, #rootLine, #rootCount, #claimHint.
+// #refreshBtn, #checkBtn, #claimGo, #proofsBtn, #rootLine, #rootCount, #claimHint.
 (function () {
   'use strict';
   if (!FtbUtil.$('claim')) return; // R2: inert where the markup is absent
@@ -35,8 +35,8 @@
     }).catch(function () {});
   }
 
-  // ---------- check + claim ----------
-  $('checkBtn').addEventListener('click', function () {
+  // ---------- check + claim (the big "claim your ftb" key runs the same flow) ----------
+  function checkAndClaim() {
     if (!FtbState.account) { FtbWallet.needConnect(); return; }
     FtbState.proofs().then(function () {
       var en = FtbState.entryFor(FtbState.account);
@@ -59,7 +59,9 @@
     }).catch(function (e) {
       FtbShell.showPlan('proofs unavailable', errText(e), [['proofs file', FtbState.PROOFS_URL]], null);
     });
-  });
+  }
+  $('checkBtn').addEventListener('click', checkAndClaim);
+  if ($('claimGo')) $('claimGo').addEventListener('click', checkAndClaim);
   $('proofsBtn').addEventListener('click', function () { window.open(FtbState.PROOFS_URL, '_blank'); });
   $('refreshBtn').addEventListener('click', refresh);
 

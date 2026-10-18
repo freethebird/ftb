@@ -62,16 +62,43 @@
   var pendingPlan = null;
   if ($('ovGo')) $('ovGo').addEventListener('click', function () {
     if (!pendingPlan || !FtbState.dapi) return;
+    var plan = pendingPlan;
     var msg = $('ovMsg'); msg.innerHTML = ''; msg.appendChild(el('div', 'small muted', 'waiting for your wallet...'));
     $('ovGo').disabled = true;
-    FtbState.dapi.execute(pendingPlan).then(function (res) {
-      msg.innerHTML = ''; msg.appendChild(el('div', 'err ok', 'submitted. tx: ' + (res && res.txid ? res.txid : 'check your wallet')));
-      // the wallet relays the tx; it lands in a block ~15s later. show the txid
-      // briefly, close the review, refresh now for responsiveness and again after
-      // roughly one block so the new chain state is what the user sees.
-      setTimeout(function () { $('ov').hidden = true; }, 1200);
-      FtbState.emit('refresh');
-      setTimeout(function () { FtbState.emit('refresh'); }, 20000);
+    FtbState.dapi.execute(plan).then(function (res) {
+      var txid = res && res.txid;
+      // the confirmation stays open: amount (from the plan summary) + tx id,
+      // then a live on-chain confirmation once the tx lands in a block.
+      msg.innerHTML = '';
+      msg.appendChild(el('div', 'err ok', 'approved and relayed — ' + (plan.summary || 'see your wallet')));
+      if (txid) msg.appendChild(el('div', 'keybox', 'tx: ' + txid));
+      var st = el('div', 'small muted', 'waiting for a block — this panel updates itself, no need to refresh.');
+      msg.appendChild(st);
+      FtbState.emit('refresh'); // optimistic; the confirmed one lands below
+      var tries = 0;
+      var iv = setInterval(function () {
+        tries++;
+        FtbState.emit('refresh');
+        if (!txid || !FtbRpc.current()) { if (tries >= 8) clearInterval(iv); return; }
+        FtbRpc.call('getapplicationlog', [txid]).then(function (log) {
+          var ex = log && log.executions && log.executions[0];
+          if (!ex) return;
+          clearInterval(iv);
+          if (ex.vmstate === 'HALT') {
+            st.textContent = 'confirmed on-chain — the modules now show it.';
+            st.className = 'err ok';
+          } else {
+            st.textContent = 'the chain rejected it: ' + (ex.exception || ex.vmstate);
+            st.className = 'err';
+          }
+          FtbState.emit('refresh');
+        }).catch(function () {
+          if (tries >= 15) {
+            clearInterval(iv);
+            st.textContent = 'still waiting for the node — the modules will catch up on their own.';
+          }
+        });
+      }, 5000);
     }).catch(function (e) {
       msg.innerHTML = ''; msg.appendChild(el('div', 'err', 'not sent: ' + errText(e)));
     }).finally(function () { $('ovGo').disabled = false; });
