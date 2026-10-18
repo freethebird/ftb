@@ -256,10 +256,18 @@
     return this.n3.invokeRead({ scriptHash: scriptHash, operation: operation, args: args || [], signers: [] });
   };
   // low-level write: takes a plan, signs it. Optional plan.signers / plan.fee.
+  // NeoLine's invoke REQUIRES signers to be present (dapi-layer check: missing or
+  // non-array -> MALFORMED_INPUT "Please check your input" before any popup).
+  // Default: the connected account with CalledByEntry — the least privilege that
+  // covers every FTB write (vote, claim, supply, repay, withdraw, stake).
+  FtbDapi.prototype.defaultSigner = function () {
+    if (!this.account) throw new Error('connect first: no account to sign with');
+    return { account: addressToScriptHashHex(this.account, { le: true }), scopes: 1 }; // 1 = CalledByEntry
+  };
   FtbDapi.prototype.execute = function (plan) {
     if (!plan || plan.kind !== 'write') throw new Error('execute expects a write plan');
     var req = { scriptHash: plan.scriptHash, operation: plan.operation, args: plan.args };
-    if (plan.signers) req.signers = plan.signers;
+    req.signers = plan.signers || [this.defaultSigner()];
     if (plan.fee) req.fee = plan.fee;
     return this.n3.invoke(req);
   };
