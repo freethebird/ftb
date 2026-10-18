@@ -35,8 +35,8 @@
     var pos = $('lendPos'); if (pos) pos.hidden = false;
     var act = $('lendAct'); if (act) act.hidden = false;
     var hu = [{ type: 'Hash160', value: acct }];
-    FtbRpc.readInt(lend, 'collateralOf', hu.concat([{ type: 'Boolean', value: true }])).then(function (v) { $('pNeo').textContent = v.toString() + ' NEO'; }).catch(function () {});
-    FtbRpc.readInt(lend, 'collateralOf', hu.concat([{ type: 'Boolean', value: false }])).then(function (v) { $('pGas').textContent = fmt(v) + ' GAS'; }).catch(function () {});
+    FtbRpc.readInt(lend, 'collateralOf', hu.concat([{ type: 'Boolean', value: true }])).then(function (v) { $('pNeo').textContent = v.toString(); }).catch(function () {});
+    FtbRpc.readInt(lend, 'collateralOf', hu.concat([{ type: 'Boolean', value: false }])).then(function (v) { $('pGas').textContent = fmt(v); }).catch(function () {});
     FtbRpc.readInt(lend, 'debtOf', hu).then(function (v) { $('pDebt').textContent = fmt(v) + ' FTB'; }).catch(function () {});
     FtbRpc.readInt(lend, 'maxBorrow', hu).then(function (v) { $('pMax').textContent = fmt(v) + ' FTB'; }).catch(function () {});
     FtbRpc.readInt(lend, 'sharesOf', hu).then(function (v) { $('pShares').textContent = v.toString(); }).catch(function () {});

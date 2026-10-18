@@ -652,13 +652,16 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
           <div class="fs"><div class="l">holder reserve</div><div class="v" id="lReserve">—</div></div>
         </div>
         <div id="lendPos" hidden style="margin-top:14px">
-          <div class="meta" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-            <span class="tag pub" id="pHealth">—</span>
-            <span class="tag">NEO</span><span id="pNeo">—</span>
-            <span class="tag">GAS</span><span id="pGas">—</span>
-            <span class="tag">debt</span><span id="pDebt">—</span>
-            <span class="tag">max</span><span id="pMax">—</span>
-            <span class="tag">shares</span><span id="pShares">—</span>
+          <div class="biglabel">my loans</div>
+          <div class="flockstats">
+            <div class="fs"><div class="l">collateral neo</div><div class="v" id="pNeo">—</div></div>
+            <div class="fs"><div class="l">collateral gas</div><div class="v" id="pGas">—</div></div>
+            <div class="fs"><div class="l">debt (with interest)</div><div class="v" id="pDebt">—</div></div>
+          </div>
+          <div class="flockstats">
+            <div class="fs"><div class="l">max borrow</div><div class="v" id="pMax">—</div></div>
+            <div class="fs"><div class="l">health</div><div class="v"><span class="tag pub" id="pHealth">—</span></div></div>
+            <div class="fs"><div class="l">pool shares</div><div class="v" id="pShares">—</div></div>
           </div>
         </div>
         <div id="lendAct" hidden style="margin-top:14px">
