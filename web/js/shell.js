@@ -66,7 +66,12 @@
     $('ovGo').disabled = true;
     FtbState.dapi.execute(pendingPlan).then(function (res) {
       msg.innerHTML = ''; msg.appendChild(el('div', 'err ok', 'submitted. tx: ' + (res && res.txid ? res.txid : 'check your wallet')));
+      // the wallet relays the tx; it lands in a block ~15s later. show the txid
+      // briefly, close the review, refresh now for responsiveness and again after
+      // roughly one block so the new chain state is what the user sees.
+      setTimeout(function () { $('ov').hidden = true; }, 1200);
       FtbState.emit('refresh');
+      setTimeout(function () { FtbState.emit('refresh'); }, 20000);
     }).catch(function (e) {
       msg.innerHTML = ''; msg.appendChild(el('div', 'err', 'not sent: ' + errText(e)));
     }).finally(function () { $('ovGo').disabled = false; });
