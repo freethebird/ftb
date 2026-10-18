@@ -391,8 +391,9 @@ body{font-size:15px}
 .ctabs span.cur{background:var(--ink); color:var(--paper)}
 .ctabs a:hover{background:var(--ink); color:var(--paper)}
 
-/* ---- trade grid: swap card + tokens table ---- */
-.tradegrid{display:grid; grid-template-columns:5fr 7fr; gap:26px; align-items:start}
+/* ---- trade: swap card over tokens table — every module full width, stacked
+   like claim/verify (18 Oct: one column, equal horizontal size everywhere) ---- */
+.tradegrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
 
 /* tokens table: restyle the ratio cards as rows, Flamingo "Tokens on Flamingo" */
 .toktab .rgrid{display:block; counter-reset:row; border:0}
@@ -408,8 +409,8 @@ body{font-size:15px}
   padding:0 2px 6px; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--faint); border-bottom:3px double var(--ink)}
 
-/* ---- FLOCKS-style earn card: the APY is the headline ---- */
-.earngrid{display:grid; grid-template-columns:7fr 5fr; gap:26px; align-items:start}
+/* ---- earn over lend: same single column as every other module ---- */
+.earngrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
 .bign{font-family:var(--disp); font-size:clamp(44px,7vw,72px); line-height:1;
   margin:6px 0 2px}
 .biglabel{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}

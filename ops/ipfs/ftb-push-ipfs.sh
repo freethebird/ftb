@@ -43,6 +43,11 @@ echo "==> Publishing IPNS name (this can take a minute or two)"
 ssh "$HOST" "sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs name publish --key=ftb --lifetime=720h --ttl=15m /ipfs/$ROOT_CID"
 ssh "$HOST" 'rm -rf /tmp/ftb-web'
 
+# the gateway caches IPNS/DNSLink resolutions in memory; without this the site
+# keeps serving the previous build until the cached record ages out (hit 18 Oct).
+echo "==> Restarting daemon to clear the gateway's IPNS cache"
+ssh "$HOST" 'systemctl restart ipfs && sleep 5 && systemctl is-active ipfs'
+
 echo "==> Appending to deploy log"
 LOG="$(cd "$(dirname "$0")" && pwd)/DEPLOYS.md"
 printf '| auto | %s | `%s` | `%s` | Deployed via ftb-push-ipfs.sh |\n' "$STAMP" "$ROOT_CID" "$COMMIT" >> "$LOG"
