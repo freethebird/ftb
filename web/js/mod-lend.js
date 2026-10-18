@@ -273,25 +273,60 @@
       FtbRpc.readInt(C.lend, 'collateralOf', [h160(acct), { type: 'Boolean', value: false }]),
       FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)])
     ]).then(function (vs) {
-      state.neo = vs[0]; state.gas = vs[1];
-      note.textContent = 'locked: ' + vs[0].toString() + ' NEO · ' + fmt(vs[1]) + ' GAS. debt: ' + fmt(vs[2]) +
-        ' FTB — ' + (vs[2] > 0n ? 'repay first (or the chain enforces the LTV on what stays).' : 'zero, so everything below comes back in one transaction.');
-    }).catch(function () { note.textContent = 'could not read your collateral.'; });
-    keys.appendChild(mkKey('return my collateral ->', function () {
-      if (state.neo === null) return;
-      if (state.neo === 0n && state.gas === 0n) {
-        FtbShell.showPlan('nothing locked', 'you have no collateral in the lend contract.', [], null);
-        return;
+      state.neo = vs[0]; state.gas = vs[1]; state.debt = vs[2];
+      keys.innerHTML = '';
+      if (vs[2] > 0n) {
+        note.textContent = 'you still owe ' + fmt(vs[2]) + ' FTB — even dust debt locks collateral. repay it first (PAY LOAN over-prefills and the contract refunds the excess), or take back only what stays free.';
+        keys.appendChild(mkKey('pay loan first ->', wizPay));
+        keys.appendChild(mkKey('return what\'s free ->', function () { wizWdFree(state); }));
+      } else {
+        note.textContent = 'locked: ' + vs[0].toString() + ' NEO · ' + fmt(vs[1]) + ' GAS — debt is zero, so everything comes back in one transaction.';
+        keys.appendChild(mkKey('return my collateral ->', function () {
+          if (state.neo === 0n && state.gas === 0n) {
+            FtbShell.showPlan('nothing locked', 'you have no collateral in the lend contract.', [], null);
+            return;
+          }
+          var plan = FtbState.dapi.withdrawCollateral(FtbState.account, state.neo.toString(), state.gas.toString());
+          FtbShell.showPlan('return ' + state.neo.toString() + ' NEO + ' + fmt(state.gas) + ' GAS',
+            'one transaction returns everything you have locked.',
+            [['NEO back', state.neo.toString()], ['GAS back', fmt(state.gas)], ['what you sign', plan.summary]],
+            plan);
+        }));
       }
-      var plan = FtbState.dapi.withdrawCollateral(FtbState.account, state.neo.toString(), state.gas.toString());
-      FtbShell.showPlan('return ' + state.neo.toString() + ' NEO + ' + fmt(state.gas) + ' GAS',
-        'one transaction returns everything you have locked. if any debt remains, the contract keeps enough collateral to cover the LTV — repay first to empty it.',
-        [['NEO back', state.neo.toString()], ['GAS back', fmt(state.gas)], ['what you sign', plan.summary]],
-        plan);
-    }));
+    }).catch(function () { note.textContent = 'could not read your collateral.'; });
     s.row.appendChild(el('span', 'gname', 'all of it'));
     s.row.appendChild(keys);
     wiz.appendChild(s.box);
+  }
+  // partial withdrawal while debt exists: keep enough value for debt ÷ 60% + 5%
+  // margin. NEO leaves only if the GAS alone can cover; GAS leaves down to the cover.
+  function wizWdFree(state) {
+    var assets = FtbState.CFG.assets;
+    Promise.all([
+      FtbRpc.readInt(C.oracle, 'price', [h160(assets.neo)]),
+      FtbRpc.readInt(C.oracle, 'price', [h160(assets.gas)])
+    ]).then(function (ps) {
+      var pN = ps[0], pG = ps[1];
+      var needVal = state.debt * 105n / 60n + 1n;                 // FTB base that must stay covered
+      var neoVal = state.neo * pN;                                // NEO: value = whole × price
+      var gasVal = state.gas * pG / 100000000n;                   // GAS: value = base × price / 1e8
+      var freeNeo = gasVal >= needVal ? state.neo : 0n;
+      var coverFromNeo = (freeNeo > 0n ? 0n : neoVal);
+      var shortfall = needVal > coverFromNeo ? needVal - coverFromNeo : 0n;
+      var keepGas = shortfall * 100000000n / pG + 1n;
+      var freeGas = state.gas > keepGas ? state.gas - keepGas : 0n;
+      if (freeNeo === 0n && freeGas === 0n) {
+        FtbShell.showPlan('nothing free', 'everything locked is covering your debt. repay first to free it.', [], null);
+        return;
+      }
+      var plan = FtbState.dapi.withdrawCollateral(FtbState.account, freeNeo.toString(), freeGas.toString());
+      FtbShell.showPlan('return ' + freeNeo.toString() + ' NEO + ' + fmt(freeGas) + ' GAS',
+        'the most that can leave while your ' + fmt(state.debt) + ' FTB debt stays covered (60% LTV + 5% margin). repay to free the rest.',
+        [['NEO back', freeNeo.toString()], ['GAS back', fmt(freeGas)], ['what you sign', plan.summary]],
+        plan);
+    }).catch(function (e) {
+      FtbShell.showPlan('oracle unavailable', FtbUtil.errText(e), [], null);
+    });
   }
 
   function wire(id, fn) { var b = $(id); if (b) b.addEventListener('click', fn); }
