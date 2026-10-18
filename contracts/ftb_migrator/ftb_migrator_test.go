@@ -56,10 +56,18 @@ func TestClaimFlow(t *testing.T) {
 
 	mig.Invoke(t, stackitem.Null{}, "configure", tokC.Hash.BytesBE(), root)
 
-	// a1 claims its exact entitlement
+	// the committed ratio is visible on-chain (FTB-01): r = 100M FTB ÷ 526,782,179.10 FLM
+	mig.Invoke(t, stackitem.Make(10000000000000000), "ratioNum")
+	mig.Invoke(t, stackitem.Make(52678217910000000), "ratioDen")
+	// quote(1000) = floor(1000 × r) = 189; quote(2500) = floor(2500 × r) = 474
+	mig.Invoke(t, stackitem.Make(189), "quote", 1000)
+	mig.Invoke(t, stackitem.Make(474), "quote", 2500)
+	mig.Invoke(t, stackitem.Make(0), "quote", 0)
+
+	// a1 claims its exact entitlement; FTB minted is floor(amount × r), not the face value
 	mig1 := e.NewInvoker(migC.Hash, a1)
 	mig1.Invoke(t, stackitem.Null{}, "claim", a1.ScriptHash(), 1000, proofArg(proofs[0]))
-	tok.Invoke(t, stackitem.Make(1000), "balanceOf", a1.ScriptHash().BytesBE())
+	tok.Invoke(t, stackitem.Make(189), "balanceOf", a1.ScriptHash().BytesBE())
 	mig.Invoke(t, stackitem.Make(true), "claimed", a1.ScriptHash())
 
 	// no double claim
@@ -69,9 +77,9 @@ func TestClaimFlow(t *testing.T) {
 	mig2 := e.NewInvoker(migC.Hash, a2)
 	mig2.InvokeFail(t, "bad proof", "claim", a2.ScriptHash(), 9999, proofArg(proofs[1]))
 
-	// a2 claims correctly
+	// a2 claims correctly; supply grows by the converted amount only
 	mig2.Invoke(t, stackitem.Null{}, "claim", a2.ScriptHash(), 2500, proofArg(proofs[1]))
-	tok.Invoke(t, stackitem.Make(3500), "totalSupply")
+	tok.Invoke(t, stackitem.Make(189+474), "totalSupply")
 
 	// someone not in the snapshot cannot claim
 	a3 := e.NewAccount(t)

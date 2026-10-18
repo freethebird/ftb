@@ -135,8 +135,8 @@ MARKUP = """<aside class="rail">
       <button class="linkish" id="govRefresh">tally -&gt;</button>
     </div>
     <h1 id="govQ">no live ballot</h1>
-    <p class="hero2-hint" id="govHint">one vote per snapshot address — weight is your snapshot
-      balance, your proof is the same one you claim with. every node counts the same chain state.</p>
+    <p class="hero2-hint" id="govHint">one vote per snapshot address — 1 FLM of snapshot
+      balance = 1 vote, proven with the same merkle proof you claim with. every node counts the same chain state.</p>
     <div id="govBody"></div>
   </section>
 
@@ -389,7 +389,7 @@ TILES_SCRIPT = """
         return readInt(url,C.ballot,'tally',[{type:'Integer',value:String(i+1)}]);
       })).then(function(vals){
         var t=vals.reduce(function(s,v){return s+v;},0n);
-        set('tVoted', fmt(t)+' FTB');
+        set('tVoted', fmt(t)+' FLM');
       }).catch(function(){});
     }
     // TVL: total value locked in liquidity, in FTB terms. No AMM exists on TestNet

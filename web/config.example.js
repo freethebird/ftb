@@ -60,6 +60,13 @@ window.FTB_CONFIG = {
   // set these only while a vote is live (the two published addresses)
   vote: { ftb: '', wait: '' },
 
+  // committed economics (DECISIONS.md 18 Oct): hard cap 100,000,000 FTB.
+  // r = 100,000,000 ÷ 526,782,179.10 = 0.189832 FTB per FLM/FLOCKS — the migrator
+  // mints floor(entitlement × r), verifiable on-chain via migrator.quote().
+  // the genesis vote weighs 1 FLM = 1 vote over the snapshot electorate (FLM-equiv);
+  // future votes weigh 1 FTB = 1 vote. electorate drives the turnout readout.
+  governance: { ratio: 0.189832, electorate: 0 },
+
   // the live ballot: human-readable question + option labels, matching the on-chain order
   // (option 0 is the first label). Leave question empty to hide the governance section.
   ballot: { question: '', options: [] },

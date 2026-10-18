@@ -1,0 +1,27 @@
+name: FtbMigratorR2
+safemethods:
+  - claimed
+  - quote
+  - ratioNum
+  - ratioDen
+events:
+  - name: Configured
+    parameters:
+      - name: ftb
+        type: Hash160
+      - name: root
+        type: ByteArray
+  - name: Claimed
+    parameters:
+      - name: account
+        type: Hash160
+      - name: amount
+        type: Integer
+      - name: minted
+        type: Integer
+  - name: Closed
+permissions:
+  - contract: '*'
+    methods:
+      - mintForMigration
+      - closeMigration

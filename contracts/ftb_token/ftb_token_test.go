@@ -16,8 +16,8 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/vm/stackitem"
 )
 
-// must equal the maxSupply constant in ftb_token.go (FTB-01: merkleroot total + dev allocation)
-const maxSupply = 37372119693660360
+// must equal the maxSupply constant in ftb_token.go (FTB-01: the committed 100M hard cap)
+const maxSupply = 10000000000000000
 
 func deploy(t *testing.T) (*neotest.Executor, *neotest.ContractInvoker, neotest.Signer, neotest.Signer) {
 	bc, validator := chain.NewSingle(t)

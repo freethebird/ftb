@@ -291,7 +291,7 @@
   FtbDapi.prototype.claim = function (account, amountBase, proofHexArray) {
     var proof = A.arr((proofHexArray || []).map(function (h) { return A.bytesHex(h); }));
     return this._w(this._need('migrator'), 'claim', [A.h160(account), A.int(amountBase), proof],
-      'Claim ' + fromBaseUnits(amountBase) + ' FTB for ' + account);
+      'Claim ' + fromBaseUnits(amountBase) + ' FLM-equiv as ' + fromBaseUnits(ftbOf(amountBase)) + ' FTB (r = 0.189832) for ' + account);
   };
   FtbDapi.prototype.supply = function (user, amountBase) {
     return this._w(this._need('ftb'), 'transfer',
@@ -354,12 +354,13 @@
   // On-chain weighted vote (preferred over the dust-signal vote above): proves snapshot weight
   // with the SAME migration Merkle proof, one vote per snapshot address. proofHexArray is the
   // array of hex node hashes from proofs.json for `account`; amountBase is its snapshot balance
-  // in base units. The ballot contract is deployed per proposal; its hash IS the proposal id.
+  // in FLM-equivalent base units — the genesis vote weighs exactly 1 FLM = 1 vote (DECISIONS.md
+  // 18 Oct). The ballot contract is deployed per proposal; its hash IS the proposal id.
   FtbDapi.prototype.ballotVote = function (account, amountBase, option, proofHexArray) {
     var proof = A.arr((proofHexArray || []).map(function (h) { return A.bytesHex(h); }));
     return this._w(this._need('ballot'), 'vote',
       [A.h160(account), A.int(amountBase), A.int(option), proof],
-      'Vote option #' + option + ' with weight ' + fromBaseUnits(amountBase) + ' FTB for ' + account);
+      'Vote option #' + option + ' with weight ' + fromBaseUnits(amountBase) + ' FLM (1 FLM = 1 vote) for ' + account);
   };
   // Submit a proposal to the board (registry v2): the exact bond IS the transfer amount and
   // the proposal rides as the payment data [kind, ref, meta]. The registry escrows the bond;
@@ -413,6 +414,12 @@
     return function () { global.removeEventListener(name, wrapped); };
   };
 
+  // exact mirror of migrator.quote() on-chain (DECISIONS.md 18 Oct): the committed
+  // conversion r = 100,000,000 FTB ÷ 526,782,179.10 FLM-equiv = 0.189832, computed in
+  // integers with floor semantics — floor(amount × 10^16 / 52,678,217,910,000,000).
+  var RATIO_NUM = 10000000000000000n, RATIO_DEN = 52678217910000000n;
+  function ftbOf(flmBase) { return (BigInt(flmBase) * RATIO_NUM / RATIO_DEN).toString(); }
+
   // expose helpers for pages and tests
   FtbDapi.MAGIC = MAGIC;
   FtbDapi.WITNESS = WITNESS;
@@ -422,7 +429,8 @@
     toBaseUnits: toBaseUnits, fromBaseUnits: fromBaseUnits,
     hexToB64: hexToB64, b64ToHex: b64ToHex, reverseHex: reverseHex,
     addressToScriptHashHex: addressToScriptHashHex,
-    decodeInt: decodeInt, decodeBool: decodeBool, decodeHash160: decodeHash160
+    decodeInt: decodeInt, decodeBool: decodeBool, decodeHash160: decodeHash160,
+    ftbOf: ftbOf
   };
 
   global.FtbDapi = FtbDapi;

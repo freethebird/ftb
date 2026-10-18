@@ -2,6 +2,12 @@
 // published pre-exploit snapshot, proven by a Merkle proof. The attacker is not in the
 // snapshot, so it cannot claim. This is the ONLY thing allowed to mint FTB.
 //
+// Leaves are denominated in FLM-equivalent base units (8 decimals). The governance
+// ratio r (DECISIONS.md 18 Oct: 1 FLM/FLOCKS = 0.189832 FTB, i.e. the 100,000,000 FTB
+// hard cap ÷ 526,782,179.10 total FLM-equiv supply) is applied AT MINT TIME:
+// minted = floor(amount × ratioNum / ratioDen). Keeping the tree in FLM units means
+// the same proof also carries the governance vote at exactly 1 FLM = 1 vote.
+//
 // Leaf format (MUST match the off-chain builder in pkg/merkle EXACTLY):
 //
 //	leaf = sha256( 0x00 ++ accountBytes(20) ++ ":" ++ decimal(amount) )
@@ -28,6 +34,29 @@ var (
 	keyRoot    = []byte{0x03}
 	prefixDone = []byte{0x10}
 )
+
+const (
+	// The governance ratio r in exact integer form (DECISIONS.md 18 Oct):
+	// 100,000,000 FTB (in base units) over 526,782,179.10 FLM-equiv (in base units).
+	// floor semantics: the last base unit always rounds down, so the cap can never
+	// be exceeded by rounding.
+	ratioNum = 10_000_000_000_000_000 // 100M FTB × 10^8
+	ratioDen = 52_678_217_910_000_000 // 526,782,179.10 × 10^8
+)
+
+// RatioNum and RatioDen expose the committed conversion ratio so anyone can verify
+// on-chain that claims mint at the published r = 0.189832 (audit item FTB-01).
+func RatioNum() int { return ratioNum }
+func RatioDen() int { return ratioDen }
+
+// Quote returns how much FTB a snapshot entitlement of `amount` FLM-equivalent base
+// units mints: floor(amount × r). The front-end previews claims with exactly this.
+func Quote(amount int) int {
+	if amount <= 0 {
+		return 0
+	}
+	return amount * ratioNum / ratioDen
+}
 
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
@@ -67,7 +96,8 @@ func Claimed(account interop.Hash160) bool {
 }
 
 // Claim verifies the caller's (account, amount) entitlement against the published root,
-// marks it claimed once, and mints exactly that amount of FTB to the account.
+// marks it claimed once, and mints floor(amount × r) FTB to the account — `amount` is
+// the snapshot entitlement in FLM-equivalent base units, r the committed ratio.
 func Claim(account interop.Hash160, amount int, proof [][]byte) {
 	if len(account) != 20 {
 		panic("claim: bad account")
@@ -110,9 +140,13 @@ func Claim(account interop.Hash160, amount int, proof [][]byte) {
 	}
 
 	storage.Put(ctx, doneKey, 1)
+	mint := Quote(amount)
+	if mint <= 0 {
+		panic("claim: entitlement converts to zero FTB")
+	}
 	ftb := storage.Get(ctx, keyFTB).(interop.Hash160)
-	contract.Call(ftb, "mintForMigration", contract.All, account, amount)
-	runtime.Notify("Claimed", account, amount)
+	contract.Call(ftb, "mintForMigration", contract.All, account, mint)
+	runtime.Notify("Claimed", account, amount, mint)
 }
 
 // Close seals the token's mint forever, ending the migration. Owner only.

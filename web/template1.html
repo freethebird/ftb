@@ -494,7 +494,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
         <span class="idx">01</span>
         <div><span class="ttl" id="govQ">no live ballot</span></div>
         <button class="read linkish" id="govRefresh">tally -&gt;</button>
-        <div class="meta"><span id="govHint">one vote per snapshot address — weight is your snapshot balance, your proof is the same one you claim with. every node counts the same chain state.</span></div>
+        <div class="meta"><span id="govHint">one vote per snapshot address — 1 FLM of snapshot balance = 1 vote, proven with the same merkle proof you claim with. every node counts the same chain state.</span></div>
         <div class="meta"><div id="govBody" style="width:100%"></div></div>
       </div>
     </div>
@@ -632,6 +632,10 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
     });
   }
   function fmt(base){ return FtbDapi.util.fromBaseUnits(base.toString()); }
+  // exact mirror of migrator.quote() on-chain: FLM-equiv base units -> FTB base units
+  // at the committed r = 0.189832 (DECISIONS.md 18 Oct). Used for claim previews only;
+  // the chain does the authoritative conversion at mint time.
+  function ftbOf(flmBase){ return FtbDapi.util.ftbOf(flmBase); }
 
   // ---------- page state ----------
   var dapi = null, account = null, proofs = null;
@@ -672,7 +676,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
       if (!en){ $('balClaim').textContent='not in snapshot'; return; }
       readFn(C.migrator,'claimed',h).then(function(st){
         var it=st&&st[0], c = it && (it.type==='Boolean' ? it.value : (it.type==='Integer' ? parseInt(it.value||'0',10)>0 : (it.value && it.value!=='')));
-        $('balClaim').textContent = c ? 'claimed ✓' : fmt(en.amount)+' FTB';
+        $('balClaim').textContent = c ? 'claimed ✓' : fmt(ftbOf(en.amount))+' FTB';
       }).catch(function(){});
     }).catch(function(){});
   }
@@ -751,10 +755,11 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
       }
       $('ovGo').disabled = false;
       var plan = dapi.claim(account, en.amount, en.proof);
-      showPlan('claim ' + fmt(en.amount) + ' FTB',
-        'one claim per address, verified on-chain against the published merkle root. check the hashes in section IV before you sign.',
+      showPlan('claim ' + fmt(ftbOf(en.amount)) + ' FTB',
+        'one claim per address, verified on-chain against the published merkle root. the migrator converts at the committed r = 0.189832 (1 FLM/FLOCKS = 0.189832 FTB). check the hashes in section IV before you sign.',
         [['address', en.address],
-         ['entitlement', fmt(en.amount) + ' FTB'],
+         ['entitlement', fmt(en.amount) + ' FLM-equiv'],
+         ['you receive', fmt(ftbOf(en.amount)) + ' FTB'],
          ['proof', en.proof.length + ' nodes'],
          ['what you sign', plan.summary]],
         plan);
@@ -962,7 +967,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
         var opt=el('div','gopt');
         var row=el('div','grow');
         row.appendChild(el('span','gname','#'+(i+1)+' '+opts[i]));
-        row.appendChild(el('span','gnum', fmt(v)+' FTB'));
+        row.appendChild(el('span','gnum', fmt(v)+' FLM'));
         var btn=el('button',null,'vote ->');
         btn.addEventListener('click', function(){ voteGov(i+1, opts[i]); });
         row.appendChild(btn);
@@ -975,16 +980,19 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
         opt.appendChild(meta);
         body.appendChild(opt);
       });
-      readInt(C.ftb,'maxSupply').then(function(cap){
-        var turn = cap>0n ? (Number(total*10000n/cap)/100).toFixed(2) : '0.00';
-        $('govHint').textContent='total weight voted: '+fmt(total)+' FTB · turnout '+turn+'% of the '+fmt(cap)+' FTB snapshot · tallies are chain state — every node counts the same result.';
-      }).catch(function(){
-        $('govHint').textContent='total weight voted: '+fmt(total)+' FTB · tallies are chain state — every node counts the same result.';
-      });
+      // turnout is measured against the snapshot electorate (FLM-equiv, from config —
+      // DECISIONS.md 18 Oct), NOT the FTB cap: vote weight is denominated in FLM.
+      var elect = (CFG.governance && CFG.governance.electorate) || 0;
+      if (elect > 0){
+        var turn = (Number(total)/1e8/elect*100).toFixed(2);
+        $('govHint').textContent='total weight voted: '+fmt(total)+' FLM · turnout '+turn+'% of the '+elect.toLocaleString('en-US',{maximumFractionDigits:2})+' FLM snapshot electorate · tallies are chain state — every node counts the same result.';
+      } else {
+        $('govHint').textContent='total weight voted: '+fmt(total)+' FLM · tallies are chain state — every node counts the same result.';
+      }
       if (account){
         readFn(C.ballot,'voted',[{type:'Hash160',value:acctHash160()}]).then(function(st){
           var it=st&&st[0], v = it && (it.type==='Boolean' ? it.value : (it.type==='Integer' ? parseInt(it.value||'0',10)>0 : (it.value && it.value!=='')));
-          if (v) $('govHint').textContent='this address has voted · total weight voted: '+fmt(total)+' FTB.';
+          if (v) $('govHint').textContent='this address has voted · total weight voted: '+fmt(total)+' FLM.';
         }).catch(function(){});
       }
     }).catch(function(e){ body.appendChild(el('div','small','tally unavailable: '+(e.message||e))); });
@@ -1006,10 +1014,10 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
         $('ovGo').disabled=false;
         var plan=dapi.ballotVote(account, en.amount, idx, en.proof);
         showPlan('vote: '+label,
-          'your weight is your snapshot balance, proven with the same merkle proof as your claim. one vote per address, counted on-chain.',
+          'your weight is your snapshot balance in FLM — 1 FLM = 1 vote — proven with the same merkle proof as your claim. one vote per address, counted on-chain.',
           [['question', CFG.ballot.question],
            ['option', '#'+idx+' '+label],
-           ['weight', fmt(en.amount)+' FTB'],
+           ['weight', fmt(en.amount)+' FLM'],
            ['what you sign', plan.summary]],
           plan);
       });
