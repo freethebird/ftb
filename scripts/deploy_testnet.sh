@@ -37,7 +37,7 @@ for (const k of ["ftb","migrator","registry","ballot","oracle","lend","bondvault
 }
 s = s.replace(
   /ballot: \{ question: '"'"''"'"', options: \[\] \}/,
-  "ballot: { question: '"'"'ratios: r1 = 1 FLM : 1 FTB — adopt?'"'"', options: ['"'"'adopt'"'"', '"'"'wait'"'"'] }"
+  "ballot: { question: '"'"'1 FLM/FLOCKS = 0.189832 FTB — adopt?'"'"', options: ['"'"'adopt'"'"', '"'"'wait'"'"'] }"
 );
 fs.writeFileSync("web/config.js", s);
 console.log("web/config.js updated:", JSON.stringify(h));

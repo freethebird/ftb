@@ -77,24 +77,26 @@ ApplicationConfiguration:
   P2PNotary:
     Enabled: false
   # RPC is bound to localhost only; Caddy fronts it with TLS and CORS.
-  # StartWhenSynchronized: refuse to serve until the chain is fully synced, so
-  # front-end failover skips this node while it is catching up (a half-synced node
-  # answers "unknown contract" for anything deployed above its height).
+  # StartWhenSynchronized is deliberately FALSE on the live node: the front-end
+  # probes getblockcount itself and skips any node >1000 blocks behind tip, so a
+  # catching-up node still answers (its height IS its health signal) while reads
+  # fail over to synced endpoints.
   RPC:
     Enabled: true
     Addresses:
       - 127.0.0.1:20332
     MaxGasInvoke: 50
     MaxIteratorResultItems: 100
-    StartWhenSynchronized: true
+    StartWhenSynchronized: false
   Prometheus:
     Enabled: false
   Pprof:
     Enabled: false
-  # fast bootstrap: fetch historical blocks from NeoFS instead of crawling P2P
-  # from genesis (20M+ blocks). worker count kept low for 2 GB VMs.
+  # NeoFS block fetcher DISABLED 18 Oct: the st*.storage.fs.neo.org endpoints are
+  # dead globally, and leaving the fetcher on cost ~3x sync speed (retry stalls on
+  # a 1 vCPU box). Pure P2P sync is the only path until NeoFS returns.
   NeoFSBlockFetcher:
-    Enabled: true
+    Enabled: false
     Addresses:
       - st1.storage.fs.neo.org:8080
       - st2.storage.fs.neo.org:8080

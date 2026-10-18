@@ -540,7 +540,7 @@ def main():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>free the bird — template 2 (station dashboard)</title>
+<title>free the bird</title>
 <style>
 """ + font + "\n" + style_all + "\n" + T2_CSS + """
 </style>
