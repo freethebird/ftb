@@ -108,36 +108,56 @@ modules in any order (R2 makes order irrelevant among them).
 
 ### 3. FTB dividends — `mod-earn.js` — owns `#earn`
 
-- **Reads:** `dividends.totalStaked`, `dividends.accPerShare`, `dividends.stakedOf(acct)`,
-  `dividends.pendingOf(acct)`.
+- **Reads:** the v2 monthly revenue ledger — `dividends.monthIndex`, then
+  `dividends.monthTotal(i)` for this month and last — plus `dividends.totalReceived`,
+  `dividends.totalStaked`, `dividends.accPerShare`, and per account
+  `dividends.stakedOf(acct)`, `dividends.pendingOf(acct)`.
 - **Writes:** `dapi.stakeFtb` (tagged FTB transfer, `["stake"]`), `dapi.claimDividends`,
-  `dapi.unstakeFtb`.
+  `dapi.unstakeFtb`. Revenue enters the module only via `lend.sweepDividends` — an
+  operator call, never a page write.
 - **Rules.** The lede states the mechanism plainly: the holders' 2/9 of every fee
-  (Decision 6). The APY is **sampled, never asserted**: it appears only after two
-  `accPerShare` samples at least 20 h apart (`localStorage.ftb_div_acc`); before that the
-  panel says "sampling — check back tomorrow". Dividends accrue per block, so no "next
-  payout" stat may ever be shown — that number would be a lie. Stake/unstake/claim all go
-  through the one modal with the plan summary verbatim.
+  (Decision 6). Monthly figures are counted at receipt in 175200-block months and read
+  straight from contract storage — no indexer, no server, no estimation. The APY is
+  **sampled, never asserted**: it appears only after two `accPerShare` samples at
+  least 20 h apart (`localStorage.ftb_div_acc`); before that the panel says "sampling
+  — check back tomorrow". Dividends accrue per block, so no "next payout" stat may
+  ever be shown — that number would be a lie. Stake/unstake/claim all go through the
+  one modal with the plan summary verbatim.
 - **Standby:** dividends hash placeholder → `#earnOff` names it.
 - **Anchors:** MO 6 (a number you cannot yet measure is not shown); Annex B 11.
 
 ### 4. LEND — `mod-lend.js` — owns `#lend`
 
-- **Reads:** `lend.utilizationBps`, `lend.borrowApyBps`, `lend.supplyApyBps`,
-  `lend.totalBorrows`/`reserveAccrued`, and per account `debtOf`, `collateralOf` (NEO and
-  GAS), `collateralValue`, `maxBorrow`, `isUnhealthy`, `sharesOf`.
-- **Writes:** none in the current launch phase. When Launch 2 opens them, only these
-  builders, all through the modal: `supply`, `repay`, `borrow`, `withdrawSupply`,
-  `withdrawCollateral`, `addCollateralNeo` (whole units), `addCollateralGas`, `liquidate`.
+- **Reads:** `lend.borrowApyBps`, `lend.supplyApyBps`, `lend.utilizationBps`, pool cash
+  (`ftb.balanceOf(lend)`), `lend.totalBorrows`, `lend.reserveAccrued`; oracle `price`
+  for NEO and GAS; per account `debtOf`, `collateralOf` (NEO and GAS), `maxBorrow`,
+  `isUnhealthy`, `sharesOf`, `liquidationsOf`. The loans board enumerates contract
+  storage directly: `findstorage` over prefixes 0x31 (debt), 0x32 (NEO collateral),
+  0x33 (GAS collateral), 0x34 (liquidation count), **paginated** through
+  `next`/`truncated` with a hard page cap — past the cap the board says it is
+  truncated rather than showing a silently partial enumeration.
+- **Writes (live since 18 Oct):** `supply` and `repay` (tagged FTB transfers),
+  `borrow`, `withdrawSupply`, `withdrawCollateral`, `addCollateralNeo` (whole units),
+  `addCollateralGas`, `liquidate` — all pure plans through the one modal (R6).
 - **Rules.** Lend is the highest-risk module (it is the class of bug that destroyed
   Flamingo), so its panel is read-first: position and health are visible before any
   action exists. The health tag shows `isUnhealthy` verbatim — never a softened
   paraphrase. Collateral display separates NEO (whole) from GAS (base units). Oracle
-  dependence is stated, not hidden: if the oracle is paused, borrow-side figures read as
-  unavailable, and the panel says why.
-- **Standby:** lend hash placeholder → `#lendOff` names it; Launch 2 gate text stays
-  until its own dedicated audit pass lands.
-- **Anchors:** MO 5, 6; QRN F; the launch-gating discipline of `ARCHITECTURE.md`.
+  dependence is stated, not hidden: if the oracle is paused, borrow-side figures read
+  as unavailable, and the panel says why. The wizard asks one question at a time
+  (start loan → predetermined collateral pick → two signatures; pay loan; add
+  liquidity; remove liquidity; claim collateral). The board carries the detail:
+  per-position debt/collateral/health, your headroom and LTV, a `take loan ->` action
+  on your own collateral-only row, a `liquidate ->` action on any LIQUIDATABLE row,
+  and a permanent liquidation mark. The totals strip (FTB loaned, NEO+GAS locked,
+  loan count) is summed from the same enumeration — never a second data path — and
+  reads zero, not a stale sum, when no positions exist. Address rendering uses the
+  adapter's `scriptHashToAddress` (pure-JS SHA-256, never `crypto.subtle`), so the
+  board works on plain-http mirrors. Refresh coalescing: `refresh` bursts after a
+  signed transaction collapse into one in-flight read pass plus at most one trailing
+  run, on a minimum interval.
+- **Standby:** lend hash placeholder → `#lendOff` names it.
+- **Anchors:** MO 5, 6, 10; QRN F; the launch-gating discipline of `ARCHITECTURE.md`.
 
 ### 5. Governance — `mod-gov.js` — owns `#vote` and the tile `#tVoted`
 
@@ -238,7 +258,10 @@ modules in any order (R2 makes order irrelevant among them).
 
 - **Role:** the Article 10 shared toolkit: one canonical implementation of every builder,
   reader, decoder, and byte/address primitive. Pages and modules consume it; none
-  re-implement it. (The pure-JS SHA-256 + full base58check live here and only here.)
+  re-implement it. (The pure-JS SHA-256 + full base58check live here and only here —
+  decode for untrusted input, encode for rendering storage-derived script hashes as
+  addresses via `scriptHashToAddress`. No module re-implements either, and no module
+  touches `crypto.subtle`.)
 - **Rules.** Builders stay pure: build, expose `.summary`, sign nothing. Reads carry no
   signer. New chain capabilities enter as adapter builders first — a module may never
   hand-assemble an invocation. Every builder's summary is a plain sentence a user can
@@ -285,3 +308,9 @@ that the verify module confirms live on at least two mirrors.
 **Landed 18 October 2026:** the module split itself — WEB-01, WEB-02, WEB-03, and WEB-05
 are closed in code (see `WEB_AUDIT.md` § Remediation). Remaining: WEB-04 (template
 archive) and the two-mirror `beat.json` confirmation at the next publish.
+
+**Live 18 October 2026 (second pass):** dividends (module 3) and lend writes (module 4)
+run against TestNet hashes; sections 3 and 4 above describe the live state, not a launch
+gate. The same-day lend refactor moved the last out-of-adapter codec into module 11
+(base58 encode + script-hash→address, KAT-pinned against live chain data) and put the
+lend module's refresh path under coalescing.

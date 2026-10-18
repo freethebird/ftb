@@ -2,6 +2,13 @@
 // NEO+GAS collateral, FTB loans. This page is read-only for the pool; every
 // position-changing action is a review-and-sign plan through the adapter.
 //
+// Read discipline: loads coalesce (one pass in flight, at most one trailing
+// run, 3 s minimum interval) — the shell emits 'refresh' in a burst around
+// every signed tx, and the board must not re-enumerate storage per event.
+// Board enumeration paginates findstorage (next/truncated) and says so when
+// the page cap is hit; address rendering uses the adapter's codec, never
+// crypto.subtle, so the board also works on plain-http mirrors.
+//
 // Owns (writes only these): #lend card — the 4-stat panel (#lSApy liquidity apy,
 // #lBApy borrow apy, #lTotal total liquidity, #pHealth), #lendAct (the wizard keys
 // #lnWizLoan/#lnWizPay/#lnWizWdCol/#lnWizAdd/#lnWizRemove and the step panel
@@ -407,36 +414,55 @@
   wire('lnWizRemove', wizRemove);
 
   // ----- loans board: every position enumerated from contract storage -----
-  // prefix 0x31 (borrower debt) via findstorage; per open position: address,
-  // debt, health, and a liquidation key when the chain says LIQUIDATABLE.
-  var B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  function b58enc(bytes) {
-    var zeros = 0; while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
-    var digits = [0];
-    for (var i = zeros; i < bytes.length; i++) {
-      var carry = bytes[i];
-      for (var j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; }
-      while (carry) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+  // prefixes 0x31–0x34 via findstorage, PAGINATED: the C# RPC caps one page at
+  // 100 entries and answers {results, next, truncated}; we follow `next` until
+  // done, capped at MAX_PAGES — past the cap the board SAYS it is truncated
+  // instead of silently showing a partial enumeration (R5/R8).
+  var MAX_PAGES = 5;
+  function findAll(hash, prefixB64) {
+    var out = [];
+    function page(start) {
+      var params = start == null ? [hash, prefixB64] : [hash, prefixB64, start];
+      return FtbRpc.call('findstorage', params).then(function (r) {
+        if (Array.isArray(r)) return { items: out.concat(r), truncated: false }; // neo-go shape: one full array
+        out = out.concat((r && r.results) || []);
+        if (r && r.truncated) {
+          if (out.length >= MAX_PAGES * 100) return { items: out, truncated: true };
+          return page(r.next);
+        }
+        return { items: out, truncated: false };
+      });
     }
-    var s = '';
-    for (var z = 0; z < zeros; z++) s += '1';
-    for (var q = digits.length - 1; q >= 0; q--) s += B58[digits[q]];
-    return s;
+    return page(null);
   }
-  function hexBytes(hex) {
-    var b = []; for (var i = 0; i < hex.length; i += 2) b.push(parseInt(hex.substr(i, 2), 16));
-    return b;
+
+  // Refresh coalescing: the shell emits 'refresh' in a burst around every signed
+  // transaction (optimistic, each 5 s confirmation poll, confirmed, the modal's
+  // ok & refresh) — up to ~17 events for one landing. Collapse them: one read
+  // pass in flight at a time, at most one trailing run queued, minimum interval
+  // between passes. The chain is never re-enumerated ten times for one landing.
+  function coalesce(fn, minMs) {
+    var inflight = false, last = 0, timer = null, queued = false;
+    function done() {
+      inflight = false;
+      if (queued) timer = setTimeout(run, Math.max(0, last + minMs - Date.now()));
+    }
+    function run() {
+      queued = false;
+      if (timer) { clearTimeout(timer); timer = null; }
+      inflight = true; last = Date.now();
+      Promise.resolve(fn()).then(done, done);
+    }
+    return function () {
+      if (inflight) { queued = true; return; }
+      var wait = last + minMs - Date.now();
+      if (wait <= 0) run();
+      else if (!timer) timer = setTimeout(run, wait);
+    };
   }
-  function scriptHashToAddress(leHex) {
-    var payload = [0x35].concat(hexBytes(leHex));
-    var u8 = new Uint8Array(payload);
-    return crypto.subtle.digest('SHA-256', u8).then(function (h1) {
-      return crypto.subtle.digest('SHA-256', h1);
-    }).then(function (h2) {
-      var chk = Array.prototype.slice.call(new Uint8Array(h2), 0, 4);
-      return b58enc(payload.concat(chk));
-    });
-  }
+
+  // Addresses render through the adapter's scriptHashToAddress (pure-JS SHA-256,
+  // no crypto.subtle) — the Article 10 single toolkit; this module keeps no codec.
   function loadLoans() {
     var body = $('loansBody'); if (!body || !FtbRpc.current() || !C.lend) return;
     body.textContent = 'reading chain storage…';
@@ -446,19 +472,27 @@
     // loan, and a LIQUIDATION outlives the position itself — all must be VISIBLE,
     // or users think funds (or history) vanished.
     Promise.all(['MQ==', 'Mg==', 'Mw==', 'NA=='].map(function (p) {
-      return FtbRpc.call('findstorage', [C.lend, p]).then(function (r) { return (r && r.results) || r || []; })
-        .catch(function () { return []; });
+      return findAll(C.lend, p).catch(function () { return { items: [], truncated: false }; });
     })).then(function (sets) {
+      var boardTrunc = sets.some(function (s) { return s.truncated; });
       var seen = {}, users = [];
-      sets.forEach(function (items) {
-        items.forEach(function (e) {
-          var le = FtbDapi.util.b64ToHex(e.key).slice(2); // drop prefix byte
-          if (!seen[le]) { seen[le] = 1; users.push(le); }
+      sets.forEach(function (s) {
+        s.items.forEach(function (e) {
+          var sh = FtbDapi.util.b64ToHex(e.key).slice(2); // storage-order bytes, prefix dropped
+          if (!seen[sh]) { seen[sh] = 1; users.push(sh); }
         });
       });
-      if (!users.length) { body.textContent = 'no positions yet.'; return; }
-      return Promise.all(users.map(function (le) {
-        var be = '0x' + FtbDapi.util.reverseHex(le);
+      if (!users.length) {
+        body.textContent = 'no positions yet.';
+        // the strip is earned numbers (R5): with zero positions it reads zero, not a stale sum
+        var z1 = $('lbLoaned'); if (z1) z1.textContent = '0 FTB';
+        var z2 = $('lbUtil'); if (z2) z2.textContent = '0.0%';
+        var z3 = $('lbCollat'); if (z3) z3.textContent = '0 NEO + 0 GAS';
+        var z4 = $('lbCount'); if (z4) z4.textContent = '0';
+        return;
+      }
+      return Promise.all(users.map(function (sh) {
+        var be = '0x' + FtbDapi.util.reverseHex(sh); // canonical RPC form for Hash160 args
         return Promise.all([
           FtbRpc.readInt(C.lend, 'debtOf', [h160(be)]),
           FtbRpc.readInt(C.lend, 'collateralOf', [h160(be), { type: 'Boolean', value: true }]),
@@ -470,9 +504,7 @@
           FtbRpc.readInt(C.lend, 'liquidationsOf', [h160(be)]).catch(function () { return 0n; }),
           FtbRpc.readInt(C.lend, 'maxBorrow', [h160(be)]).catch(function () { return 0n; })
         ]).then(function (vs) {
-          return scriptHashToAddress(le).then(function (addr) {
-            return { addr: addr, be: be, debt: vs[0], neo: vs[1], gas: vs[2], bad: !!vs[3], liqs: vs[4], maxB: vs[5] };
-          });
+          return { addr: FtbDapi.util.scriptHashToAddress(sh), be: be, debt: vs[0], neo: vs[1], gas: vs[2], bad: !!vs[3], liqs: vs[4], maxB: vs[5] };
         });
       })).then(function (rows) {
         var open = rows.filter(function (r) { return r.debt > 0n || r.neo > 0n || r.gas > 0n || r.liqs > 0n; });
@@ -547,6 +579,7 @@
           body.appendChild(row);
         });
         body.appendChild(el('div', 'small muted', open.length + ' open · ' + (rows.length - open.length) + ' closed — enumerated from contract storage, not a server.'));
+        if (boardTrunc) body.appendChild(el('div', 'small muted', 'board truncated at ' + (MAX_PAGES * 100) + ' entries per prefix — point the page at your own node (OWN NODE) for the full enumeration.'));
       });
     }).catch(function (e) { body.textContent = 'board unavailable: ' + FtbUtil.errText(e); });
   }
@@ -557,13 +590,16 @@
     setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
   }
 
-  var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', function () { flash(lb); loadLend(); });
-  var lr = $('loansRefresh'); if (lr) lr.addEventListener('click', function () { flash(lr); loadLoans(); });
-  FtbState.on('refresh', loadLoans);
-  FtbState.on('rpc', loadLoans);
-  FtbState.on('rpc', loadLend);
-  FtbState.on('account', loadLend);
-  FtbState.on('refresh', loadLend);
+  // every entry point goes through the coalesced pass — manual buttons included:
+  // a click during an in-flight pass queues exactly one trailing run.
+  var loadLendC = coalesce(loadLend, 3000), loadLoansC = coalesce(loadLoans, 3000);
+  var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', function () { flash(lb); loadLendC(); });
+  var lr = $('loansRefresh'); if (lr) lr.addEventListener('click', function () { flash(lr); loadLoansC(); });
+  FtbState.on('refresh', loadLoansC);
+  FtbState.on('rpc', loadLoansC);
+  FtbState.on('rpc', loadLendC);
+  FtbState.on('account', loadLendC);
+  FtbState.on('refresh', loadLendC);
   // keep the pool fresh while the page is open
-  setInterval(function () { if (FtbRpc.current()) loadLend(); }, 60000);
+  setInterval(function () { if (FtbRpc.current()) loadLendC(); }, 60000);
 })();

@@ -158,6 +158,38 @@
     return (opts && opts.le) ? reverseHex(hex) : hex;
   }
 
+  // base58 encode — the inverse of base58Decode above. Used only to RENDER addresses
+  // from chain data (storage keys); decode remains the one path that ingests text.
+  function base58Encode(bytes) {
+    var zeros = 0; while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+    var digits = [0];
+    for (var i = zeros; i < bytes.length; i++) {
+      var carry = bytes[i];
+      for (var j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; }
+      while (carry) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+    }
+    var s = '';
+    for (var z = 0; z < zeros; z++) s += '1';
+    for (var q = digits.length - 1; q >= 0; q--) s += B58[digits[q]];
+    return s;
+  }
+
+  // script hash -> N-address. Input contract: the 20 bytes in the order contract
+  // STORAGE KEYS hold them (e.g. findstorage results after the prefix byte) — the
+  // same order the address itself embeds. If you hold the canonical RPC "0x…" form,
+  // reverseHex it first. Uses the pure-JS sha256 above, NOT crypto.subtle: rendering
+  // must work on plain-http mirrors (own node, local IPFS gateway) where subtle
+  // is absent.
+  function scriptHashToAddress(storageHex) {
+    var payload = new Uint8Array(21);
+    payload[0] = N3_ADDRESS_VERSION;
+    payload.set(hexToBytes(String(storageHex).replace(/^0x/, '')), 1);
+    var sum = sha256(sha256(payload));
+    var full = new Uint8Array(25);
+    full.set(payload); full.set(sum.slice(0, 4), 21);
+    return base58Encode(full);
+  }
+
   // ---------------- typed dApi arguments ----------------
   var A = {
     h160: function (v) { // accepts an N-address or a 0x scripthash; ALWAYS emits canonical
@@ -441,6 +473,7 @@
     toBaseUnits: toBaseUnits, fromBaseUnits: fromBaseUnits,
     hexToB64: hexToB64, b64ToHex: b64ToHex, reverseHex: reverseHex,
     addressToScriptHashHex: addressToScriptHashHex,
+    scriptHashToAddress: scriptHashToAddress,
     decodeInt: decodeInt, decodeBool: decodeBool, decodeHash160: decodeHash160,
     ftbOf: ftbOf
   };
