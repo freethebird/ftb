@@ -25,28 +25,31 @@
 }
 
 :root{
-  --paper:#ffffff;   /* ground */
-  --ink:#0a0a0a;     /* primary mark */
-  --ink-2:#4a4a4a;   /* secondary text */
-  --faint:#8a8a8a;   /* meta / tertiary */
-  --hair:#d7d7d7;    /* hairlines */
-  --panel:#f2f2f2;   /* subtle fill */
-  --sel:#0a0a0a;     /* hover/selection ground */
-  --sel-ink:#ffffff; /* hover/selection mark */
+  /* night shift is the DEFAULT — the terminal never sleeps */
+  --paper:#0a0a0a;   /* ground */
+  --ink:#ededed;     /* primary mark */
+  --ink-2:#a9a9a9;   /* secondary text */
+  --faint:#6f6f6f;   /* meta / tertiary */
+  --hair:#2b2b2b;    /* hairlines */
+  --panel:#151515;   /* subtle fill */
+  --sel:#ededed;     /* hover/selection ground */
+  --sel-ink:#0a0a0a; /* hover/selection mark */
   --mono:"Courier New",Courier,"DejaVu Sans Mono","Liberation Mono",monospace;
   --disp:'VT323',"Courier New",monospace;
   --col:760px;
-  color-scheme:light;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --paper:#0a0a0a; --ink:#ededed; --ink-2:#a9a9a9; --faint:#6f6f6f;
-  --hair:#2b2b2b; --panel:#151515; --sel:#ededed; --sel-ink:#0a0a0a;
-  color-scheme:dark;
-}}
-:root[data-theme="dark"]{
-  --paper:#0a0a0a; --ink:#ededed; --ink-2:#a9a9a9; --faint:#6f6f6f;
-  --hair:#2b2b2b; --panel:#151515; --sel:#ededed; --sel-ink:#0a0a0a;
-  color-scheme:dark;
+:root[data-theme="pink"]{
+  /* pussy pink — the alternative shift. Same tokens, loud ground. */
+  --paper:#ffc7dd;
+  --ink:#30081b;
+  --ink-2:#8a3a5f;
+  --faint:#b2688a;
+  --hair:#eda3bd;
+  --panel:#ffb3d0;
+  --sel:#30081b;
+  --sel-ink:#ffc7dd;
+  color-scheme:light;
 }
 
 *{box-sizing:border-box}
@@ -802,7 +805,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
   <footer class="foot3">
     <span class="disp" style="font-size:20px">free the bird</span><br>
-    <span class="muted" id="shiftLine">// day shift</span><br>
+    <span class="muted" id="shiftLine">// night shift</span><br>
     Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
     MIT code, public proofs — a gift to the Flamingo community.
   </footer>

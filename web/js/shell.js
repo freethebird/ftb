@@ -13,19 +13,23 @@
   var NET = CFG.network || 'TestNet';
 
   // ---------- theme: full color swap (every color flows through the tokens) ----------
+  // night shift (dark) is the DEFAULT; the alternative is pussy pink. The OS
+  // preference no longer decides — the brand does.
   var root = document.documentElement;
-  function eff() {
-    var t = root.getAttribute('data-theme'); if (t) return t;
-    return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-  }
+  function eff() { return root.getAttribute('data-theme') || 'dark'; }
   function paintThemeBtn() {
     var t = eff();
-    var b = $('themeBtn'); if (b) b.textContent = 'invert [ ' + t + ' ]';
-    var s = $('shiftLine'); if (s) s.textContent = '// ' + (t === 'dark' ? 'night shift' : 'day shift');
+    var name = t === 'pink' ? 'pussy pink' : 'night shift';
+    var b = $('themeBtn'); if (b) b.textContent = 'invert [ ' + name + ' ]';
+    var s = $('shiftLine'); if (s) s.textContent = '// ' + name;
   }
-  try { var s = localStorage.getItem('theme'); if (s === 'dark' || s === 'light') root.setAttribute('data-theme', s); } catch (e) {}
+  try {
+    var s = localStorage.getItem('theme');
+    if (s === 'light') s = 'pink'; // the white ground is gone; pink takes its slot
+    if (s === 'dark' || s === 'pink') root.setAttribute('data-theme', s);
+  } catch (e) {}
   if ($('themeBtn')) $('themeBtn').addEventListener('click', function () {
-    var n = eff() === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', n);
+    var n = eff() === 'dark' ? 'pink' : 'dark'; root.setAttribute('data-theme', n);
     try { localStorage.setItem('theme', n); } catch (e) {}
     paintThemeBtn();
   });
