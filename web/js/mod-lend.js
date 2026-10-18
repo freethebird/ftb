@@ -39,7 +39,7 @@
     FtbRpc.readInt(lend, 'collateralOf', hu.concat([{ type: 'Boolean', value: false }])).then(function (v) { $('pGas').textContent = fmt(v); }).catch(function () {});
     FtbRpc.readInt(lend, 'debtOf', hu).then(function (v) { $('pDebt').textContent = fmt(v) + ' FTB'; }).catch(function () {});
     FtbRpc.readInt(lend, 'maxBorrow', hu).then(function (v) { $('pMax').textContent = fmt(v) + ' FTB'; }).catch(function () {});
-    FtbRpc.readInt(lend, 'sharesOf', hu).then(function (v) { $('pShares').textContent = v.toString(); }).catch(function () {});
+    FtbRpc.readInt(lend, 'sharesOf', hu).then(function (v) { $('pShares').textContent = fmt(v); }).catch(function () {});
     readVal(lend, 'isUnhealthy', hu).then(function (v) {
       var e = $('pHealth'); if (!e) return;
       var bad = (v === true || v === 'true' || v === '1');
@@ -270,14 +270,14 @@
     var acct = FtbState.acctHash160();
     FtbRpc.readInt(C.lend, 'sharesOf', [h160(acct)]).then(function (v) {
       input.value = v.toString();
-      note.textContent = 'you hold ' + v.toString() + ' shares (prefilled with all of them). shares pay out FTB at the current share price.';
+      note.textContent = 'you hold ' + fmt(v) + ' shares (shares are 8-decimal, like FTB — prefilled with all of them). shares pay out FTB at the current share price.';
     }).catch(function () {});
     var keys = keyWrap();
     keys.appendChild(mkKey('sign withdrawal ->', function () {
       var a = amtVal(input.value, true); if (a === null) return badAmt();
-      FtbShell.showPlan('withdraw ' + a + ' shares',
+      FtbShell.showPlan('withdraw ' + fmt(BigInt(a)) + ' shares',
         'burns pool shares and returns FTB at the current share price. only free cash can leave — borrows stay funded.',
-        [['shares', a], ['what you sign', 'lend.withdrawSupply(you, ' + a + ')']],
+        [['shares', fmt(BigInt(a))], ['what you sign', 'lend.withdrawSupply(you, ' + a + ')']],
         FtbState.dapi.withdrawSupply(FtbState.account, a));
     }));
     s.row.appendChild(input); s.row.appendChild(keys);
