@@ -10,7 +10,7 @@
   'use strict';
   if (!FtbUtil.$('lend')) return; // R2: inert where the markup is absent
 
-  var $ = FtbUtil.$, fmt = FtbUtil.fmt;
+  var $ = FtbUtil.$, el = FtbUtil.el, fmt = FtbUtil.fmt;
   var C = FtbState.C;
 
   function bps(v) { return (Number(v) / 100).toFixed(2) + '%'; }
