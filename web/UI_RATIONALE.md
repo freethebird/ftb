@@ -97,6 +97,10 @@ select → quote → review flow (THORSwap).
 
 ## Template 2: station dashboard (12 October 2026)
 
+*(Historical note, 18 October 2026: the three template files and their builders now
+live in `archive/` — frozen design history, no longer pinned. The canonical page is
+the modular `index.html` + `js/`; this file's invariants still bind every module.)*
+
 Template 1 (`template1.html`, frozen) kept the template 1 single-column arc even after the Terra
 skin promotion — at narrow widths and standby states the variants read as "the same page".
 Template 2 (`template2.html`) is designed from scratch instead of re-skinned: a left rail

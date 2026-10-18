@@ -20,7 +20,10 @@ IPNS="$(ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l' | aw
 echo "==> Staging front-end from: $WEB_DIR"
 # -L resolves symlinks (web/proofs.json -> ../../proofs.json) so IPFS gets real files.
 # A stale local beat.json never rides along — the stamp below is the only one.
-rsync -aL --exclude '.DS_Store' --exclude 'beat.json' "$WEB_DIR/" "$STAGE/"
+# archive/ (frozen pre-split designs + their builders) is reference weight, not
+# runtime: it stays in the repo but never gets pinned (WEB-04).
+rsync -aL --exclude '.DS_Store' --exclude 'beat.json' --exclude 'archive/' \
+  --exclude '__pycache__/' "$WEB_DIR/" "$STAGE/"
 
 # Version stamp: the front end's mirror counter compares this file across origins —
 # same commit on two nodes = both serve this exact build.

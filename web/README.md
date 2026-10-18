@@ -122,11 +122,19 @@ are in `UI_RATIONALE.md`.
   markup and CSS only; all behavior lives in `js/` (`ftb-rpc.js`, `ftb-state.js`,
   `shell.js`, and one `mod-*.js` per panel) under the rules of `MODULES.md` — edit the
   module files, never inline scripts.
-- `template1.html` — the frozen first design (single-column arc), kept for reference.
-- `template2.html` — same content as `index.html`; rebuild it with
-  `python3 build_template2.py` after changing `template1.html` components, then copy over
-  `index.html` (the builder reuses template 1's ids, modals, and signing script). **Stale
-  since the module split** — it produces the pre-split monolith; regenerate only after the
-  builder learns the `js/` layout, and do not pin its output.
-- `template3.html` — a byte-copy of the pre-split monolith (WEB-04). Stale; archive, do
-  not pin.
+- `archive/` — the frozen pre-split designs (`template1/2/3.html`) and their builders
+  (`build_template2/3.py`), moved there 18 October 2026 (WEB-04 closed). Reference
+  weight only: `ops/ipfs/ftb-push-ipfs.sh` excludes `archive/`, so it is never pinned.
+
+## Profiles and the QA gate
+
+- `config.testnet.js` / `config.mainnet.js` — the two committed network profiles.
+  The active deployment is always `cp <profile> config.js`; a hand-edited `config.js`
+  fails the gate. The MainNet profile is sealed at `0x0000…` placeholders until its
+  contracts are deployed and recorded in `../DECISIONS.md`.
+- `QA_GATE.md` — the pre-publish procedure (static gate, build gate, browser
+  walkthrough, publish gate, MainNet promotion rules). Nothing goes live — TestNet
+  or MainNet — that has not passed it with evidence.
+- `make_export.py` — builds the single-file export (`../../ftb-export.html`) from the
+  modular `index.html`: config, adapter, all `js/` modules, proofs, and a beat stamp
+  inlined, with a fetch shim so the file runs from `file://` with no siblings.

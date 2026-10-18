@@ -60,8 +60,12 @@ web/
   js/mod-claim.js       # module 7
   js/mod-verify.js      # module 8
   js/mod-wallet.js      # module 9
-  config.js             # module 13 (deployment constants, git-ignored)
+  config.testnet.js     # module 13 — committed TESTNET profile
+  config.mainnet.js     # module 13 — committed MAINNET profile (sealed at placeholders)
+  config.js             # the ACTIVE profile (a copy of one of the two; git-ignored)
   proofs.json, beat.json
+  archive/              # frozen pre-split designs + builders — reference only, never pinned
+  QA_GATE.md            # the pre-publish gate; nothing ships without its evidence
 ```
 
 Load order: `config.js`, `ftb-dapi.js`, `ftb-rpc.js`, `ftb-state.js`, `shell.js`, then the
@@ -261,11 +265,14 @@ modules in any order (R2 makes order irrelevant among them).
 - **Rules.** Every contract hash, RPC endpoint, mirror, pair definition, electorate
   figure, ratio, and the ballot question enters through this one file — no constant may
   live inside a module (R5). Placeholders are `0x0000…` and every module treats them as
-  standby (R8). `config.js` is git-ignored; `config.example.js` is the committed template
-  and must stay field-identical in shape. `beat.json` is written per deploy by the push
-  script and carries `{project, commit, published}` — it is how the verify module proves
-  a mirror serves this exact build. A config value that contradicts a published artifact
-  (root, electorate, count) is a defect at gate time, not a display bug (WEB-03's class).
+  standby (R8). Two committed profiles exist — `config.testnet.js` and
+  `config.mainnet.js`; the active `config.js` is always a byte-copy of one of them
+  (git-ignored), and a hand-edited `config.js` fails the QA gate. `config.example.js`
+  stays the shape template for other deployments. `beat.json` is written per deploy by
+  the push script and carries `{project, commit, published}` — it is how the verify
+  module proves a mirror serves this exact build. A config value that contradicts a
+  published artifact (root, electorate, count) is a defect at gate time, not a display
+  bug (WEB-03's class).
 - **Anchors:** MO 6, 8; QRN D.
 
 ## Definition of done (web)
