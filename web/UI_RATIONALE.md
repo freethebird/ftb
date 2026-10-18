@@ -78,7 +78,8 @@ browser except signed transactions and public RPC reads.
 ## Invariants (do not break)
 
 1. No dependencies, no build step, one HTML file plus `config.js` / `ftb-dapi.js`.
-2. Strict grayscale, both themes; accent through weight and borders, never color.
+2. Strict grayscale; phosphor green is reserved for clickables. One theme — night
+   shift (dark) — everywhere; accent through weight and borders, never color.
 3. No fiat prices, no external APIs, no analytics, no fonts beyond the inlined VT323.
 4. The page never holds keys and never implies custody. Builds and reads here; signs in
    the wallet.

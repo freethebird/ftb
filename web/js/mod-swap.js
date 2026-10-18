@@ -3,7 +3,9 @@
 // ticker, and the TVL tile — ratios only, no fiat, no oracle.
 //
 // Owns (writes only these): #swap (#swAmt, #swFromSel, #swToSel, #swOut,
-// #swMeta, #swGo), #market (#ratioBody, #ratioHint, #ratioBtn), #ticker, #tTvl.
+// #swMeta, #swGo), #market (#ratioBody, #ratioHint, #ratioBtn), #ticker, and the
+// TVL tile (#tTvl + its subline #tTvlSub). TVL is protocol-wide: lend pool assets
+// headline, NEO/GAS collateral subline, pool reserves add when a router is live.
 (function () {
   'use strict';
   if (!FtbUtil.$('swap')) return; // R2: inert where the markup is absent
@@ -135,36 +137,61 @@
   }
   var rtb = $('ratioBtn'); rtb.addEventListener('click', function () { flash(rtb); refreshRatios(); });
 
-  // ---------- TVL: total value locked in liquidity, in FTB terms ----------
-  // No AMM exists on TestNet (neo#3285), so the router is a placeholder there and
-  // TVL is honestly zero; once C.router points at a live router, sum the FTB-side
-  // reserves of every configured pair (both sides counted when the pair trades
-  // against FTB).
+  // ---------- TVL: total value locked, per asset, read from the chain ----------
+  // FTB headline: the lend pool's total assets (cash in the contract + outstanding
+  // borrows); pool reserves add on top once a router is live. NEO / GAS subline:
+  // what the lend contract holds — that IS the total collateral locked (one balance
+  // read each, no enumeration). No fiat conversion anywhere (the invariant stands).
   function refreshTvl() {
     var e = $('tTvl'); if (!e) return;
-    if (!C.router || C.router.indexOf('0x0000') === 0) {
+    var sub = $('tTvlSub');
+    if (!FtbRpc.current()) return;
+    var lend = C.lend, hasLend = !!(lend && lend.indexOf('0x0000') !== 0);
+    var router = C.router, hasRouter = !!(router && router.indexOf('0x0000') !== 0);
+    if (!hasLend && !hasRouter) {
       e.textContent = '0 FTB';
-      e.title = 'no liquidity pools on this network yet — the router is a placeholder. TVL reads live the moment pools exist.';
+      if (sub) sub.textContent = '';
+      e.title = 'no lend module or router on this network yet — TVL reads live the moment value is locked.';
       return;
     }
-    if (!FtbRpc.current()) return;
-    var pairs = (CFG.pairs || []);
-    if (!pairs.length) { e.textContent = '0 FTB'; return; }
-    Promise.all(pairs.map(function (p) {
-      return FtbRpc.read(C.router, 'getReserves', [
-        { type: 'Hash160', value: resolveTok(p.a) }, { type: 'Hash160', value: resolveTok(p.b) }]).then(function (st) {
-        var v = (st && st[0] && st[0].value) || [];
-        var ra = BigInt(v[0] && v[0].value || 0), rb = BigInt(v[1] && v[1].value || 0);
-        // count the FTB side twice-side style: FTB pairs contribute both legs in FTB terms
-        if (p.a === 'FTB') return ra * 2n;
-        if (p.b === 'FTB') return rb * 2n;
-        return 0n; // non-FTB pairs: no price path without an oracle — excluded by design
+    var h160 = function (h) { return { type: 'Hash160', value: h }; };
+    var assets = CFG.assets || {};
+    var all = [], tags = [];
+    function job(tag, p) { all.push(p.catch(function () { return null; })); tags.push(tag); }
+    if (hasLend) {
+      job('ftb', FtbRpc.readInt(C.ftb, 'balanceOf', [h160(lend)]));
+      job('ftb', FtbRpc.readInt(lend, 'totalBorrows', []));
+      if (assets.neo) job('neo', FtbRpc.readInt(assets.neo, 'balanceOf', [h160(lend)]));
+      if (assets.gas) job('gas', FtbRpc.readInt(assets.gas, 'balanceOf', [h160(lend)]));
+    }
+    if (hasRouter) {
+      (CFG.pairs || []).forEach(function (p) {
+        job('ftb', FtbRpc.read(router, 'getReserves', [h160(resolveTok(p.a)), h160(resolveTok(p.b))]).then(function (st) {
+          var v = (st && st[0] && st[0].value) || [];
+          var ra = BigInt(v[0] && v[0].value || 0), rb = BigInt(v[1] && v[1].value || 0);
+          // FTB pairs contribute both legs in FTB terms; non-FTB pairs have no
+          // price path without an oracle — excluded by design
+          if (p.a === 'FTB') return ra * 2n;
+          if (p.b === 'FTB') return rb * 2n;
+          return 0n;
+        }));
       });
-    })).then(function (parts) {
-      var t = parts.reduce(function (s, v) { return s + v; }, 0n);
-      e.textContent = fmt(t) + ' FTB';
-      e.title = 'sum of FTB-side pool reserves across ' + pairs.length + ' pair(s) — ratios only, no fiat';
-    }).catch(function () { e.textContent = '—'; e.title = 'router set but reserves unreadable'; });
+    }
+    Promise.all(all).then(function (rs) {
+      var ftb = 0n, neo = 0n, gas = 0n, failed = false;
+      rs.forEach(function (r, i) {
+        if (r === null) { failed = true; return; }
+        if (tags[i] === 'ftb') ftb += r;
+        else if (tags[i] === 'neo') neo = r;
+        else gas = r;
+      });
+      e.textContent = fmt(ftb) + ' FTB';
+      if (sub) sub.textContent = hasLend ? '+ ' + FtbUtil.grp(neo.toString()) + ' NEO · ' + fmt(gas) + ' GAS collateral' : '';
+      e.title = 'total value locked, per asset: FTB in the lend pool (cash + outstanding borrows)' +
+        (hasRouter ? ' + FTB-side pool reserves' : '') +
+        (hasLend ? '; NEO and GAS locked as loan collateral' : '') +
+        '. ratios only, no fiat.' + (failed ? ' (one leg unreadable right now)' : '');
+    }).catch(function () { e.textContent = '—'; e.title = 'TVL unreadable'; });
   }
 
   FtbState.on('rpc', function () {

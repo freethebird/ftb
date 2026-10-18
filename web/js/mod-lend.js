@@ -20,7 +20,7 @@
   'use strict';
   if (!FtbUtil.$('lend')) return; // R2: inert where the markup is absent
 
-  var $ = FtbUtil.$, el = FtbUtil.el, fmt = FtbUtil.fmt;
+  var $ = FtbUtil.$, el = FtbUtil.el, fmt = FtbUtil.fmt, grp = FtbUtil.grp;
   var C = FtbState.C;
 
   function bps(v) { return (Number(v) / 100).toFixed(2) + '%'; }
@@ -135,8 +135,8 @@
       s.row.removeChild(s.row.lastChild);
       // one row per option: predetermined amount on the left, the choice key on the right.
       // [name, display, price, isNeo, rawArg] — rawArg is the exact contract integer.
-      [['NEO', needNeo.toString(), ps[0], true, needNeo.toString()],
-       ['GAS', fromBase(needGas.toString()), ps[1], false, needGas.toString()]].forEach(function (o) {
+      [['NEO', grp(needNeo.toString()), ps[0], true, needNeo.toString()],
+       ['GAS', grp(fromBase(needGas.toString())), ps[1], false, needGas.toString()]].forEach(function (o) {
         var r = el('div', 'trow');
         var lbl = el('label'); lbl.textContent = '';
         r.appendChild(lbl);
@@ -357,16 +357,16 @@
         keys.appendChild(mkKey('pay loan first ->', wizPay));
         keys.appendChild(mkKey('claim collateral ->', function () { wizWdFree(state); }));
       } else {
-        note.textContent = 'locked: ' + vs[0].toString() + ' NEO · ' + fmt(vs[1]) + ' GAS — debt is zero, so everything comes back in one transaction.';
+        note.textContent = 'locked: ' + grp(vs[0].toString()) + ' NEO · ' + fmt(vs[1]) + ' GAS — debt is zero, so everything comes back in one transaction.';
         keys.appendChild(mkKey('claim collateral ->', function () {
           if (state.neo === 0n && state.gas === 0n) {
             FtbShell.showPlan('nothing locked', 'you have no collateral in the lend contract.', [], null);
             return;
           }
           var plan = FtbState.dapi.withdrawCollateral(FtbState.account, state.neo.toString(), state.gas.toString());
-          FtbShell.showPlan('claim ' + state.neo.toString() + ' NEO + ' + fmt(state.gas) + ' GAS',
+          FtbShell.showPlan('claim ' + grp(state.neo.toString()) + ' NEO + ' + fmt(state.gas) + ' GAS',
             'one transaction returns everything you have locked.',
-            [['NEO back', state.neo.toString()], ['GAS back', fmt(state.gas)], ['what you sign', plan.summary]],
+            [['NEO back', grp(state.neo.toString())], ['GAS back', fmt(state.gas)], ['what you sign', plan.summary]],
             plan);
         }));
       }
@@ -397,9 +397,9 @@
         return;
       }
       var plan = FtbState.dapi.withdrawCollateral(FtbState.account, freeNeo.toString(), freeGas.toString());
-      FtbShell.showPlan('claim ' + freeNeo.toString() + ' NEO + ' + fmt(freeGas) + ' GAS',
+      FtbShell.showPlan('claim ' + grp(freeNeo.toString()) + ' NEO + ' + fmt(freeGas) + ' GAS',
         'the most that can leave while your ' + fmt(state.debt) + ' FTB debt stays covered (60% LTV + 5% margin). repay to free the rest.',
-        [['NEO back', freeNeo.toString()], ['GAS back', fmt(freeGas)], ['what you sign', plan.summary]],
+        [['NEO back', grp(freeNeo.toString())], ['GAS back', fmt(freeGas)], ['what you sign', plan.summary]],
         plan);
     }).catch(function (e) {
       FtbShell.showPlan('oracle unavailable', FtbUtil.errText(e), [], null);
@@ -517,7 +517,7 @@
         FtbRpc.readInt(C.lend, 'utilizationBps', []).then(function (u) {
           var e = $('lbUtil'); if (e) e.textContent = (Number(u) / 100).toFixed(1) + '%';
         }).catch(function () {});
-        var ec = $('lbCollat'); if (ec) ec.textContent = totNeo.toString() + ' NEO + ' + fmt(totGas) + ' GAS';
+        var ec = $('lbCollat'); if (ec) ec.textContent = grp(totNeo.toString()) + ' NEO + ' + fmt(totGas) + ' GAS';
         var en = $('lbCount'); if (en) en.textContent = nLoans + (rows.length > nLoans ? ' (+ ' + (rows.length - nLoans) + ' closed/collateral-only)' : '');
         body.innerHTML = '';
         if (!open.length) { body.textContent = 'no open positions — ' + rows.length + ' closed.'; return; }
@@ -536,7 +536,7 @@
             meta.appendChild(el('span', null, 'position closed by liquidation'));
           } else {
             meta.appendChild(el('span', null, 'debt ' + fmt(r.debt) + ' FTB'));
-            meta.appendChild(el('span', null, r.neo.toString() + ' NEO'));
+            meta.appendChild(el('span', null, grp(r.neo.toString()) + ' NEO'));
             meta.appendChild(el('span', null, fmt(r.gas) + ' GAS'));
           }
           if (mine) {

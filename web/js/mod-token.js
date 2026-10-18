@@ -30,7 +30,7 @@
     var h = [{ type: 'Hash160', value: FtbState.acctHash160() }];
     FtbRpc.readInt(C.ftb, 'balanceOf', h).then(function (v) { $('balFtb').textContent = fmt(v); }).catch(function () {});
     var neo = (CFG.assets || {}).neo;
-    if (neo) FtbRpc.readInt(neo, 'balanceOf', h).then(function (v) { $('balNeo').textContent = v.toString(); }).catch(function () {}); // NEO: whole units, no scaling
+    if (neo) FtbRpc.readInt(neo, 'balanceOf', h).then(function (v) { $('balNeo').textContent = FtbUtil.grp(v.toString()); }).catch(function () {}); // NEO: whole units, no scaling
     var gas = (CFG.assets || {}).gas;
     if (gas) FtbRpc.readInt(gas, 'balanceOf', h).then(function (v) { $('balGas').textContent = fmt(v); }).catch(function () {});
     FtbState.proofs().then(function () {

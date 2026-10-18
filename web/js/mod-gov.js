@@ -48,8 +48,8 @@
       '<svg viewBox="0 0 42 42" role="img" aria-label="vote split">' +
       '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--hair)" stroke-width="7"/>' +
       segs.join('') +
-      '<text x="21" y="20.5" text-anchor="middle" fill="var(--ink)" style="font-family:var(--disp); font-size:6.5px">' + turn.toFixed(1) + '%</text>' +
-      '<text x="21" y="26.5" text-anchor="middle" fill="var(--faint)" style="font-size:2.5px; letter-spacing:.04em">of supply voted</text>' +
+      '<text x="21" y="20.5" text-anchor="middle" fill="var(--ink)" style="font-family:var(--disp); font-size:5px">' + turn.toFixed(1) + '%</text>' +
+      '<text x="21" y="26" text-anchor="middle" fill="var(--faint)" style="font-size:2.2px; letter-spacing:.02em">of supply</text>' +
       '</svg>';
     var leg = $('govLegend'); if (!leg) return;
     leg.innerHTML = '';

@@ -25,7 +25,7 @@
 }
 
 :root{
-  /* night shift is the DEFAULT — the terminal never sleeps */
+  /* night shift — the only shift. The terminal never sleeps. */
   --paper:#0a0a0a;   /* ground */
   --ink:#ededed;     /* primary mark */
   --ink-2:#a9a9a9;   /* secondary text */
@@ -38,20 +38,6 @@
   --disp:'VT323',"Courier New",monospace;
   --col:760px;
   color-scheme:dark;
-}
-:root[data-theme="pink"]{
-  /* pussy pink — the alternative shift. Same tokens, loud ground.
-     Ink runs darker than the night theme's: pink reflects more light, so the
-     type needs the extra weight to stay readable. */
-  --paper:#ffc7dd;
-  --ink:#1f0410;
-  --ink-2:#611f42;
-  --faint:#8f4a6b;
-  --hair:#eda3bd;
-  --panel:#ffb3d0;
-  --sel:#1f0410;
-  --sel-ink:#ffc7dd;
-  color-scheme:light;
 }
 
 *{box-sizing:border-box}
@@ -519,7 +505,6 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <span class="idstate" id="idstate">[ no wallet ]</span>
     <button id="connectBtn">connect -&gt;</button>
     <button id="disconnectBtn" hidden>disconnect</button>
-    <button class="linkish" id="themeBtn">theme</button>
     <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
   </div>
 </header>
@@ -548,7 +533,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <div class="tile"><div class="tl">weight voted</div><div class="tn" id="tVoted">—</div></div>
     <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">—</div></div>
     <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">—</div></div>
-    <div class="tile"><div class="tl">tvl locked</div><div class="tn" id="tTvl">—</div></div>
+    <div class="tile"><div class="tl">tvl locked</div><div class="tn" id="tTvl">—</div><div class="tl" id="tTvlSub"></div></div>
   </div>
 
   <div class="ticker" id="ticker" style="margin-top:12px">// market: waiting for the pools</div>

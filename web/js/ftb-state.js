@@ -21,7 +21,15 @@
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function short(h) { return (h && h.length > 14) ? h.slice(0, 8) + '…' + h.slice(-6) : (h || '—'); }
-  function fmt(base) { return FtbDapi.util.fromBaseUnits(base.toString()); }
+  // thousands separators on the integer part of a decimal string — every displayed
+  // number is readable at a glance (100,000,000 not 100000000). Display-only; input
+  // fields and builder arguments always use the raw string.
+  function grp(s) {
+    var p = String(s).split('.');
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return p.join('.');
+  }
+  function fmt(base) { return grp(FtbDapi.util.fromBaseUnits(base.toString())); }
   // wallet errors are often plain objects ({type, description, data}) — never String()
   // them raw, or the user reads "[object Object]" and learns nothing.
   function errText(e) {
@@ -71,7 +79,7 @@
     return Promise.resolve(BigInt(FtbDapi.util.ftbOf(flmBase)));
   }
 
-  window.FtbUtil = { $: $, el: el, short: short, fmt: fmt, errText: errText };
+  window.FtbUtil = { $: $, el: el, short: short, grp: grp, fmt: fmt, errText: errText };
   window.FtbState = {
     CFG: CFG,
     C: C,

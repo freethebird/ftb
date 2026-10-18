@@ -1,6 +1,6 @@
 // shell.js — page chrome and the single review modal (MODULES.md R4).
 //
-// Owns (writes only these): #themeBtn, #shiftLine, #tminus (launchbar countdown),
+// Owns (writes only these): #shiftLine, #tminus (launchbar countdown),
 // #dateline, and the #ov review modal (#ovTitle, #ovWarn, #ovBody, #ovMsg, #ovGo).
 // All modal close plumbing ([data-close], overlay click, Escape) lives here.
 // Modules request a review via FtbShell.showPlan(title, warn, rows, plan);
@@ -12,28 +12,10 @@
   var CFG = window.FTB_CONFIG || {};
   var NET = CFG.network || 'TestNet';
 
-  // ---------- theme: full color swap (every color flows through the tokens) ----------
-  // night shift (dark) is the DEFAULT; the alternative is pussy pink. The OS
-  // preference no longer decides — the brand does.
-  var root = document.documentElement;
-  function eff() { return root.getAttribute('data-theme') || 'dark'; }
-  function paintThemeBtn() {
-    var t = eff();
-    var name = t === 'pink' ? 'pussy pink' : 'night shift';
-    var b = $('themeBtn'); if (b) b.textContent = 'invert [ ' + name + ' ]';
-    var s = $('shiftLine'); if (s) s.textContent = '// ' + name;
-  }
-  try {
-    var s = localStorage.getItem('theme');
-    if (s === 'light') s = 'pink'; // the white ground is gone; pink takes its slot
-    if (s === 'dark' || s === 'pink') root.setAttribute('data-theme', s);
-  } catch (e) {}
-  if ($('themeBtn')) $('themeBtn').addEventListener('click', function () {
-    var n = eff() === 'dark' ? 'pink' : 'dark'; root.setAttribute('data-theme', n);
-    try { localStorage.setItem('theme', n); } catch (e) {}
-    paintThemeBtn();
-  });
-  paintThemeBtn();
+  // ---------- theme: one shift only ----------
+  // night shift (dark) is the ONLY theme — decided 18 Oct; the pink alternative
+  // is retired. There is no toggle and no theme key in localStorage.
+  var sl = $('shiftLine'); if (sl) sl.textContent = '// night shift';
 
   // ---------- launchbar countdown to the MainNet window, 7 Nov 2026 00:00 UTC ----------
   (function () {

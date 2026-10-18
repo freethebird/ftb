@@ -36,8 +36,8 @@ R8. **Degrade in the open.** If a module's contract hash is a placeholder (`0x00
    its reads fail, it shows the standby text that names exactly what is missing. A
    degraded module never blocks, blanks, or crashes the others.
 R9. **localStorage is browser-local and named.** Keys are prefixed `ftb_`, hold no
-   secrets, and their loss changes nothing but convenience (theme, own node, ratio
-   history, APY sample).
+   secrets, and their loss changes nothing but convenience (own node, ratio
+   history, APY sample). There is no theme key — night shift is the only theme.
 R10. **The invariants of `UI_RATIONALE.md` bind every module:** no dependencies, no build
     step, strict grayscale with the phosphor key reserved for clickables only, no fiat
     prices, no external APIs, no analytics, motion is the blinking cursor.
@@ -73,7 +73,7 @@ modules in any order (R2 makes order irrelevant among them).
 
 ## The modules
 
-### 1. Swap / Pools — `mod-swap.js` — owns `#trade`, `#market`, `#ticker`, and the tile `#tTvl`
+### 1. Swap / Pools — `mod-swap.js` — owns `#trade`, `#market`, `#ticker`, and the TVL tile (`#tTvl` + subline `#tTvlSub`)
 
 - **Reads:** `router.getReserves(tokenA, tokenB)` for each configured pair; nothing else.
 - **Writes:** `dapi.swap(sender, amtIn, minOut, path, deadlineMs)` — the only module that
@@ -83,12 +83,17 @@ modules in any order (R2 makes order irrelevant among them).
   received is 0.5% under the quote; price impact past 5% draws the warning style. The
   market board and ticker show asset-against-asset ratios only — no fiat, no oracle, both
   directions, drift history in `localStorage.ftb_ratios` (display-only, never trusted as
-  fresh). TVL (tile `tTvl`) sums FTB-side reserves of configured pairs, in FTB terms;
-  non-FTB pairs are excluded by design (no price path without an oracle); on a network
-  with no router it reads `0 FTB` with the reason in the tooltip. All three surfaces
+  fresh). TVL (tile `tTvl`) is protocol-wide and per-asset: the headline is FTB locked
+  in the lend pool (cash in the contract + outstanding borrows) plus FTB-side pool
+  reserves once a router is live; the subline (`tTvlSub`) is the NEO and GAS the lend
+  contract holds — exactly the collateral locked, one balance read each, no
+  enumeration. Non-FTB pairs stay excluded (no price path without an oracle); nothing
+  is ever converted to fiat. On a network with neither lend nor router it reads
+  `0 FTB` with the reason in the tooltip. All three surfaces
   (board, ticker, ticket) are fed by the same reserves reads — never a second data path.
-- **Standby:** router hash placeholder → "loads when the router hash is configured", TVL
-  `0 FTB` with the TestNet explanation.
+- **Standby:** router hash placeholder → "loads when the router hash is configured";
+  TVL still reads the lend legs (lend is live on TestNet), and with neither configured
+  it reads `0 FTB` with the reason in the tooltip.
 - **Anchors:** MO Articles 4, 6; Annex B 11; QRN F (app-layer honesty).
 
 ### 2. Token on FTB — `mod-token.js` — owns the stat tiles `#tSupply #tCap #tBlock` and the wallet strip `#balStrip`
@@ -273,7 +278,9 @@ modules in any order (R2 makes order irrelevant among them).
 ### 12. Shell — `shell.js` — owns the header/nav, theme, hero, launchbar countdown, footer, the review modal `#ov`, and the page grid
 
 - **Rules.** The shell owns the theme tokens and the phosphor key (only clickables are
-  green — nothing else, ever). The countdown is a dated public commitment: one target
+  green — nothing else, ever). There is exactly one theme — night shift (dark) — on
+  every page; the pink and light alternatives were retired 18 Oct and no toggle or
+  theme key remains. The countdown is a dated public commitment: one target
   (MainNet window, 7 Nov 2026 00:00 UTC), self-contained, no chain; at zero it flips to
   the window-open notice and stops — it never counts past. The footer carries the audit
   posture verbatim ("internal audit lineage only — no external audit was performed") and
