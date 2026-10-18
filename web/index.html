@@ -661,6 +661,41 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
             <span class="tag">shares</span><span id="pShares">—</span>
           </div>
         </div>
+        <div id="lendAct" hidden style="margin-top:14px">
+          <div class="ticket" style="border:0; padding:10px 0 0; border-top:1px solid var(--hair)">
+            <div class="trow">
+              <label for="lnSupplyAmt">supply ftb</label>
+              <input id="lnSupplyAmt" inputmode="decimal" autocomplete="off" placeholder="0.0">
+              <div class="tsel"><button id="lnSupplyGo">supply -&gt;</button></div>
+            </div>
+            <div class="trow">
+              <label for="lnWdShares">withdraw shares</label>
+              <input id="lnWdShares" inputmode="numeric" autocomplete="off" placeholder="0">
+              <div class="tsel"><button id="lnWdSupplyGo">withdraw -&gt;</button></div>
+            </div>
+            <div class="trow">
+              <label for="lnNeoAmt">collateral neo</label>
+              <input id="lnNeoAmt" inputmode="numeric" autocomplete="off" placeholder="whole NEO">
+              <div class="tsel"><button id="lnNeoGo">add -&gt;</button><button id="lnWdNeoGo">wd -&gt;</button></div>
+            </div>
+            <div class="trow">
+              <label for="lnGasAmt">collateral gas</label>
+              <input id="lnGasAmt" inputmode="decimal" autocomplete="off" placeholder="0.0">
+              <div class="tsel"><button id="lnGasGo">add -&gt;</button><button id="lnWdGasGo">wd -&gt;</button></div>
+            </div>
+            <div class="trow">
+              <label for="lnBorrowAmt">borrow ftb</label>
+              <input id="lnBorrowAmt" inputmode="decimal" autocomplete="off" placeholder="0.0">
+              <div class="tsel"><button id="lnBorrowGo">borrow -&gt;</button></div>
+            </div>
+            <div class="trow">
+              <label for="lnRepayAmt">repay ftb</label>
+              <input id="lnRepayAmt" inputmode="decimal" autocomplete="off" placeholder="0.0">
+              <div class="tsel"><button id="lnRepayGo">repay -&gt;</button></div>
+            </div>
+          </div>
+          <p class="small muted">review-and-sign in your wallet — the page never holds keys. NEO collateral is whole units. oracle ratios: 1 NEO = 100 FTB, 1 GAS = 40 FTB · 60% LTV · 75% liquidation.</p>
+        </div>
         <p class="small muted" id="lendOff">standby — goes live when the lend contract hash is configured for this network</p>
       </div>
     </div>
