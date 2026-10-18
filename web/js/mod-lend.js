@@ -181,25 +181,32 @@
       }), keys.firstChild);
     }).catch(function () {});
 
-    keys.appendChild(mkKey('2. take ' + loanDec + ' ftb loan ->', function () {
+    keys.appendChild(borrowPlanKey('2. take ' + loanDec + ' ftb loan ->', loanBase, loanDec, 0n));
+  }
+
+  // The borrow button, shared by the loan wizard (step 2) and the loans board's
+  // direct "take loan" action. Pre-checks BOTH chain gates before asking for a
+  // signature: LTV headroom (existingDebt counts — the board path borrows against
+  // collateral that may already back a loan) and pool liquidity. An empty pool
+  // faults the borrow with "not enough liquidity" — show it here, in words,
+  // instead of an opaque wallet error after signing.
+  function borrowPlanKey(label, loanBase, loanDec, existingDebt) {
+    return mkKey(label, function () {
       var acct = FtbState.acctHash160();
-      // Pre-check BOTH chain gates before asking for a signature: LTV headroom and
-      // pool liquidity. An empty pool faults the borrow with "not enough liquidity"
-      // — show it here, in words, instead of an opaque wallet error after signing.
       Promise.all([
         FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]),
         FtbRpc.readInt(C.ftb, 'balanceOf', [h160(C.lend)]).catch(function () { return 0n; }),
         FtbRpc.readInt(C.lend, 'reserveAccrued', []).catch(function () { return 0n; })
       ]).then(function (vs) {
-        var maxB = vs[0], liquid = vs[1] - vs[2];
-        var okLtv = BigInt(loanBase) <= maxB;
+        var head = vs[0] - BigInt(existingDebt), liquid = vs[1] - vs[2];
+        var okLtv = BigInt(loanBase) <= head;
         var okLiq = BigInt(loanBase) <= liquid;
         FtbShell.showPlan('take a ' + loanDec + ' FTB loan',
           okLtv && okLiq
-            ? 'transaction 2 of 2: the contract sends you ' + loanDec + ' FTB. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.'
+            ? 'the contract sends you ' + loanDec + ' FTB against your locked collateral. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.'
             : 'this will be REJECTED on-chain — fix the failing check first.',
           [['you receive', loanDec + ' FTB'],
-           ['your max borrow', fmt(maxB) + ' FTB — ' + (okLtv ? 'enough' : 'NO — lock the collateral first')],
+           ['your borrow headroom', fmt(head) + ' FTB — ' + (okLtv ? 'enough' : 'NO — lock more collateral or repay first')],
            ['pool liquidity', fmt(liquid) + ' FTB — ' + (okLiq ? 'enough' : 'NO — the pool is short. add liquidity (ADD LIQUIDITY below) or borrow less')],
            ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
           okLtv && okLiq ? FtbState.dapi.borrow(FtbState.account, loanBase.toString()) : null);
@@ -207,7 +214,40 @@
         FtbShell.showPlan('take a ' + loanDec + ' FTB loan', 'could not pre-check the chain — the contract enforces both limits regardless.',
           [['you receive', loanDec + ' FTB']], FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
       });
+    });
+  }
+
+  // ----- A2) borrow against collateral already locked (from the loans board) -----
+  // A deposit without a borrow is a valid position; its owner must be able to draw
+  // the loan later without restarting the wizard. Opened from the board's
+  // "take loan ->" key on your own row.
+  function wizBorrowDirect() {
+    if (!needAcct()) return;
+    clearWiz();
+    var s = stepBox('1', 'borrow how much ftb against your locked collateral?');
+    var input = mkInput('0.0');
+    var note = wizNote(s.box, 'reading your headroom…');
+    var acct = FtbState.acctHash160();
+    var curDebt = 0n;
+    Promise.all([
+      FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]),
+      FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)])
+    ]).then(function (vs) {
+      curDebt = vs[1];
+      var head = vs[0] - vs[1];
+      if (head < 0n) head = 0n;
+      input.value = fromBase(head.toString());
+      note.textContent = 'your locked collateral allows ' + fmt(head) + ' FTB more (prefilled with the maximum — borrow less for a bigger safety buffer against liquidation).';
+    }).catch(function () { note.textContent = 'could not read your position — the chain enforces the limit regardless.'; });
+    var keys = keyWrap();
+    keys.appendChild(mkKey('review borrow ->', function () {
+      var a = amtVal(input.value); if (a === null) return badAmt();
+      var kb = borrowPlanKey('take ' + a + ' ftb ->', toBase(a), a, curDebt);
+      kb.click();
     }));
+    s.row.appendChild(input); s.row.appendChild(keys);
+    wiz.appendChild(s.box);
+    input.focus();
   }
 
   // ----- B) pay loan -----
@@ -451,6 +491,14 @@
             : (r.debt > 0n ? el('span', 'tag', 'healthy') : el('span', 'tag', 'collateral only — claimable'));
           meta.appendChild(tag);
           var btnWrap = el('div', 'read');
+          if (mine && !r.bad) {
+            // your own position is actionable straight from the board: draw a loan
+            // against collateral already locked — no wizard restart (the deposit
+            // is a fact on-chain; the borrow should be one click from seeing it).
+            var bk = el('button', 'linkish', 'take loan ->');
+            bk.addEventListener('click', wizBorrowDirect);
+            btnWrap.appendChild(bk);
+          }
           if (r.bad) {
             var lb = el('button', 'linkish', 'liquidate ->');
             lb.addEventListener('click', function () {
