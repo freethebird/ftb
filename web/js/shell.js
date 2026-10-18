@@ -1,0 +1,100 @@
+// shell.js — page chrome and the single review modal (MODULES.md R4).
+//
+// Owns (writes only these): #themeBtn, #shiftLine, #tminus (launchbar countdown),
+// #dateline, and the #ov review modal (#ovTitle, #ovWarn, #ovBody, #ovMsg, #ovGo).
+// All modal close plumbing ([data-close], overlay click, Escape) lives here.
+// Modules request a review via FtbShell.showPlan(title, warn, rows, plan);
+// #ovGo executes the plan through the wallet and emits 'refresh' on success.
+(function () {
+  'use strict';
+
+  var $ = FtbUtil.$, el = FtbUtil.el, errText = FtbUtil.errText;
+  var CFG = window.FTB_CONFIG || {};
+  var NET = CFG.network || 'TestNet';
+
+  // ---------- theme: full color swap (every color flows through the tokens) ----------
+  var root = document.documentElement;
+  function eff() {
+    var t = root.getAttribute('data-theme'); if (t) return t;
+    return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  function paintThemeBtn() {
+    var t = eff();
+    var b = $('themeBtn'); if (b) b.textContent = 'invert [ ' + t + ' ]';
+    var s = $('shiftLine'); if (s) s.textContent = '// ' + (t === 'dark' ? 'night shift' : 'day shift');
+  }
+  try { var s = localStorage.getItem('theme'); if (s === 'dark' || s === 'light') root.setAttribute('data-theme', s); } catch (e) {}
+  if ($('themeBtn')) $('themeBtn').addEventListener('click', function () {
+    var n = eff() === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', n);
+    try { localStorage.setItem('theme', n); } catch (e) {}
+    paintThemeBtn();
+  });
+  paintThemeBtn();
+
+  // ---------- launchbar countdown to the MainNet window, 7 Nov 2026 00:00 UTC ----------
+  (function () {
+    var t = $('tminus'); if (!t) return;
+    var target = Date.UTC(2026, 10, 7, 0, 0, 0);
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function tick() {
+      var ms = target - Date.now();
+      if (ms <= 0) { t.textContent = 'T-0 — MAIN-NET WINDOW OPEN'; return; }
+      var sec = Math.floor(ms / 1000);
+      var d = Math.floor(sec / 86400); sec -= d * 86400;
+      var h = Math.floor(sec / 3600); sec -= h * 3600;
+      var m = Math.floor(sec / 60); sec -= m * 60;
+      t.textContent = 'T-' + d + 'D ' + pad(h) + ':' + pad(m) + ':' + pad(sec);
+    }
+    tick(); setInterval(tick, 1000);
+  })();
+
+  // ---------- modal plumbing ----------
+  Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) {
+    b.addEventListener('click', function () { b.closest('.overlay').hidden = true; });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.overlay'), function (ov) {
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.hidden = true; });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') Array.prototype.forEach.call(document.querySelectorAll('.overlay'), function (o) { o.hidden = true; });
+  });
+
+  var pendingPlan = null;
+  if ($('ovGo')) $('ovGo').addEventListener('click', function () {
+    if (!pendingPlan || !FtbState.dapi) return;
+    var msg = $('ovMsg'); msg.innerHTML = ''; msg.appendChild(el('div', 'small muted', 'waiting for your wallet...'));
+    $('ovGo').disabled = true;
+    FtbState.dapi.execute(pendingPlan).then(function (res) {
+      msg.innerHTML = ''; msg.appendChild(el('div', 'err ok', 'submitted. tx: ' + (res && res.txid ? res.txid : 'check your wallet')));
+      FtbState.emit('refresh');
+    }).catch(function (e) {
+      msg.innerHTML = ''; msg.appendChild(el('div', 'err', 'not sent: ' + errText(e)));
+    }).finally(function () { $('ovGo').disabled = false; });
+  });
+
+  // rows: [[label, value], ...]. plan null = information-only modal (no sign button).
+  function showPlan(title, warn, rows, plan) {
+    $('ovTitle').textContent = title;
+    $('ovWarn').textContent = warn;
+    var body = $('ovBody'); body.innerHTML = '';
+    rows.forEach(function (r) {
+      var kv = el('div', 'kv');
+      var lbl = el('div', 'lbl'); lbl.appendChild(el('span', null, r[0]));
+      var box = el('div', 'keybox', r[1]);
+      kv.appendChild(lbl); kv.appendChild(box); body.appendChild(kv);
+    });
+    $('ovMsg').innerHTML = '';
+    pendingPlan = plan;
+    $('ovGo').disabled = !plan;
+    $('ov').hidden = false;
+  }
+
+  window.FtbShell = { showPlan: showPlan };
+
+  // ---------- boot: pick a healthy endpoint, then let every module read ----------
+  if ($('dateline')) $('dateline').textContent = '// CONNECTING //';
+  FtbRpc.pick().then(function (url) {
+    if ($('dateline')) $('dateline').textContent = '// NEO N3 // ' + NET.toUpperCase() + ' // MMXXVI //';
+    FtbState.emit('rpc', url);
+  }).catch(function () { /* rpcNote already explains; the own-node modal is the way out */ });
+})();

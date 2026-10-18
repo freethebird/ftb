@@ -1225,7 +1225,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
   // ---------- governance (ballot contract, deployed per proposal) ----------
   var ballotConfigured = !!(C.ballot && C.ballot.indexOf('0x0000')!==0 && CFG.ballot && CFG.ballot.question);
-  function acctHash160(){ return '0x'+FtbDapi.util.addressToScriptHashHex(account); }
+  function acctHash160(){ return '0x'+FtbDapi.util.addressToScriptHashHex(account, { le: true }); }
   function refreshGov(){
     var body=$('govBody'); if(!body) return; body.innerHTML='';
     if (!ballotConfigured){

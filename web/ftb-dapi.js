@@ -160,8 +160,12 @@
 
   // ---------------- typed dApi arguments ----------------
   var A = {
-    h160: function (v) { // accepts an N-address or a 0x scripthash
-      if (typeof v === 'string' && v[0] === 'N') return { type: 'Address', value: v };
+    h160: function (v) { // accepts an N-address or a 0x scripthash; ALWAYS emits canonical
+      // Hash160 (little-endian StringLE hex). NeoLine's invoke validation rejects the
+      // 'Address' arg type ("Please check your input"), and raw RPC interprets Hash160
+      // as StringLE — the address-stored byte order reads a phantom account (FTB: found
+      // 18 Oct via balanceOf returning 0 for a funded wallet).
+      if (typeof v === 'string' && v[0] === 'N') return { type: 'Hash160', value: '0x' + addressToScriptHashHex(v, { le: true }) };
       return { type: 'Hash160', value: String(v).indexOf('0x') === 0 ? v : '0x' + v };
     },
     int: function (v) { return { type: 'Integer', value: String(v) }; },

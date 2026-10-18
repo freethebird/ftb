@@ -25,6 +25,8 @@ is exactly this folder: everything here builds and reads, the wallet signs.
   proofs URL, ballot question, pair list) and `proofs.json` next to it; pin the whole folder
   on IPFS.
   Local preview: `npm run dev` (a 30-line dependency-free static server, `serve.mjs`).
+  Behavior is split into independent modules under `js/` — one file per panel, explicit
+  seams only; the rules are `MODULES.md` and the audit lineage is `WEB_AUDIT.md`.
 - `ftb-dapi.js` ... the adapter. Dependency-free, one file. Connects to NeoLine, reads state, and
   builds a typed invocation ("plan") for every FTB action. Plans are pure: nothing is signed until
   you pass one to `execute()`.
@@ -116,8 +118,15 @@ are in `UI_RATIONALE.md`.
 
 - `index.html` — the canonical page: **template 2, the station dashboard** (left-rail nav,
   bird mark, inverted governance hero, stat tiles, two-column market/swap). Chosen by the
-  owner 13 October 2026.
+  owner 13 October 2026. **Since 18 October 2026 the page is modular:** `index.html` is
+  markup and CSS only; all behavior lives in `js/` (`ftb-rpc.js`, `ftb-state.js`,
+  `shell.js`, and one `mod-*.js` per panel) under the rules of `MODULES.md` — edit the
+  module files, never inline scripts.
 - `template1.html` — the frozen first design (single-column arc), kept for reference.
 - `template2.html` — same content as `index.html`; rebuild it with
   `python3 build_template2.py` after changing `template1.html` components, then copy over
-  `index.html` (the builder reuses template 1's ids, modals, and signing script).
+  `index.html` (the builder reuses template 1's ids, modals, and signing script). **Stale
+  since the module split** — it produces the pre-split monolith; regenerate only after the
+  builder learns the `js/` layout, and do not pin its output.
+- `template3.html` — a byte-copy of the pre-split monolith (WEB-04). Stale; archive, do
+  not pin.
