@@ -632,6 +632,17 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
     });
   }
   function fmt(base){ return FtbDapi.util.fromBaseUnits(base.toString()); }
+  // wallet errors are often plain objects ({type, description, data}) — never String()
+  // them raw, or the user reads "[object Object]" and learns nothing.
+  function errText(e){
+    if (!e) return 'unknown error';
+    if (typeof e === 'string') return e;
+    var m = e.message || e.description || e.error || '';
+    if (m && typeof m === 'object') { try { m = JSON.stringify(m); } catch(_){ m = String(m); } }
+    var d = e.data ? (typeof e.data === 'string' ? e.data : (function(){ try { return JSON.stringify(e.data); } catch(_){ return String(e.data); } })()) : '';
+    if (!m && !d) { try { return JSON.stringify(e); } catch(_) { return String(e); } }
+    return d ? m + ' — ' + d : m;
+  }
   // exact mirror of migrator.quote() on-chain: FLM-equiv base units -> FTB base units
   // at the committed r = 0.189832 (DECISIONS.md 18 Oct). Used for claim previews only;
   // the chain does the authoritative conversion at mint time.
@@ -713,7 +724,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
       msg.innerHTML=''; msg.appendChild(el('div','err ok','submitted. tx: ' + (res && res.txid ? res.txid : 'check your wallet')));
       refresh();
     }).catch(function(e){
-      msg.innerHTML=''; msg.appendChild(el('div','err','not sent: ' + (e && e.message ? e.message : e)));
+      msg.innerHTML=''; msg.appendChild(el('div','err','not sent: ' + errText(e)));
     }).finally(function(){ $('ovGo').disabled = false; });
   });
   function showPlan(title, warn, rows, plan){
@@ -764,7 +775,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
          ['what you sign', plan.summary]],
         plan);
     }).catch(function(e){
-      showPlan('proofs unavailable', String(e.message||e), [['proofs file', PROOFS_URL]], null);
+      showPlan('proofs unavailable', errText(e), [['proofs file', PROOFS_URL]], null);
       $('ovGo').disabled = true;
     });
   });
@@ -807,7 +818,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
       var m=$('swMeta'); m.innerHTML='';
       m.appendChild(el('span',null,'rate 1 '+swFrom+' = '+spot.toPrecision(6)+' '+swTo+' · min received '+fmt(minOut)+' '+swTo+' · '));
       m.appendChild(el('span', impact>5?'impact-warn':null, 'price impact '+impact.toFixed(2)+'%'));
-    }).catch(function(e){ $('swMeta').textContent='quote failed: '+(e.message||e); });
+    }).catch(function(e){ $('swMeta').textContent='quote failed: '+errText(e); });
   }
   var swT=null;
   $('swAmt').addEventListener('input', function(){ clearTimeout(swT); swT=setTimeout(quote, 250); });
@@ -995,7 +1006,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
           if (v) $('govHint').textContent='this address has voted · total weight voted: '+fmt(total)+' FLM.';
         }).catch(function(){});
       }
-    }).catch(function(e){ body.appendChild(el('div','small','tally unavailable: '+(e.message||e))); });
+    }).catch(function(e){ body.appendChild(el('div','small','tally unavailable: '+errText(e))); });
   }
   function voteGov(idx, label){
     if (!account){ $('idstate').textContent='[ connect first ]'; return; }
@@ -1022,7 +1033,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
           plan);
       });
     }).catch(function(e){
-      showPlan('vote unavailable', String(e.message||e), [], null);
+      showPlan('vote unavailable', errText(e), [], null);
       $('ovGo').disabled=true;
     });
   }
@@ -1079,7 +1090,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
         }).catch(function(){});
       })(id); }
     }).catch(function(e){
-      body.innerHTML=''; body.appendChild(el('div','small','board unavailable: '+(e.message||e)));
+      body.innerHTML=''; body.appendChild(el('div','small','board unavailable: '+errText(e)));
     });
   }
   if ($('boardBody')) {
@@ -1106,7 +1117,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
            ['bond',fmt(bond)+' FTB'],
            ['what you sign', plan.summary]],
           plan);
-      }).catch(function(e){ $('pMetaHint').textContent='bond read failed: '+(e.message||e); });
+      }).catch(function(e){ $('pMetaHint').textContent='bond read failed: '+errText(e); });
     });
     paintKindSel();
   }
