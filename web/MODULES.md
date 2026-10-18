@@ -116,7 +116,9 @@ modules in any order (R2 makes order irrelevant among them).
 - **Reads:** the v2 monthly revenue ledger — `dividends.monthIndex`, then
   `dividends.monthTotal(i)` for this month and last — plus `dividends.totalReceived`,
   `dividends.totalStaked`, `dividends.accPerShare`, and per account
-  `dividends.stakedOf(acct)`, `dividends.pendingOf(acct)`.
+  `dividends.stakedOf(acct)`, `dividends.pendingOf(acct)`. The fee-flow strip adds
+  `lend.supplyApyBps` (the lp leg's live figure) and `ftb.balanceOf(treasury)` (the
+  dev leg's escrowed balance).
 - **Writes:** `dapi.stakeFtb` (tagged FTB transfer, `["stake"]`), `dapi.claimDividends`,
   `dapi.unstakeFtb`. Revenue enters the module only via `lend.sweepDividends` — an
   operator call, never a page write.
@@ -124,7 +126,13 @@ modules in any order (R2 makes order irrelevant among them).
   (Decision 6). Monthly figures are counted at receipt in 175200-block months and read
   straight from contract storage — no indexer, no server, no estimation. The layout is
   two uniform 4-stat grids: revenue (this month / last month / lifetime / sampled APY),
-  then the **stake board** — total staked, my stake, my share (`stakedOf ÷ totalStaked`,
+  then the **fee-flow strip** — the whole constitution in three rows: 2/3 to lp
+  (accrues into the pool itself, shown as live lp apy), 2/9 to staked FTB (shown as the
+  same sampled apy as the revenue grid), 1/9 to the dev treasury (shown as its live
+  escrowed balance). The strip states plainly that **no burn and no loan leg exist** —
+  adding either would be a contract-level constitutional amendment via the proposal
+  lifecycle, not a UI change — then the **stake board** — total staked, my stake, my
+  share (`stakedOf ÷ totalStaked`,
   one read pass), my claimable — with stake, unstake, and claim each on its own line
   of one ticket. Disconnected, the my-side figures read `—` and the action ticket hides
   — never a stale position painted over a logged-out page (R5). Loads coalesce through

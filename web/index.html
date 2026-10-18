@@ -606,6 +606,17 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
           <div class="fs"><div class="l">lifetime</div><div class="v" id="dLife">—</div></div>
           <div class="fs"><div class="l">dividend apy</div><div class="v" id="dApy">—</div></div>
         </div>
+        <div id="feeFlows" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
+          <span class="biglabel">where every fee goes — the split is compiled in</span>
+          <div class="ticket" style="margin-top:10px">
+            <div class="trow"><label>to lp</label><span class="gname" style="font-size:13px">2/3 — accrues into the pool itself; no mint, no transfers</span><div class="tsel"><span id="fLp" style="font-family:var(--disp); font-size:15px">—</span></div></div>
+            <div class="trow"><label>to staked ftb</label><span class="gname" style="font-size:13px">2/9 — swept here; the stake board below</span><div class="tsel"><span id="fStake" style="font-family:var(--disp); font-size:15px">—</span></div></div>
+            <div class="trow"><label>to dev treasury</label><span class="gname" style="font-size:13px">1/9 — pays only passed, auditor-attested proposals</span><div class="tsel"><span id="fTres" style="font-family:var(--disp); font-size:15px">—</span></div></div>
+          </div>
+          <p class="small muted">no burn and no loan leg exist: every fee reaches a provider, a staker,
+          or a funded proposal. FTB is hard-capped at 100,000,000 — nothing is destroyed, nothing is
+          minted past the cap.</p>
+        </div>
         <div id="stakeBoard" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
           <span class="biglabel">stake board — the global pool and your share of it</span>
           <div class="flockstats" style="margin-top:10px; grid-template-columns:repeat(4,1fr)">

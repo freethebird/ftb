@@ -4,7 +4,8 @@
 // board — global pool, my stake, my % share, my claimable, with stake / unstake /
 // claim each on its own line.
 //
-// Owns (writes only these): #earn card — #dMonth, #dLast, #dLife, #dApy, the stake
+// Owns (writes only these): #earn card — #dMonth, #dLast, #dLife, #dApy, the fee-flow
+// strip (#feeFlows: #fLp, #fStake, #fTres), the stake
 // board (#dTotal, #dStaked, #dShare, #dPending), #earnPos (#dvStakeAmt, #dvStakeGo,
 // #dvUnstakeAmt, #dvUnstakeGo, #dvClaimGo, #dvHint), #earnOff, #earnRefresh.
 (function () {
@@ -41,6 +42,19 @@
       }).catch(function () {});
     }).catch(function () {});
     FtbRpc.readInt(dv, 'totalReceived').then(function (v) { $('dLife').textContent = fmt(v) + ' FTB'; }).catch(function () {});
+    // fee-flow strip (the constitution, live): 2/3 stays in the lend pool (its apy
+    // is the lp leg's figure), 2/9 sweeps here (same sampled apy as #dApy), 1/9
+    // sits in the treasury until a passed, auditor-attested proposal spends it.
+    if (C.lend && C.lend.indexOf('0x0000') !== 0) {
+      FtbRpc.readInt(C.lend, 'supplyApyBps').then(function (v) {
+        $('fLp').textContent = 'lp apy ' + (Number(v) / 100).toFixed(2) + '%';
+      }).catch(function () {});
+    }
+    if (C.treasury && C.treasury.indexOf('0x0000') !== 0) {
+      FtbRpc.readInt(C.ftb, 'balanceOf', [{ type: 'Hash160', value: C.treasury }]).then(function (v) {
+        $('fTres').textContent = fmt(v) + ' FTB held';
+      }).catch(function () {});
+    }
     FtbRpc.readInt(dv, 'totalStaked').then(function (v) { $('dTotal').textContent = fmt(v) + ' FTB'; }).catch(function () {});
     FtbRpc.readInt(dv, 'accPerShare').then(function (v) {
       // dividend APY: sample the accumulator, compare with a sample at least 20h old
@@ -48,11 +62,12 @@
         var now = Date.now(), prev = JSON.parse(localStorage.getItem('ftb_div_acc') || 'null');
         if (prev && prev.v && (now - prev.t) > 20 * 3600 * 1000) {
           var perDay = (Number(v) - Number(prev.v)) / 1e18 / ((now - prev.t) / (24 * 3600 * 1000));
-          if (perDay >= 0) $('dApy').textContent = (perDay * 365 * 100).toFixed(2) + '%';
+          if (perDay >= 0) { var apy = (perDay * 365 * 100).toFixed(2) + '%'; $('dApy').textContent = apy; $('fStake').textContent = 'stake apy ' + apy; }
           localStorage.setItem('ftb_div_acc', JSON.stringify({ v: v.toString(), t: now }));
         } else if (!prev) {
           localStorage.setItem('ftb_div_acc', JSON.stringify({ v: v.toString(), t: now }));
           $('dApy').textContent = 'sampling — check back tomorrow';
+          $('fStake').textContent = 'stake apy sampling — check back tomorrow';
         }
       } catch (e) {}
     }).catch(function () {});
