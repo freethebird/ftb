@@ -236,8 +236,19 @@ func chkKey(u interop.Hash160) []byte  { return append(prefixChk, u...) }
 func pendKey(u interop.Hash160) []byte { return append(prefixPend, u...) }
 
 // monthKey is fixed-width (big-endian uint32) so buckets sort and stay unambiguous.
+// The index is bounded before packing (Go canon Book II rule 5: a ceiling, not hope;
+// 2^32 months of 175200 blocks is ~11 billion years — the guard is a formality that
+// fails closed). One append per statement: a single variadic append of computed values
+// makes the neo-go compiler emit per-run NEF permutations (FTB-33, FTB-35).
 func monthKey(idx int) []byte {
-	return append(prefixMon, byte(idx>>24), byte(idx>>16), byte(idx>>8), byte(idx))
+	if idx < 0 || idx > 0xFFFFFFFF {
+		panic("dividends: month index out of range")
+	}
+	k := append(prefixMon, byte(idx>>24)) // #nosec G115 -- idx bounded by the guard above
+	k = append(k, byte(idx>>16))          // #nosec G115 -- idx bounded by the guard above
+	k = append(k, byte(idx>>8))           // #nosec G115 -- idx bounded by the guard above
+	k = append(k, byte(idx))              // #nosec G115 -- idx bounded by the guard above
+	return k
 }
 
 func send(token, to interop.Hash160, amount int) {
