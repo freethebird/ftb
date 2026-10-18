@@ -612,11 +612,15 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <button class="read linkish" id="earnRefresh">refresh -&gt;</button>
       </div>
       <div class="card-b">
-        <div class="biglabel">dividend apy</div>
-        <div class="bign" id="dApy">—</div>
         <div class="flockstats">
+          <div class="fs"><div class="l">this month</div><div class="v" id="dMonth">—</div></div>
+          <div class="fs"><div class="l">last month</div><div class="v" id="dLast">—</div></div>
+          <div class="fs"><div class="l">lifetime</div><div class="v" id="dLife">—</div></div>
+        </div>
+        <div class="biglabel" style="margin-top:10px">dividend apy</div>
+        <div class="bign" id="dApy">—</div>
+        <div class="flockstats" style="grid-template-columns:1fr 1fr">
           <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">—</div></div>
-          <div class="fs"><div class="l">growth / ftb</div><div class="v" id="dAcc">—</div></div>
           <div class="fs"><div class="l">you can claim</div><div class="v" id="dPending">—</div></div>
         </div>
         <div id="earnPos" hidden style="margin-top:14px">
@@ -664,14 +668,17 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
             <span class="biglabel">loans board — every position, read from chain storage</span>
             <button class="linkish" id="loansRefresh">refresh -&gt;</button>
           </div>
-          <div class="flockstats" style="margin-top:10px">
+          <div class="flockstats" style="margin-top:10px; grid-template-columns:repeat(4,1fr)">
             <div class="fs"><div class="l">total ftb loaned</div><div class="v" id="lbLoaned">—</div></div>
             <div class="fs"><div class="l">collateral locked</div><div class="v" id="lbCollat">—</div></div>
             <div class="fs"><div class="l">open loans</div><div class="v" id="lbCount">—</div></div>
+            <div class="fs"><div class="l">% liquidity loaned</div><div class="v" id="lbUtil">—</div></div>
           </div>
           <div id="loansBody" style="margin-top:8px" class="small">—</div>
           <p class="small muted">health = collateral × 75% vs debt. anyone can liquidate an unhealthy
-          position and earn the 8% bonus — that is what keeps the pool solvent.</p>
+          position and earn the 8% bonus — that is what keeps the pool solvent.
+          interest is dynamic: the more of the pool is loaned out, the higher the rate —
+          2% base, 12% when 80% of liquidity is loaned, up to 72% near full.</p>
         </div>
         <p class="small muted" id="lendOff">standby — goes live when the lend contract hash is configured for this network</p>
       </div>

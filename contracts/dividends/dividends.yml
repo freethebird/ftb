@@ -6,6 +6,9 @@ safemethods:
   - accPerShare
   - queued
   - token
+  - monthIndex
+  - monthTotal
+  - totalReceived
 events:
   - name: Configured
     parameters:
@@ -50,3 +53,6 @@ permissions:
     methods:
       - transfer
       - balanceOf
+      # native ContractManagement.update, for the pre-launch-only Update (same
+      # posture as ftb_token / lend: never ship a module without it).
+      - update

@@ -1,9 +1,10 @@
 // mod-earn.js — module 3: FTB dividends (MODULES.md).
-// The holders' 2/9 of every fee: stake, unstake, claim, and the APY sampler.
+// The holders' 2/9 of every fee: monthly revenue (this month vs last month, from
+// the v2 on-chain ledger), lifetime received, stake, unstake, claim, APY sampler.
 //
-// Owns (writes only these): #earn card — #dApy, #dTotal, #dAcc, #dPending,
-// #earnPos (#dStaked, #dvStakeAmt, #dvStakeGo, #dvUnstakeAmt, #dvUnstakeGo,
-// #dvClaimGo, #dvHint), #earnOff, #earnRefresh.
+// Owns (writes only these): #earn card — #dMonth, #dLast, #dLife, #dApy, #dTotal,
+// #dPending, #earnPos (#dStaked, #dvStakeAmt, #dvStakeGo, #dvUnstakeAmt,
+// #dvUnstakeGo, #dvClaimGo, #dvHint), #earnOff, #earnRefresh.
 (function () {
   'use strict';
   if (!FtbUtil.$('earn')) return; // R2: inert where the markup is absent
@@ -26,9 +27,20 @@
     var dv = C.dividends;
     if (!divReady() || !FtbRpc.current()) { var off0 = $('earnOff'); if (off0) off0.hidden = false; return; }
     var off = $('earnOff'); if (off) off.hidden = true;
+    // monthly revenue ledger (v2): dividends GENERATED this month vs last month,
+    // counted at receipt — no indexer, straight from contract storage.
+    FtbRpc.readInt(dv, 'monthIndex').then(function (mi) {
+      Promise.all([
+        FtbRpc.readInt(dv, 'monthTotal', [{ type: 'Integer', value: mi.toString() }]),
+        mi > 0n ? FtbRpc.readInt(dv, 'monthTotal', [{ type: 'Integer', value: (mi - 1n).toString() }]) : Promise.resolve(0n)
+      ]).then(function (ms) {
+        $('dMonth').textContent = fmt(ms[0]) + ' FTB';
+        $('dLast').textContent = fmt(ms[1]) + ' FTB';
+      }).catch(function () {});
+    }).catch(function () {});
+    FtbRpc.readInt(dv, 'totalReceived').then(function (v) { $('dLife').textContent = fmt(v) + ' FTB'; }).catch(function () {});
     FtbRpc.readInt(dv, 'totalStaked').then(function (v) { $('dTotal').textContent = fmt(v) + ' FTB'; }).catch(function () {});
     FtbRpc.readInt(dv, 'accPerShare').then(function (v) {
-      $('dAcc').textContent = '1 staked FTB has earned ' + (Number(v) / 1e18).toFixed(8) + ' FTB';
       // dividend APY: sample the accumulator, compare with a sample at least 20h old
       try {
         var now = Date.now(), prev = JSON.parse(localStorage.getItem('ftb_div_acc') || 'null');

@@ -22,11 +22,18 @@ package dividends
 import (
 	"github.com/nspcc-dev/neo-go/pkg/interop"
 	"github.com/nspcc-dev/neo-go/pkg/interop/contract"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/ledger"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/management"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
 )
 
 const scale = 1_000_000_000_000_000_000 // 1e18 fixed-point for the per-share accumulator
+
+// blocksPerMonth is 1/12 of the 2,102,400-block year (15-second target, lend.go).
+// Monthly buckets are keyed by ledger height, not wall clock — deterministic and
+// callable from the chain itself.
+const blocksPerMonth = 175_200
 
 var (
 	keyOwner   = []byte{0x01} // deploy owner; may Configure once
@@ -34,9 +41,11 @@ var (
 	keyAcc     = []byte{0x03} // cumulative dividends per staked FTB, 1e18-scaled
 	keyTotStk  = []byte{0x04} // total staked FTB
 	keyQueued  = []byte{0x05} // revenue received while nothing was staked
+	keyTotRecv = []byte{0x06} // lifetime revenue received (FTB base units)
 	prefixStk  = []byte{0x10} // + account -> staked balance
 	prefixChk  = []byte{0x11} // + account -> accPerShare checkpoint at last touch
 	prefixPend = []byte{0x12} // + account -> settled but unclaimed dividends
+	prefixMon  = []byte{0x20} // + uint32 BE month index -> revenue received that month
 )
 
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
@@ -87,7 +96,37 @@ func OnNEP17Payment(from interop.Hash160, amount int, data any) {
 			return
 		}
 	}
+	// Revenue is counted when RECEIVED, not when distributed — "dividends generated
+	// this month" means what the protocol earned, whether or not stakers exist yet
+	// (unstaked revenue queues; the month bucket still records its arrival).
+	ctx := storage.GetContext()
+	mk := monthKey(int(ledger.CurrentIndex()) / blocksPerMonth)
+	storage.Put(ctx, mk, getIntCtx(ctx, mk)+amount)
+	storage.Put(ctx, keyTotRecv, getIntCtx(ctx, keyTotRecv)+amount)
 	distribute(amount)
+}
+
+// ---- monthly revenue ledger (the "dividends" module display) ----
+
+// MonthIndex is the current month number (genesis-relative, 175,200-block months).
+func MonthIndex() int { return int(ledger.CurrentIndex()) / blocksPerMonth }
+
+// MonthTotal is the FTB revenue received in month idx (base units; 0 if none).
+func MonthTotal(idx int) int {
+	if idx < 0 {
+		panic("bad month")
+	}
+	return getInt(monthKey(idx))
+}
+
+// TotalReceived is the lifetime FTB revenue paid into this module (base units).
+func TotalReceived() int { return getInt(keyTotRecv) }
+
+// Update exists for pre-launch fixes only — the v1 dividends lacked it, which
+// would have forced a redeploy for this very addition. Same posture as ftb_token.
+func Update(nef []byte, manifest []byte, data any) {
+	requireOwner()
+	management.UpdateWithData(nef, manifest, data)
 }
 
 // distribute folds any queued revenue into the new amount and raises the accumulator.
@@ -195,6 +234,11 @@ func Token() interop.Hash160 { return ftbHash() }
 func stkKey(u interop.Hash160) []byte  { return append(prefixStk, u...) }
 func chkKey(u interop.Hash160) []byte  { return append(prefixChk, u...) }
 func pendKey(u interop.Hash160) []byte { return append(prefixPend, u...) }
+
+// monthKey is fixed-width (big-endian uint32) so buckets sort and stay unambiguous.
+func monthKey(idx int) []byte {
+	return append(prefixMon, byte(idx>>24), byte(idx>>16), byte(idx>>8), byte(idx))
+}
 
 func send(token, to interop.Hash160, amount int) {
 	if amount == 0 {

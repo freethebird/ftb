@@ -199,15 +199,17 @@
         FtbRpc.readInt(C.ftb, 'balanceOf', [h160(C.lend)]).catch(function () { return 0n; }),
         FtbRpc.readInt(C.lend, 'reserveAccrued', []).catch(function () { return 0n; })
       ]).then(function (vs) {
-        var head = vs[0] - BigInt(existingDebt), liquid = vs[1] - vs[2];
+        var maxB = vs[0], head = maxB - BigInt(existingDebt), liquid = vs[1] - vs[2];
         var okLtv = BigInt(loanBase) <= head;
         var okLiq = BigInt(loanBase) <= liquid;
+        // express the limit the way users think about it: the % LTV after this loan
+        var ltvAfter = maxB > 0n ? (Number((BigInt(existingDebt) + BigInt(loanBase)) * 10000n / maxB) * 0.006).toFixed(1) : '—';
         FtbShell.showPlan('take a ' + loanDec + ' FTB loan',
           okLtv && okLiq
             ? 'the contract sends you ' + loanDec + ' FTB against your locked collateral. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.'
             : 'this will be REJECTED on-chain — fix the failing check first.',
           [['you receive', loanDec + ' FTB'],
-           ['your borrow headroom', fmt(head) + ' FTB — ' + (okLtv ? 'enough' : 'NO — lock more collateral or repay first')],
+           ['ltv after this loan', ltvAfter + '% of the 60% max — ' + (okLtv ? 'within limit' : 'NO — over the limit; lock more collateral or repay first')],
            ['pool liquidity', fmt(liquid) + ' FTB — ' + (okLiq ? 'enough' : 'NO — the pool is short. add liquidity (ADD LIQUIDITY below) or borrow less')],
            ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
           okLtv && okLiq ? FtbState.dapi.borrow(FtbState.account, loanBase.toString()) : null);
@@ -237,8 +239,9 @@
       curDebt = vs[1];
       var head = vs[0] - vs[1];
       if (head < 0n) head = 0n;
+      var ltv = vs[0] > 0n ? (Number(vs[1] * 10000n / vs[0]) * 0.006).toFixed(1) : '0.0';
       input.value = fromBase(head.toString());
-      note.textContent = 'your locked collateral allows ' + fmt(head) + ' FTB more (prefilled with the maximum — borrow less for a bigger safety buffer against liquidation).';
+      note.textContent = 'your ltv is ' + ltv + '% (max 60%). headroom: ' + fmt(head) + ' FTB — prefilled with the maximum; borrow less for a bigger safety buffer against liquidation.';
     }).catch(function () { note.textContent = 'could not read your position — the chain enforces the limit regardless.'; });
     var keys = keyWrap();
     keys.appendChild(mkKey('review borrow ->', function () {
@@ -286,7 +289,7 @@
     var input = mkInput('0.0');
     var note = wizNote(s.box, 'reading the rate…');
     FtbRpc.readInt(C.lend, 'supplyApyBps', []).then(function (v) {
-      note.textContent = 'approximate apy right now: ' + (Number(v) / 100).toFixed(2) + '% — it floats with utilization (borrow × util × 2/3).';
+      note.textContent = 'approximate apy right now: ' + (Number(v) / 100).toFixed(2) + '% — it floats with how much of the pool is loaned out (borrow rate × % loaned × 2/3).';
     }).catch(function () { note.textContent = 'apy unreadable — the chain still enforces the curve.'; });
     var keys = keyWrap();
     keys.appendChild(mkKey('sign liquidity ->', function () {
@@ -479,6 +482,9 @@
         FtbRpc.readInt(C.lend, 'totalBorrows', []).then(function (tb) {
           var e = $('lbLoaned'); if (e) e.textContent = fmt(tb) + ' FTB';
         }).catch(function () {});
+        FtbRpc.readInt(C.lend, 'utilizationBps', []).then(function (u) {
+          var e = $('lbUtil'); if (e) e.textContent = (Number(u) / 100).toFixed(1) + '%';
+        }).catch(function () {});
         var ec = $('lbCollat'); if (ec) ec.textContent = totNeo.toString() + ' NEO + ' + fmt(totGas) + ' GAS';
         var en = $('lbCount'); if (en) en.textContent = nLoans + (rows.length > nLoans ? ' (+ ' + (rows.length - nLoans) + ' closed/collateral-only)' : '');
         body.innerHTML = '';
@@ -503,7 +509,9 @@
           }
           if (mine) {
             var head = r.maxB - r.debt; if (head < 0n) head = 0n;
-            meta.appendChild(el('span', null, 'headroom ' + fmt(head) + ' FTB'));
+            // maxB is collateral × 60%, so ltv% = debt / maxB × 60
+            var ltv = r.maxB > 0n ? (Number(r.debt * 10000n / r.maxB) * 0.006).toFixed(1) : '0.0';
+            meta.appendChild(el('span', null, 'ltv ' + ltv + '% of 60% · headroom ' + fmt(head) + ' FTB'));
           }
           // the health slot carries four states: liquidatable (actionable NOW) wins,
           // then a liquidation mark that never fades, then the live states.

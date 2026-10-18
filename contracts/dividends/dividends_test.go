@@ -100,6 +100,27 @@ func TestRevenueBeforeStakersQueues(t *testing.T) {
 	s.bal(t, s.alice.ScriptHash(), 10000-100+600)
 }
 
+// The monthly ledger counts revenue when RECEIVED (stakes are not revenue),
+// so the dividends module can show this month vs last month without an indexer.
+func TestMonthlyRevenueLedger(t *testing.T) {
+	s := setup(t)
+	dv := s.e.NewInvoker(s.div, s.owner)
+
+	s.stake(t, s.alice, 100)
+	dv.Invoke(t, stackitem.Make(0), "totalReceived") // stakes are not revenue
+
+	s.revenue(t, 500)
+	dv.Invoke(t, stackitem.Make(0), "monthIndex") // a fresh test chain is in month 0
+	dv.Invoke(t, stackitem.Make(500), "monthTotal", 0)
+	dv.Invoke(t, stackitem.Make(500), "totalReceived")
+
+	s.revenue(t, 100)
+	dv.Invoke(t, stackitem.Make(600), "monthTotal", 0)
+	dv.Invoke(t, stackitem.Make(600), "totalReceived")
+
+	dv.InvokeFail(t, "bad month", "monthTotal", -1)
+}
+
 func TestRestakeSettlesAtOldBalance(t *testing.T) {
 	s := setup(t)
 	s.stake(t, s.alice, 100)

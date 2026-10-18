@@ -173,6 +173,8 @@ func main() {
 		const blocksPerYear = 2_102_400
 		mkRate := func(aprMilli int64) int64 { return aprMilli * 1_000_000_000_000_000 / blocksPerYear }
 		call(h, "setRates", mkRate(20), mkRate(125), mkRate(3000), 8000, 3333)
+	case "dividends":
+		call(h, "configure", token)
 	default:
 		check(fmt.Errorf("no wiring recipe for module %q — add one before swapping it", *module))
 	}

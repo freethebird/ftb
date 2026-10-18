@@ -18,7 +18,7 @@ window.FTB_CONFIG = {
     bondvault: '0x029785b1a2b395a295ebf96f7d68a3cee9afb967',
     // treasury escrows proposal budgets; dividends pays the holders' 2/9 to stakers
     treasury:  '0xcac71ad3478491401ec72c35831521437d06aea6',
-    dividends: '0x5955833a363c20dffd3a101de886a1415b005131',
+    dividends: '0xb98cd5d04b20b84fcef0fc9d305dd5092c5a0df9', // v2 18 Oct: monthly revenue ledger + update method,
     // bNEO (NeoBurger) — ratio-board listing only; lend collateral is native NEO + GAS.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
     // router is the external Flamingo swap; no AMM on TestNet (neo#3285) — placeholder.
