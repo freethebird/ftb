@@ -90,6 +90,14 @@
   }
 
   // ----- A) start loan -----
+  // screen 1: amount. screen 2: BOTH collateral options with predetermined
+  // amounts, one click chooses. screen 3: the two transactions, in plain words.
+  // every screen REPLACES the previous one — no stacking, no duplicates.
+  function collatNeed(loanBase, price, wholeNeo) {
+    // loan ÷ (60% LTV × price) + 10% safety, rounded up (BigInt exact)
+    var num = loanBase * 110n, den = 60n * price;
+    return wholeNeo ? (num + den - 1n) / den : (num * 100000000n + den - 1n) / den;
+  }
   function wizLoan() {
     if (!needAcct()) return;
     clearWiz();
@@ -97,74 +105,83 @@
     var in1 = mkInput('0.0');
     var k1 = keyWrap(); k1.appendChild(mkKey('next ->', function () {
       var a = amtVal(in1.value); if (a === null) return badAmt();
-      wizLoan2(BigInt(toBase(a)), a);
+      wizLoanPick(BigInt(toBase(a)), a);
     }));
     s1.row.appendChild(in1); s1.row.appendChild(k1);
     wiz.appendChild(s1.box);
     in1.focus();
   }
-  function wizLoan2(loanBase, loanDec) {
-    var s2 = stepBox('2', 'collateral — neo or gas?');
-    var which = { v: null };
-    var bN = el('button', null, 'NEO'); var bG = el('button', null, 'GAS');
-    bN.addEventListener('click', function () { which.v = 'NEO'; bN.classList.add('on'); bG.classList.remove('on'); });
-    bG.addEventListener('click', function () { which.v = 'GAS'; bG.classList.add('on'); bN.classList.remove('on'); });
-    var k2 = keyWrap(); k2.appendChild(bN); k2.appendChild(bG);
-    k2.appendChild(mkKey('next ->', function () {
-      if (!which.v) return;
-      wizLoan3(loanBase, loanDec, which.v);
-    }));
-    s2.row.appendChild(el('span', null, '')); s2.row.appendChild(k2);
-    wiz.appendChild(s2.box);
-  }
-  function wizLoan3(loanBase, loanDec, which) {
-    var s3 = stepBox('3', 'collateral amount — predetermined by the oracle ratio');
-    var assetHash = which === 'NEO' ? FtbState.CFG.assets.neo : FtbState.CFG.assets.gas;
-    s3.row.appendChild(el('span', 'gname', 'reading oracle…'));
-    var note = wizNote(s3.box, '');
-    wiz.appendChild(s3.box);
-    FtbRpc.readInt(C.oracle, 'price', [h160(assetHash)]).then(function (price) {
-      // value = whole×price (NEO) or base×price/1e8 (GAS); maxBorrow = value×60%.
-      // required = loan ÷ 0.6 ÷ price, +10% safety so a small price move can't fault the borrow.
-      var num = loanBase * 110n, den = 60n * price;
-      var needWhole = (num + den - 1n) / den;                     // NEO: whole units
-      var needBase = (num * 100000000n + den - 1n) / den;         // GAS: base units
-      var needDec = which === 'NEO' ? needWhole.toString() : fromBase(needBase.toString());
-      var priceDec = fromBase(price.toString());
-      s3.row.removeChild(s3.row.lastChild);
-      s3.row.appendChild(el('span', 'gname', needDec + ' ' + which));
-      var keys = keyWrap();
-      keys.appendChild(mkKey('1. sign deposit ->', function () {
-        var plan = which === 'NEO'
-          ? FtbState.dapi.addCollateralNeo(FtbState.account, needWhole.toString())
-          : FtbState.dapi.addCollateralGas(FtbState.account, needBase.toString());
-        FtbShell.showPlan('deposit ' + needDec + ' ' + which + ' collateral',
-          'predetermined: ' + loanDec + ' FTB ÷ (60% LTV × ' + priceDec + ' FTB per ' + which + ') + 10% safety. after it confirms, sign the borrow.',
-          [['collateral', needDec + ' ' + which], ['oracle ratio', '1 ' + which + ' = ' + priceDec + ' FTB'], ['what you sign', plan.summary]],
-          plan);
-      }));
-      keys.appendChild(mkKey('2. sign borrow ->', function () {
-        var acct = FtbState.acctHash160();
-        FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]).then(function (maxB) {
-          FtbShell.showPlan('borrow ' + loanDec + ' FTB',
-            'debt accrues at the borrow rate (2% base, 12% at the 80% kink). below 75% collateral cover you can be liquidated.',
-            [['amount', loanDec + ' FTB'],
-             ['your max borrow', fmt(maxB) + ' FTB'],
-             ['within limit', loanBase <= maxB ? 'yes' : 'NO — deposit first, or more'],
-             ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
-            FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
-        }).catch(function () {
-          FtbShell.showPlan('borrow ' + loanDec + ' FTB', 'could not read max borrow — the chain enforces it regardless.',
-            [['amount', loanDec + ' FTB']], FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
-        });
-      }));
-      s3.row.appendChild(keys);
-      note.textContent = 'predetermined: ' + loanDec + ' FTB ÷ (60% LTV × ' + priceDec + ' FTB per ' + which + ') + 10% safety margin. sign the deposit, wait for "confirmed on-chain", then sign the borrow.';
+  function wizLoanPick(loanBase, loanDec) {
+    clearWiz();
+    var s = stepBox('2', 'choose your collateral — the amounts are predetermined');
+    s.row.appendChild(el('span', 'gname', 'reading oracle…'));
+    var note = wizNote(s.box, '');
+    wiz.appendChild(s.box);
+    var assets = FtbState.CFG.assets;
+    Promise.all([
+      FtbRpc.readInt(C.oracle, 'price', [h160(assets.neo)]),
+      FtbRpc.readInt(C.oracle, 'price', [h160(assets.gas)])
+    ]).then(function (ps) {
+      var needNeo = collatNeed(loanBase, ps[0], true);
+      var needGas = collatNeed(loanBase, ps[1], false);
+      s.row.removeChild(s.row.lastChild);
+      // one row per option: predetermined amount on the left, the choice key on the right.
+      // [name, display, price, isNeo, rawArg] — rawArg is the exact contract integer.
+      [['NEO', needNeo.toString(), ps[0], true, needNeo.toString()],
+       ['GAS', fromBase(needGas.toString()), ps[1], false, needGas.toString()]].forEach(function (o) {
+        var r = el('div', 'trow');
+        var lbl = el('label'); lbl.textContent = '';
+        r.appendChild(lbl);
+        r.appendChild(el('span', 'gname', o[1] + ' ' + o[0]));
+        var kw = keyWrap();
+        kw.appendChild(mkKey('use ' + o[0].toLowerCase() + ' ->', function () {
+          wizLoanSign(loanBase, loanDec, o[0], o[1], o[2], o[3], o[4]);
+        }));
+        r.appendChild(kw);
+        s.box.insertBefore(r, note);
+      });
+      note.textContent = 'predetermined from the live oracle: ' + loanDec + ' FTB ÷ (60% LTV × ratio) + 10% safety. ratios now: 1 NEO = ' +
+        fromBase(ps[0].toString()) + ' FTB · 1 GAS = ' + fromBase(ps[1].toString()) + ' FTB.';
     }).catch(function (e) {
-      s3.row.removeChild(s3.row.lastChild);
-      s3.row.appendChild(el('span', 'gname', 'oracle unavailable'));
-      note.textContent = 'the oracle has no fresh ' + which + ' price: ' + FtbUtil.errText(e);
+      s.row.removeChild(s.row.lastChild);
+      s.row.appendChild(el('span', 'gname', 'oracle unavailable'));
+      note.textContent = 'no fresh oracle price: ' + FtbUtil.errText(e);
     });
+  }
+  function wizLoanSign(loanBase, loanDec, which, needDec, price, wholeNeo, needArg) {
+    clearWiz();
+    var s = stepBox('3', 'two signatures — lock your collateral, then take the loan');
+    var priceDec = fromBase(price.toString());
+    s.row.appendChild(el('span', 'gname', loanDec + ' FTB  against  ' + needDec + ' ' + which));
+    var keys = keyWrap();
+    keys.appendChild(mkKey('1. lock ' + needDec + ' ' + which + ' ->', function () {
+      var plan = wholeNeo
+        ? FtbState.dapi.addCollateralNeo(FtbState.account, needArg)
+        : FtbState.dapi.addCollateralGas(FtbState.account, needArg);
+      FtbShell.showPlan('lock ' + needDec + ' ' + which + ' as collateral',
+        'transaction 1 of 2: your ' + which + ' moves into the lend contract as collateral. it stays yours — you get it back when the loan is repaid.',
+        [['collateral', needDec + ' ' + which], ['oracle ratio', '1 ' + which + ' = ' + priceDec + ' FTB'], ['what you sign', plan.summary]],
+        plan);
+    }));
+    keys.appendChild(mkKey('2. take ' + loanDec + ' ftb loan ->', function () {
+      var acct = FtbState.acctHash160();
+      FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]).then(function (maxB) {
+        FtbShell.showPlan('take a ' + loanDec + ' FTB loan',
+          'transaction 2 of 2: the contract sends you ' + loanDec + ' FTB. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.',
+          [['you receive', loanDec + ' FTB'],
+           ['your max borrow', fmt(maxB) + ' FTB'],
+           ['within limit', loanBase <= maxB ? 'yes' : 'NO — lock the collateral first'],
+           ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
+          FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
+      }).catch(function () {
+        FtbShell.showPlan('take a ' + loanDec + ' FTB loan', 'could not read max borrow — the chain enforces it regardless.',
+          [['you receive', loanDec + ' FTB']], FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
+      });
+    }));
+    s.row.appendChild(keys);
+    wizNote(s.box, 'a loan is two transactions, signed one after the other: 1) your ' + which +
+      ' locks as collateral — wait for "confirmed on-chain" — 2) the loan lands in your wallet. your collateral is returned when you repay.');
+    wiz.appendChild(s.box);
   }
 
   // ----- B) pay loan -----
