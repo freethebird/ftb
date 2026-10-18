@@ -207,6 +207,11 @@ func TestLiquidationOnPriceDrop(t *testing.T) {
 	// borrower debt down to 1500, liquidator holds 54 whole NEO
 	lendOwner.Invoke(t, stackitem.Make(1500*dec), "debtOf", borrower.ScriptHash().BytesBE())
 	s.neoBal(t, liquidator.ScriptHash(), 54)
+
+	// the liquidation is recorded on the borrower and outlives the position:
+	// the loans board reads liquidationsOf for its LIQUIDATED tag
+	lendOwner.Invoke(t, stackitem.Make(1), "liquidationsOf", borrower.ScriptHash().BytesBE())
+	lendOwner.Invoke(t, stackitem.Make(0), "liquidationsOf", liquidator.ScriptHash().BytesBE())
 }
 
 // When NEO alone cannot cover the seize, the remainder spills into GAS.

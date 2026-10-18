@@ -14,6 +14,7 @@ safemethods:
   - borrowApyBps
   - supplyApyBps
   - reserveAccrued
+  - liquidationsOf
 events:
   - name: Configured
     parameters:
@@ -52,6 +53,16 @@ events:
       - name: to
         type: Hash160
       - name: amount
+        type: Integer
+  - name: Liquidated
+    parameters:
+      - name: borrower
+        type: Hash160
+      - name: repaid
+        type: Integer
+      - name: seizedNeo
+        type: Integer
+      - name: seizedGas
         type: Integer
 permissions:
   - contract: '*'

@@ -67,6 +67,7 @@ var (
 	prefixBNorm  = []byte{0x31}
 	prefixColN   = []byte{0x32} // NEO collateral (whole units)
 	prefixColG   = []byte{0x33} // GAS collateral (base units)
+	prefixLiqs   = []byte{0x34} // per-borrower liquidation count — the board's LIQUIDATED tag
 )
 
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
@@ -361,6 +362,11 @@ func liquidateIn(liquidator interop.Hash160, repay int, borrower interop.Hash160
 	if repay > pay {
 		send(ftbHash(), liquidator, repay-pay) // refund overpay
 	}
+	// Record it: a liquidation is a fact about the borrower that outlives the
+	// position itself (the board tags LIQUIDATED even after the debt is gone).
+	lk := liqKey(borrower)
+	storage.Put(ctx, lk, getIntCtx(ctx, lk)+1)
+	runtime.Notify("Liquidated", borrower, pay, seizeN, seizeG)
 }
 
 // ---- interest accrual (utilization curve + the 2/3 : 1/3 split) ----
@@ -454,6 +460,10 @@ func CollateralOf(user interop.Hash160, isNeo bool) int { return col(user, isNeo
 // ReserveAccrued is the FTB owed to FTB holders, waiting for the next sweep.
 func ReserveAccrued() int { return getInt(keyResAccrued) }
 
+// LiquidationsOf is the borrower's lifetime liquidation count — the loans board
+// tags LIQUIDATED from this, even after the position itself has closed.
+func LiquidationsOf(user interop.Hash160) int { return getInt(liqKey(user)) }
+
 // UtilizationBps: totalBorrows as bps of the lendable pool (available cash + borrows).
 func UtilizationBps() int {
 	tb := getInt(keyTotBorrow)
@@ -532,6 +542,7 @@ func requireOwner() {
 func eq(a, b interop.Hash160) bool      { return string(a) == string(b) }
 func shareKey(u interop.Hash160) []byte { return append(prefixShares, u...) }
 func bnormKey(u interop.Hash160) []byte { return append(prefixBNorm, u...) }
+func liqKey(u interop.Hash160) []byte   { return append(prefixLiqs, u...) }
 
 // divUp is ceiling division for the normalized-debt math. Safety at repay: DebtOf
 // floors (bnorm*bidx/scale), so bnorm*bidx >= debt*scale; with pay <= debt,

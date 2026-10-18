@@ -2,10 +2,13 @@
 // NEO+GAS collateral, FTB loans. This page is read-only for the pool; every
 // position-changing action is a review-and-sign plan through the adapter.
 //
-// Owns (writes only these): #lend card — #lUtil, #lBApy, #lSApy, #lBorrows,
-// #lReserve, #lendPos (#pHealth, #pNeo, #pGas, #pDebt, #pMax, #pShares),
-// #lendAct (the four wizard keys #lnWizLoan/#lnWizPay/#lnWizAdd/#lnWizRemove
-// and the step-by-step panel #lnWizard they build), #lendOff, #lendRefresh.
+// Owns (writes only these): #lend card — the 4-stat panel (#lSApy liquidity apy,
+// #lBApy borrow apy, #lTotal total liquidity, #pHealth), #lendAct (the wizard keys
+// #lnWizLoan/#lnWizPay/#lnWizWdCol/#lnWizAdd/#lnWizRemove and the step panel
+// #lnWizard they build), #lendOff, #lendRefresh, and the loans board (#loansBody
+// plus its totals strip #lbLoaned/#lbCollat/#lbCount, #loansRefresh). All detail
+// lives on the board: per-position debt/collateral/health, your headroom, and the
+// permanent LIQUIDATED tag (liquidationsOf, prefix 0x34).
 (function () {
   'use strict';
   if (!FtbUtil.$('lend')) return; // R2: inert where the markup is absent
@@ -25,21 +28,19 @@
     var lend = C.lend;
     if (!lend || lend.indexOf('0x0000') === 0 || !FtbRpc.current()) { var off0 = $('lendOff'); if (off0) off0.hidden = false; return; }
     var off = $('lendOff'); if (off) off.hidden = true;
-    FtbRpc.readInt(lend, 'utilizationBps').then(function (v) { $('lUtil').textContent = bps(v); }).catch(function () {});
     FtbRpc.readInt(lend, 'borrowApyBps').then(function (v) { $('lBApy').textContent = bps(v); }).catch(function () {});
     FtbRpc.readInt(lend, 'supplyApyBps').then(function (v) { $('lSApy').textContent = bps(v); }).catch(function () {});
-    FtbRpc.readInt(lend, 'totalBorrows').then(function (v) { $('lBorrows').textContent = fmt(v) + ' FTB'; }).catch(function () {});
-    FtbRpc.readInt(lend, 'reserveAccrued').then(function (v) { $('lReserve').textContent = fmt(v) + ' FTB'; }).catch(function () {});
+    // total liquidity = what suppliers would withdraw today: cash + outstanding
+    // borrows, minus the holders' reserve (that third belongs to FTB holders).
+    Promise.all([
+      FtbRpc.readInt(C.ftb, 'balanceOf', [h160(lend)]),
+      FtbRpc.readInt(lend, 'totalBorrows', []),
+      FtbRpc.readInt(lend, 'reserveAccrued', [])
+    ]).then(function (vs) { $('lTotal').textContent = fmt(vs[0] + vs[1] - vs[2]) + ' FTB'; }).catch(function () {});
     var acct = FtbState.acctHash160();
     if (!acct) return;
-    var pos = $('lendPos'); if (pos) pos.hidden = false;
     var act = $('lendAct'); if (act) act.hidden = false;
     var hu = [{ type: 'Hash160', value: acct }];
-    FtbRpc.readInt(lend, 'collateralOf', hu.concat([{ type: 'Boolean', value: true }])).then(function (v) { $('pNeo').textContent = v.toString(); }).catch(function () {});
-    FtbRpc.readInt(lend, 'collateralOf', hu.concat([{ type: 'Boolean', value: false }])).then(function (v) { $('pGas').textContent = fmt(v); }).catch(function () {});
-    FtbRpc.readInt(lend, 'debtOf', hu).then(function (v) { $('pDebt').textContent = fmt(v) + ' FTB'; }).catch(function () {});
-    FtbRpc.readInt(lend, 'maxBorrow', hu).then(function (v) { $('pMax').textContent = fmt(v) + ' FTB'; }).catch(function () {});
-    FtbRpc.readInt(lend, 'sharesOf', hu).then(function (v) { $('pShares').textContent = fmt(v); }).catch(function () {});
     readVal(lend, 'isUnhealthy', hu).then(function (v) {
       var e = $('pHealth'); if (!e) return;
       var bad = (v === true || v === 'true' || v === '1');
@@ -288,7 +289,7 @@
       note.textContent = 'approximate apy right now: ' + (Number(v) / 100).toFixed(2) + '% — it floats with utilization (borrow × util × 2/3).';
     }).catch(function () { note.textContent = 'apy unreadable — the chain still enforces the curve.'; });
     var keys = keyWrap();
-    keys.appendChild(mkKey('sign supply ->', function () {
+    keys.appendChild(mkKey('sign liquidity ->', function () {
       var a = amtVal(input.value); if (a === null) return badAmt();
       FtbShell.showPlan('add ' + a + ' FTB liquidity',
         'you receive pool shares; interest accrues to the share price.',
@@ -436,11 +437,12 @@
   function loadLoans() {
     var body = $('loansBody'); if (!body || !FtbRpc.current() || !C.lend) return;
     body.textContent = 'reading chain storage…';
-    // Three prefixes, not one: 0x31 debt ('MQ=='), 0x32 NEO collateral ('Mg=='),
-    // 0x33 GAS collateral ('Mw=='). A deposit can land without its borrow (failed
-    // second signature) and collateral outlives a repaid loan — a collateral-only
-    // position must be VISIBLE, or its owner thinks the funds vanished.
-    Promise.all(['MQ==', 'Mg==', 'Mw=='].map(function (p) {
+    // Four prefixes: 0x31 debt ('MQ=='), 0x32 NEO collateral ('Mg=='), 0x33 GAS
+    // collateral ('Mw=='), 0x34 liquidation count ('NA=='). A deposit can land
+    // without its borrow (failed second signature), collateral outlives a repaid
+    // loan, and a LIQUIDATION outlives the position itself — all must be VISIBLE,
+    // or users think funds (or history) vanished.
+    Promise.all(['MQ==', 'Mg==', 'Mw==', 'NA=='].map(function (p) {
       return FtbRpc.call('findstorage', [C.lend, p]).then(function (r) { return (r && r.results) || r || []; })
         .catch(function () { return []; });
     })).then(function (sets) {
@@ -461,14 +463,24 @@
           FtbRpc.read(C.lend, 'isUnhealthy', [h160(be)]).then(function (st) {
             var it = st && st[0];
             return it && (it.type === 'Boolean' ? it.value : (it.value && it.value !== '0' && it.value !== ''));
-          }).catch(function () { return false; })
+          }).catch(function () { return false; }),
+          FtbRpc.readInt(C.lend, 'liquidationsOf', [h160(be)]).catch(function () { return 0n; }),
+          FtbRpc.readInt(C.lend, 'maxBorrow', [h160(be)]).catch(function () { return 0n; })
         ]).then(function (vs) {
           return scriptHashToAddress(le).then(function (addr) {
-            return { addr: addr, be: be, debt: vs[0], neo: vs[1], gas: vs[2], bad: !!vs[3] };
+            return { addr: addr, be: be, debt: vs[0], neo: vs[1], gas: vs[2], bad: !!vs[3], liqs: vs[4], maxB: vs[5] };
           });
         });
       })).then(function (rows) {
-        var open = rows.filter(function (r) { return r.debt > 0n || r.neo > 0n || r.gas > 0n; });
+        var open = rows.filter(function (r) { return r.debt > 0n || r.neo > 0n || r.gas > 0n || r.liqs > 0n; });
+        // totals strip: chain-wide, summed from the same enumeration
+        var totNeo = 0n, totGas = 0n, nLoans = 0;
+        rows.forEach(function (r) { totNeo += r.neo; totGas += r.gas; if (r.debt > 0n) nLoans++; });
+        FtbRpc.readInt(C.lend, 'totalBorrows', []).then(function (tb) {
+          var e = $('lbLoaned'); if (e) e.textContent = fmt(tb) + ' FTB';
+        }).catch(function () {});
+        var ec = $('lbCollat'); if (ec) ec.textContent = totNeo.toString() + ' NEO + ' + fmt(totGas) + ' GAS';
+        var en = $('lbCount'); if (en) en.textContent = nLoans + (rows.length > nLoans ? ' (+ ' + (rows.length - nLoans) + ' closed/collateral-only)' : '');
         body.innerHTML = '';
         if (!open.length) { body.textContent = 'no open positions — ' + rows.length + ' closed.'; return; }
         open.forEach(function (r) {
@@ -481,14 +493,25 @@
           ttl.title = r.addr;
           mid.appendChild(ttl);
           var meta = el('div', 'meta');
-          meta.appendChild(el('span', null, 'debt ' + fmt(r.debt) + ' FTB'));
-          meta.appendChild(el('span', null, r.neo.toString() + ' NEO'));
-          meta.appendChild(el('span', null, fmt(r.gas) + ' GAS'));
-          // three states: liquidatable, active loan, or collateral sitting free
-          // (deposit landed but no borrow, or loan fully repaid) — claimable.
+          var closedByLiq = r.debt === 0n && r.neo === 0n && r.gas === 0n && r.liqs > 0n;
+          if (closedByLiq) {
+            meta.appendChild(el('span', null, 'position closed by liquidation'));
+          } else {
+            meta.appendChild(el('span', null, 'debt ' + fmt(r.debt) + ' FTB'));
+            meta.appendChild(el('span', null, r.neo.toString() + ' NEO'));
+            meta.appendChild(el('span', null, fmt(r.gas) + ' GAS'));
+          }
+          if (mine) {
+            var head = r.maxB - r.debt; if (head < 0n) head = 0n;
+            meta.appendChild(el('span', null, 'headroom ' + fmt(head) + ' FTB'));
+          }
+          // the health slot carries four states: liquidatable (actionable NOW) wins,
+          // then a liquidation mark that never fades, then the live states.
           var tag = r.bad
             ? el('span', 'tag pub', 'LIQUIDATABLE')
-            : (r.debt > 0n ? el('span', 'tag', 'healthy') : el('span', 'tag', 'collateral only — claimable'));
+            : (r.liqs > 0n
+              ? el('span', 'tag pub', 'liquidated ×' + r.liqs.toString())
+              : (r.debt > 0n ? el('span', 'tag', 'healthy') : el('span', 'tag', 'collateral only — claimable')));
           meta.appendChild(tag);
           var btnWrap = el('div', 'read');
           if (mine && !r.bad) {

@@ -642,27 +642,11 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <button class="read linkish" id="lendRefresh">refresh -&gt;</button>
       </div>
       <div class="card-b">
-        <div class="flockstats">
-          <div class="fs"><div class="l">utilization</div><div class="v" id="lUtil">—</div></div>
+        <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
+          <div class="fs"><div class="l">liquidity apy</div><div class="v" id="lSApy">—</div></div>
           <div class="fs"><div class="l">borrow apy</div><div class="v" id="lBApy">—</div></div>
-          <div class="fs"><div class="l">supply apy</div><div class="v" id="lSApy">—</div></div>
-        </div>
-        <div class="flockstats" style="grid-template-columns:1fr 1fr">
-          <div class="fs"><div class="l">borrows</div><div class="v" id="lBorrows">—</div></div>
-          <div class="fs"><div class="l">holder reserve</div><div class="v" id="lReserve">—</div></div>
-        </div>
-        <div id="lendPos" hidden style="margin-top:14px">
-          <div class="biglabel">my loans</div>
-          <div class="flockstats">
-            <div class="fs"><div class="l">collateral neo</div><div class="v" id="pNeo">—</div></div>
-            <div class="fs"><div class="l">collateral gas</div><div class="v" id="pGas">—</div></div>
-            <div class="fs"><div class="l">debt (with interest)</div><div class="v" id="pDebt">—</div></div>
-          </div>
-          <div class="flockstats">
-            <div class="fs"><div class="l">max borrow</div><div class="v" id="pMax">—</div></div>
-            <div class="fs"><div class="l">health</div><div class="v"><span class="tag pub" id="pHealth">—</span></div></div>
-            <div class="fs"><div class="l">pool shares</div><div class="v" id="pShares">—</div></div>
-          </div>
+          <div class="fs"><div class="l">total liquidity</div><div class="v" id="lTotal">—</div></div>
+          <div class="fs"><div class="l">health</div><div class="v"><span class="tag pub" id="pHealth">—</span></div></div>
         </div>
         <div id="lendAct" hidden style="margin-top:14px">
           <div class="row" style="gap:8px; flex-wrap:wrap">
@@ -679,6 +663,11 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
           <div style="display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; flex-wrap:wrap">
             <span class="biglabel">loans board — every position, read from chain storage</span>
             <button class="linkish" id="loansRefresh">refresh -&gt;</button>
+          </div>
+          <div class="flockstats" style="margin-top:10px">
+            <div class="fs"><div class="l">total ftb loaned</div><div class="v" id="lbLoaned">—</div></div>
+            <div class="fs"><div class="l">collateral locked</div><div class="v" id="lbCollat">—</div></div>
+            <div class="fs"><div class="l">open loans</div><div class="v" id="lbCount">—</div></div>
           </div>
           <div id="loansBody" style="margin-top:8px" class="small">—</div>
           <p class="small muted">health = collateral × 75% vs debt. anyone can liquidate an unhealthy
