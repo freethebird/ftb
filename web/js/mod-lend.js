@@ -257,9 +257,45 @@
     input.focus();
   }
 
+  // ----- E) withdraw collateral -----
+  function wizWdCol() {
+    if (!needAcct()) return;
+    clearWiz();
+    var s = stepBox('1', 'take back your collateral');
+    var acct = FtbState.acctHash160();
+    var note = wizNote(s.box, 'reading your collateral…');
+    var keys = keyWrap();
+    var state = { neo: null, gas: null };
+    Promise.all([
+      FtbRpc.readInt(C.lend, 'collateralOf', [h160(acct), { type: 'Boolean', value: true }]),
+      FtbRpc.readInt(C.lend, 'collateralOf', [h160(acct), { type: 'Boolean', value: false }]),
+      FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)])
+    ]).then(function (vs) {
+      state.neo = vs[0]; state.gas = vs[1];
+      note.textContent = 'locked: ' + vs[0].toString() + ' NEO · ' + fmt(vs[1]) + ' GAS. debt: ' + fmt(vs[2]) +
+        ' FTB — ' + (vs[2] > 0n ? 'repay first (or the chain enforces the LTV on what stays).' : 'zero, so everything below comes back in one transaction.');
+    }).catch(function () { note.textContent = 'could not read your collateral.'; });
+    keys.appendChild(mkKey('return my collateral ->', function () {
+      if (state.neo === null) return;
+      if (state.neo === 0n && state.gas === 0n) {
+        FtbShell.showPlan('nothing locked', 'you have no collateral in the lend contract.', [], null);
+        return;
+      }
+      var plan = FtbState.dapi.withdrawCollateral(FtbState.account, state.neo.toString(), state.gas.toString());
+      FtbShell.showPlan('return ' + state.neo.toString() + ' NEO + ' + fmt(state.gas) + ' GAS',
+        'one transaction returns everything you have locked. if any debt remains, the contract keeps enough collateral to cover the LTV — repay first to empty it.',
+        [['NEO back', state.neo.toString()], ['GAS back', fmt(state.gas)], ['what you sign', plan.summary]],
+        plan);
+    }));
+    s.row.appendChild(el('span', 'gname', 'all of it'));
+    s.row.appendChild(keys);
+    wiz.appendChild(s.box);
+  }
+
   function wire(id, fn) { var b = $(id); if (b) b.addEventListener('click', fn); }
   wire('lnWizLoan', wizLoan);
   wire('lnWizPay', wizPay);
+  wire('lnWizWdCol', wizWdCol);
   wire('lnWizAdd', wizAdd);
   wire('lnWizRemove', wizRemove);
 
