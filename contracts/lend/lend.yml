@@ -61,3 +61,7 @@ permissions:
       - price
       - get
       - onNEP17Payment
+      # native ContractManagement.update, for the pre-launch-only Update (same posture
+      # as ftb_token: never ship a module without it — the v1 lend lacked it and a
+      # rounding fix forced a full redeploy). On the wildcard entry, as in ftb_token.yml.
+      - update

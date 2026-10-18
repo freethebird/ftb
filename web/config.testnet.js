@@ -11,7 +11,7 @@ window.FTB_CONFIG = {
     migrator: '0x6b79b687956b0f49474643ba7212f7b3b55adba9', // migration claim R2 — mints floor(FLM × 0.189832)
     registry: '0x0d59f3bb8018f5668ac4448249f21927fe961614', // seam board
     oracle:   '0x1c92a93d438b9468b45706cbc4b1ddcc345df875', // Launch 2
-    lend:     '0xc3d249675bd870b43bf4c36496a9952131f96a83', // Launch 2
+    lend:     '0xae55c7b4950f9da4486baafdfd6ba2ae5ebdf8f4', // Launch 2 — v2 18 Oct: divUp rounding fix (dust debts repayable), adds owner-guarded update
     // ballot is deployed per proposal; the hash IS the proposal id
     ballot:   '0x25483d3645d3cfed8016717aa7e120b5cababce1',
     // bond vault holds listing bonds (50/50 liquidity/rug-pull split)

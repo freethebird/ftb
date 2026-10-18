@@ -135,6 +135,35 @@ func TestSupplyBorrowRepay(t *testing.T) {
 	lendOwner.Invoke(t, stackitem.Make(0), "debtOf", borrower.ScriptHash().BytesBE())
 }
 
+// Regression (TestNet report): floor division in the normalized-debt math made the
+// smallest debts unkillable — once the borrow index moved above 1e18, a repay covering
+// the full debt rounded the normalized reduction DOWN, stranding 1 base unit of debt
+// (and its collateral) forever. Ceiling division (divUp) must close the position
+// completely: a repay >= debtOf zeroes the normalized debt.
+func TestRepayClosesDustDebt(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	// aggressive flat rate so the borrow index moves well above 1e18 within the test
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setRates", 1_000_000_000_000, 0, 0, 8000, 3333)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lb := s.e.NewInvoker(s.lend, borrower)
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 100*dec)
+	for i := 0; i < 50; i++ {
+		s.e.AddNewBlock(t)
+	}
+	// trigger accrual; debt is now strictly greater than the borrowed 100 FTB
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1)
+	// repay more than the debt: overpay is refunded, and the full debt must die
+	s.mintFTB(t, borrower.ScriptHash(), 200*dec)
+	s.e.NewInvoker(s.ftb, borrower).Invoke(t, stackitem.Make(true), "transfer",
+		borrower.ScriptHash().BytesBE(), s.lend.BytesBE(), 300*dec, []any{"repay"})
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Make(0), "debtOf", borrower.ScriptHash().BytesBE())
+}
+
 // GAS prices through the same oracle with 8-decimal scaling; NEO stays whole-unit.
 func TestGasCollateralValues(t *testing.T) {
 	s := setup(t)

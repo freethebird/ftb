@@ -28,6 +28,7 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/interop/contract"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/gas"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/ledger"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/management"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/neo"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
@@ -136,6 +137,14 @@ func SetRates(base, slope1, slope2, kink, reserveBps int) {
 	storage.Put(ctx, keyKink, kink)
 	storage.Put(ctx, keyResBps, reserveBps)
 	runtime.Notify("RatesSet", base, slope1, slope2, kink, reserveBps)
+}
+
+// Update exists for pre-launch fixes only, same posture as ftb_token: the v1 lend
+// shipped WITHOUT this method, and a rounding bug (see divUp) could only be fixed by
+// a full redeploy behind the registry timelock. Never ship a module without it.
+func Update(nef []byte, manifest []byte, data any) {
+	requireOwner()
+	management.UpdateWithData(nef, manifest, data)
 }
 
 // ---- receive tokens ----
@@ -275,7 +284,12 @@ func Borrow(user interop.Hash160, amount int) {
 		panic("exceeds LTV")
 	}
 	ctx := storage.GetContext()
-	storage.Put(ctx, bnormKey(user), getIntCtx(ctx, bnormKey(user))+amount*scale/bidx())
+	// Normalized debt rounds UP (divUp), never down: floor division let the smallest
+	// debts round to zero normalized units, which made 1 base unit of debt unrepayable
+	// (a repay computed zero reduction, so the dust could never die) and let borrows
+	// under-charge by dust. Ceiling charges the borrower the dust, so a repay that
+	// covers DebtOf always zeroes the position — a closed loan closes completely.
+	storage.Put(ctx, bnormKey(user), getIntCtx(ctx, bnormKey(user))+divUp(amount*scale, bidx()))
 	storage.Put(ctx, keyTotBorrow, getIntCtx(ctx, keyTotBorrow)+amount)
 	send(ftbHash(), user, amount)
 }
@@ -287,7 +301,7 @@ func repayIn(user interop.Hash160, amount int) {
 	if pay > debt {
 		pay = debt
 	}
-	storage.Put(ctx, bnormKey(user), getIntCtx(ctx, bnormKey(user))-pay*scale/bidx())
+	storage.Put(ctx, bnormKey(user), getIntCtx(ctx, bnormKey(user))-divUp(pay*scale, bidx()))
 	storage.Put(ctx, keyTotBorrow, getIntCtx(ctx, keyTotBorrow)-pay)
 	if amount > pay {
 		send(ftbHash(), user, amount-pay) // refund overpay
@@ -315,7 +329,7 @@ func liquidateIn(liquidator interop.Hash160, repay int, borrower interop.Hash160
 	if pay > maxClose {
 		pay = maxClose
 	}
-	storage.Put(ctx, bnormKey(borrower), getIntCtx(ctx, bnormKey(borrower))-pay*scale/bidx())
+	storage.Put(ctx, bnormKey(borrower), getIntCtx(ctx, bnormKey(borrower))-divUp(pay*scale, bidx()))
 	storage.Put(ctx, keyTotBorrow, getIntCtx(ctx, keyTotBorrow)-pay)
 
 	seizeFtb := pay * (bps + getIntCtx(ctx, keyBonus)) / bps // FTB-value of collateral to seize
@@ -518,6 +532,11 @@ func requireOwner() {
 func eq(a, b interop.Hash160) bool      { return string(a) == string(b) }
 func shareKey(u interop.Hash160) []byte { return append(prefixShares, u...) }
 func bnormKey(u interop.Hash160) []byte { return append(prefixBNorm, u...) }
+
+// divUp is ceiling division for the normalized-debt math. Safety at repay: DebtOf
+// floors (bnorm*bidx/scale), so bnorm*bidx >= debt*scale; with pay <= debt,
+// divUp(pay*scale, bidx) <= bnorm — the subtraction can never underflow.
+func divUp(a, b int) int { return (a + b - 1) / b }
 func colKey(u interop.Hash160, isNeo bool) []byte {
 	if isNeo {
 		return append(prefixColN, u...)
