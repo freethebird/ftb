@@ -192,8 +192,10 @@
     var acct = FtbState.acctHash160();
     var input = mkInput('0.0');
     FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)]).then(function (d) {
-      input.value = fromBase(d.toString());
-      note.textContent = 'your debt right now: ' + fmt(d) + ' FTB (prefilled — overpayment credits only what you owe).';
+      // interest accrues per block, so the exact debt at read-time is already
+      // stale when the tx lands — prefill +0.001 FTB; repayIn refunds the excess.
+      input.value = fromBase((d + 100000n).toString());
+      note.textContent = 'your debt right now: ' + fmt(d) + ' FTB (prefilled a hair higher — interest ticks every block; the contract refunds whatever isn\'t owed).';
     }).catch(function () {});
     var note = wizNote(s.box, 'reading your debt…');
     var keys = keyWrap();
