@@ -68,7 +68,11 @@ window.FTB_CONFIG = {
   governance: { ratio: 0.189832, electorate: 300359297.9466036 },
 
   // the live ballot: question + option labels matching the on-chain order (option 1 first).
-  ballot: { question: '1 FLM/FLOCKS = 0.189832 FTB — adopt?', options: ['adopt', 'wait'] },
+  // endsAt: the 7-day voting window (DECISIONS.md 18 Oct — every vote lasts 7 days),
+  // measured from the ballot's TestNet deployment (18 Oct 2026 ~10:25 UTC). UI enforces
+  // the window; the contract itself has no expiry — late votes still land on-chain.
+  ballot: { question: '1 FLM/FLOCKS = 0.189832 FTB — adopt?', options: ['adopt', 'wait'],
+            endsAt: '2026-10-25T10:25:00Z' },
 
   // AMM pairs for ratio tracking (Section II): label + token hashes for router.getReserves.
   pairs: [

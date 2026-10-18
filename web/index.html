@@ -419,10 +419,24 @@ body{font-size:15px}
   color:var(--faint)}
 .flockstats .fs .v{font-family:var(--disp); font-size:19px; word-break:break-all}
 
-/* ---- governance duo ---- */
+/* ---- governance: full-width card, ballot left / pie + countdown right ---- */
 .govgrid{display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:start}
+.govcols{display:grid; grid-template-columns:7fr 5fr; gap:26px; align-items:start}
+.govside{border-left:1px solid var(--hair); padding-left:22px}
+.govside svg{display:block; width:100%; max-width:220px; height:auto; margin:0 auto}
+.govleg-row{display:flex; justify-content:space-between; gap:.8rem}
+.govleg-row .sw{display:inline-block; width:.9em; height:.9em; border:1px solid var(--ink);
+  margin-right:.45em; vertical-align:-.1em}
 .hero3mini{border:1px solid var(--ink); padding:16px}
 .hero3mini h2{font-family:var(--disp); font-weight:400; font-size:30px; margin:.2em 0 .3em}
+
+/* ---- network switch: two flush keys, current network engaged ---- */
+.netswitch{display:flex; font-size:11px; letter-spacing:.14em; text-transform:uppercase}
+.netswitch .cur, .netswitch a{padding:.45em .8em; border:1px solid var(--keyfg); margin-left:-1px}
+.netswitch .cur{background:var(--keyfg); color:var(--keybg)}
+.netswitch a{background:var(--keybg); color:var(--keyfg); text-decoration:none}
+.netswitch a:hover{background:var(--keyfg); color:var(--keybg)}
+.netswitch :first-child{margin-left:0}
 
 /* ---- claim + verify ---- */
 .act3{margin-top:26px}
@@ -460,7 +474,8 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 .tabs a:first-child, .ctabs a:first-child, .ctabs span.cur:first-child{margin-left:0}
 
 @media (max-width:860px){
-  .tradegrid, .earngrid, .govgrid{grid-template-columns:1fr}
+  .tradegrid, .earngrid, .govgrid, .govcols{grid-template-columns:1fr}
+  .govside{border-left:0; padding-left:0; border-top:1px solid var(--hair); padding-top:16px}
   .tiles{grid-template-columns:1fr 1fr}
   .topbar{gap:10px; padding:8px 12px}
   .topright{margin-left:0}
@@ -488,11 +503,16 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <a href="#claim">claim</a>
     <a href="#verify">verify</a>
     <a href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
+    <a href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
   </nav>
   <div class="topright">
+    <span class="netswitch" role="group" aria-label="network">
+      <span class="cur">testnet</span><a href="mainnet.html">mainnet</a>
+    </span>
     <span class="muted" id="rpcNote">rpc: connecting...</span>
     <span class="idstate" id="idstate">[ no wallet ]</span>
     <button id="connectBtn">connect -&gt;</button>
+    <button id="disconnectBtn" hidden>disconnect</button>
     <button class="linkish" id="themeBtn">theme</button>
     <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
   </div>
@@ -645,50 +665,58 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     </div>
   </div>
 
-  <!-- ============ GOVERNANCE ============ -->
-  <div class="govgrid">
-    <div class="card" id="vote">
-      <div class="card-h">
-        <span class="no">governance</span>
-        <span class="spacer"></span>
-        <span class="lede">snapshot-weighted, counted on-chain</span>
-        <button class="linkish" id="govRefresh">tally -&gt;</button>
-      </div>
-      <div class="card-b">
-        <h2 class="disp" style="font-size:28px; margin:.1em 0 .3em" id="govQ">no live ballot</h2>
-        <p class="small muted" id="govHint">weight = your snapshot balance.</p>
-        <div id="govBody"></div>
+  <!-- ============ GOVERNANCE (full width, same size as CLAIM) ============ -->
+  <div class="card act3" id="vote">
+    <div class="card-h">
+      <span class="no">governance</span>
+      <span class="spacer"></span>
+      <span class="lede">snapshot-weighted, counted on-chain · 7-day window</span>
+      <button class="linkish" id="govRefresh">tally -&gt;</button>
+    </div>
+    <div class="card-b">
+      <div class="govcols">
+        <div>
+          <h2 class="disp" style="font-size:28px; margin:.1em 0 .3em" id="govQ">no live ballot</h2>
+          <p class="small muted" id="govHint">weight = your snapshot balance.</p>
+          <div id="govBody"></div>
+        </div>
+        <div class="govside">
+          <div id="govDonut" aria-label="vote split of snapshot supply"></div>
+          <div class="biglabel" style="margin-top:14px">voting ends in</div>
+          <div class="disp" id="govClock" style="font-size:34px; line-height:1.15">—</div>
+          <div class="small muted" id="govLegend" style="margin-top:8px; line-height:1.8"></div>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="card" id="board">
-      <div class="card-h">
-        <span class="no">proposals</span>
-        <span class="spacer"></span>
-        <span class="lede">bonded — spam pays</span>
-        <button class="linkish" id="boardRefresh">refresh -&gt;</button>
+  <div class="card act3" id="board">
+    <div class="card-h">
+      <span class="no">proposals</span>
+      <span class="spacer"></span>
+      <span class="lede">bonded — spam pays</span>
+      <button class="linkish" id="boardRefresh">refresh -&gt;</button>
+    </div>
+    <div class="card-b">
+      <div id="boardBody">
+        <div class="entry">
+          <span class="idx">//</span>
+          <div><span class="ttl">standby — the board loads when the registry is configured for this network</span></div>
+          <div class="meta"><span class="tag">standby</span></div>
+        </div>
       </div>
-      <div class="card-b">
-        <div id="boardBody">
-          <div class="entry">
-            <span class="idx">//</span>
-            <div><span class="ttl">standby — the board loads when the registry is configured for this network</span></div>
-            <div class="meta"><span class="tag">standby</span></div>
-          </div>
+      <div class="ticket" style="margin-top:12px">
+        <div class="trow">
+          <label for="pMeta">proposal</label>
+          <input id="pMeta" maxlength="1024" autocomplete="off" placeholder="what should the community decide?">
+          <div class="tsel" id="pKindSel" role="group" aria-label="proposal kind"></div>
         </div>
-        <div class="ticket" style="margin-top:12px">
-          <div class="trow">
-            <label for="pMeta">proposal</label>
-            <input id="pMeta" maxlength="1024" autocomplete="off" placeholder="what should the community decide?">
-            <div class="tsel" id="pKindSel" role="group" aria-label="proposal kind"></div>
-          </div>
-          <div class="trow">
-            <label for="pRef">reference</label>
-            <input id="pRef" autocomplete="off" spellcheck="false" placeholder="0x… ballot contract hash, or the token hash for a listing">
-          </div>
-          <div class="tmeta" id="pMetaHint">bond: — FTB · exact, escrowed — refunded on a legitimate close, kept against spam</div>
-          <button class="go" id="pGo">review &amp; sign -&gt;</button>
+        <div class="trow">
+          <label for="pRef">reference</label>
+          <input id="pRef" autocomplete="off" spellcheck="false" placeholder="0x… ballot contract hash, or the token hash for a listing">
         </div>
+        <div class="tmeta" id="pMetaHint">bond: — FTB · exact, escrowed — refunded on a legitimate close, kept against spam</div>
+        <button class="go" id="pGo">review &amp; sign -&gt;</button>
       </div>
     </div>
   </div>

@@ -2,8 +2,9 @@
 // The dApi adapter lifecycle: connect, account-changed, disconnect. The page
 // never holds keys; every write is review-and-sign in the wallet.
 //
-// Owns (writes only these): #connectBtn, #idstate. Publishes FtbState.account
-// and FtbState.dapi, and emits 'account' whenever the wallet state changes.
+// Owns (writes only these): #connectBtn, #disconnectBtn, #idstate. Publishes
+// FtbState.account and FtbState.dapi, and emits 'account' whenever the wallet
+// state changes.
 (function () {
   'use strict';
   if (!FtbUtil.$('connectBtn')) return; // R2: inert where the markup is absent
@@ -16,6 +17,7 @@
     var account = FtbState.account;
     $('idstate').textContent = account ? ('[ ' + short(account) + ' @ ' + NET + ' ]') : '[ no wallet ]';
     $('connectBtn').textContent = account ? 'connected' : 'connect ->';
+    var d = $('disconnectBtn'); if (d) d.hidden = !account;
   }
 
   $('connectBtn').addEventListener('click', function () {
@@ -27,6 +29,17 @@
     }).catch(function (e) {
       $('idstate').textContent = '[ ' + (e.message || 'wallet error') + ' ]';
     });
+  });
+
+  // UI-level detach: NeoLine has no programmatic disconnect, so this clears the
+  // page's account state only — the wallet itself stays connected to the site
+  // until the user revokes it in NeoLine.
+  if ($('disconnectBtn')) $('disconnectBtn').addEventListener('click', function () {
+    FtbState.account = null;
+    if (FtbState.dapi) FtbState.dapi.account = null;
+    setState();
+    $('idstate').textContent = '[ detached — revoke in NeoLine to fully disconnect ]';
+    FtbState.emit('account', null);
   });
 
   if (typeof FtbDapi !== 'undefined' && FtbState.configured) {

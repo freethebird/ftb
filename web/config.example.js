@@ -69,7 +69,7 @@ window.FTB_CONFIG = {
 
   // the live ballot: human-readable question + option labels, matching the on-chain order
   // (option 0 is the first label). Leave question empty to hide the governance section.
-  ballot: { question: '', options: [] },
+  ballot: { question: '', options: [], endsAt: '' },
 
   // AMM pairs for ratio tracking: label + the two token hashes passed to router.getReserves.
   // These are the intended MainNet tokens; on TestNet set your deployed stand-ins.
