@@ -69,7 +69,7 @@
   function slipMin(amt, sym) {
     return decOf(sym) === 0 ? (amt * 995n + 999n) / 1000n : amt * 995n / 1000n;
   }
-  var swFrom = 'GAS', swTo = 'FTB', swQuote = null;
+  var swFrom = 'GAS', swTo = 'FTB', swQuote = null, qSeq = 0;
   function routerReady() { return !!(FtbState.configured && C.router && C.router.indexOf('0x0000') !== 0); }
   function paintSel(id, cur, setter) {
     var box = $(id); box.innerHTML = '';
@@ -89,6 +89,7 @@
     if (!FtbState.account) { FtbWallet.needConnect(); return; }
     if (!FtbRpc.current()) return;
     FtbRpc.readInt(TOKENS[sym](), 'balanceOf', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (v) {
+      if (sym !== swFrom) return; // user switched the pay asset while reading - discard
       if (v <= 0n) { $('swMeta').textContent = 'no ' + sym + ' in the connected wallet'; return; }
       $('swAmt').value = fillStr(v, sym);
       quote();
@@ -113,6 +114,8 @@
   });
   function quote() {
     swQuote = null; $('swOut').value = '';
+    var seq = ++qSeq; // stale-response guard: a quote that resolves after the user
+    // changed tokens or retyped is discarded - never paint an old pair's numbers
     if (!routerReady()) { $('swMeta').textContent = 'loads when the router hash is configured for this network'; return; }
     var raw = $('swAmt').value.trim();
     if (!raw) { $('swMeta').textContent = 'quote from live pool reserves · 0.3% pool fee · min received at 0.5% slippage'; return; }
@@ -121,6 +124,7 @@
     var a = TOKENS[swFrom](), b = TOKENS[swTo]();
     $('swMeta').textContent = 'quoting…';
     FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
+      if (seq !== qSeq) return; // superseded by a newer quote request
       var rr = reservesOf(st), rA = rr[0], rB = rr[1]; // order matches the queried tokens
       if (rA === 0n || rB === 0n) throw new Error('pool empty');
       var out = (amtIn * 997n * rB) / (rA * 1000n + amtIn * 997n);
@@ -132,7 +136,7 @@
       var m = $('swMeta'); m.innerHTML = '';
       m.appendChild(el('span', null, 'rate 1 ' + swFrom + ' = ' + spot.toPrecision(6) + ' ' + swTo + ' · min received ' + fmtT(minOut, swTo) + ' ' + swTo + ' · '));
       m.appendChild(el('span', impact > 5 ? 'impact-warn' : null, 'price impact ' + impact.toFixed(2) + '%'));
-    }).catch(function (e) { $('swMeta').textContent = 'quote failed: ' + pairErr(e, swFrom + '/' + swTo); });
+    }).catch(function (e) { if (seq !== qSeq) return; $('swMeta').textContent = 'quote failed: ' + pairErr(e, swFrom + '/' + swTo); });
   }
   var swT = null;
   $('swAmt').addEventListener('input', function () { clearTimeout(swT); swT = setTimeout(quote, 250); });
@@ -254,7 +258,8 @@
       wrap.appendChild(left);
       var right = el('div');
       right.appendChild(el('div', 'rcolh', 'change'));
-      var chgBox = el('div', 'rchgbox', '-'); right.appendChild(chgBox);
+      var pctBox = el('div', 'rchgbox', '-'); right.appendChild(pctBox);
+      var arrBox = el('div', 'rchgbox', ''); right.appendChild(arrBox);
       wrap.appendChild(right);
       card.appendChild(wrap);
       body.appendChild(card);
@@ -283,9 +288,13 @@
         if (sym[0] === 'FTB') noteFtbPx(sym[1], ra);
         var chg = h.length > 1 ? (ratio / h[0] - 1) * 100 : 0;
         var cls = chg > 0.005 ? 'up' : (chg < -0.005 ? 'dn' : 'flat');
-        chgBox.className = 'rchgbox' + (cls === 'dn' ? ' dn' : '');
-        chgBox.textContent = (cls === 'up' ? '▲ +' : cls === 'dn' ? '▼ -' : '= ') + Math.abs(chg).toFixed(2) + '%';
-        chgBox.title = 'ratio change across ' + h.length + ' reads in this browser';
+        var dnCls = cls === 'dn' ? ' dn' : '';
+        pctBox.className = 'rchgbox' + dnCls;
+        pctBox.textContent = (chg >= 0 ? '+' : '-') + Math.abs(chg).toFixed(2) + '%';
+        pctBox.title = 'ratio change across ' + h.length + ' reads in this browser';
+        arrBox.className = 'rchgbox' + dnCls;
+        arrBox.textContent = cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=';
+        arrBox.title = pctBox.title;
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
         paintTicker();
       }).catch(function (e) {

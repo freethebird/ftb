@@ -202,10 +202,11 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .rbox{border:1px solid var(--ok); color:var(--ok); padding:8px 12px;
   font-size:13px; line-height:1.5; white-space:nowrap; overflow:visible}
 .rbox + .rbox{margin-top:8px}
-/* change box: as tall as two small boxes, % and arrow only */
+/* change column: two boxes, each as tall as two ratio boxes - % on top, arrow below */
 .rchgbox{border:1px solid var(--ok); color:var(--ok); font-size:13px;
-  display:flex; align-items:center; justify-content:center; letter-spacing:.08em;
-  height:82px}
+  display:flex; align-items:center; justify-content:flex-start; padding:0 12px;
+  letter-spacing:.08em; height:82px}
+.rchgbox + .rchgbox{margin-top:8px}
 .rchgbox.dn{border-color:var(--dn); color:var(--dn)}
 
 /* ---- governance: option bars ---- */
