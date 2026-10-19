@@ -61,12 +61,22 @@
     });
   }
 
-  function read(hash, op, args) {
+  function read(hash, op, args, _retried) {
     return call(RPC, 'invokefunction', [hash, op, args || []]).then(function (r) {
       if (r.state !== 'HALT') throw new Error(r.exception || 'invocation faulted');
       return r.stack;
+    }).catch(function (e) {
+      // the picked endpoint can die mid-session (node restart, rate limit, sync
+      // stall) — signing/broadcast goes through the wallet's own RPC, so writes
+      // land while reads show "failed to fetch". re-probe every endpoint once and
+      // retry the read on the new winner; a genuinely faulting contract just
+      // faults again on the retry, unchanged.
+      if (_retried) throw e;
+      if (!repicking) repicking = pick().then(function () {}, function () {}).then(function () { repicking = null; });
+      return repicking.then(function () { return read(hash, op, args, true); });
     });
   }
+  var repicking = null;
   function readInt(hash, op, args) {
     return read(hash, op, args).then(function (st) {
       return (st && st[0] && st[0].value != null) ? BigInt(st[0].value) : 0n;
