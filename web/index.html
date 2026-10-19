@@ -442,16 +442,6 @@ body{font-size:15px}
    like claim/verify (18 Oct: one column, equal horizontal size everywhere) ---- */
 .tradegrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
 
-/* tokens table: restyle the ratio cards as rows, Flamingo "Tokens on Flamingo" */
-.toktab .rgrid{display:block; counter-reset:row; border:0}
-.toktab .rcard{border:0; border-bottom:1px solid var(--faint); counter-increment:row;
-  display:grid; grid-template-columns:4ch 1.2fr 1fr 1fr auto; gap:10px;
-  align-items:baseline; padding:9px 2px}
-.toktab .rcard::before{content:counter(row,decimal-leading-zero); color:var(--faint);
-  font-size:11px}
-.toktab .rcard .rp{font-size:12px; letter-spacing:.08em; color:var(--ink)}
-.toktab .rcard .rinv{font-size:12px; color:var(--ink-2); line-height:1.6; margin-top:6px}
-
 /* ---- earn over lend: same single column as every other module ---- */
 .earngrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
 .biglabel{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
@@ -622,7 +612,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       </div>
     </div>
 
-    <div class="card toktab" id="market">
+    <div class="card" id="market">
       <div class="card-h">
         <span class="no">tokens on ftb</span>
         <span class="spacer"></span>
