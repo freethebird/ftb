@@ -35,6 +35,17 @@
     return [BigInt(v[0].value), BigInt(v[1].value)];
   }
 
+  // a pair that was never deployed faults inside the factory lookup; say which
+  // pools DO exist instead of leaking a VM ASSERT at the user.
+  function pairErr(e, label) {
+    var m = errText(e);
+    if (/assert|not found|fault|paircontract/i.test(m)) {
+      var live = (CFG.pairs || []).map(function (p) { return p.label; }).join(' · ');
+      return 'no pool for ' + label + ' yet — live pools: ' + live;
+    }
+    return m;
+  }
+
   // ---------- swap ticket (enabled only when the router is configured) ----------
   // NEO is 0 decimals (whole, indivisible units) — every parse/format goes through
   // fmtT/parseT with the token's own decimals; quote math stays in raw base units.
@@ -89,7 +100,7 @@
       var m = $('swMeta'); m.innerHTML = '';
       m.appendChild(el('span', null, 'rate 1 ' + swFrom + ' = ' + spot.toPrecision(6) + ' ' + swTo + ' · min received ' + fmtT(minOut, swTo) + ' ' + swTo + ' · '));
       m.appendChild(el('span', impact > 5 ? 'impact-warn' : null, 'price impact ' + impact.toFixed(2) + '%'));
-    }).catch(function (e) { $('swMeta').textContent = 'quote failed: ' + errText(e); });
+    }).catch(function (e) { $('swMeta').textContent = 'quote failed: ' + pairErr(e, swFrom + '/' + swTo); });
   }
   var swT = null;
   $('swAmt').addEventListener('input', function () { clearTimeout(swT); swT = setTimeout(quote, 250); });
@@ -99,7 +110,7 @@
         [['status', 'router hash not configured']], null);
       return;
     }
-    if (!FtbState.account) { FtbWallet.needConnect(); return; }
+    if (!FtbState.account || !FtbState.dapi) { FtbWallet.needConnect(); return; }
     if (!swQuote) { $('swMeta').textContent = 'no quote yet — enter an amount'; return; }
     var a = TOKENS[swFrom](), b = TOKENS[swTo]();
     var deadline = Date.now() + 10 * 60 * 1000;
@@ -121,7 +132,7 @@
          ['route', swFrom + ' → ' + swTo],
          ['what you sign', plan.summary]],
         plan);
-    }).catch(function (e) { $('swMeta').textContent = 'pair lookup failed: ' + errText(e); });
+    }).catch(function (e) { $('swMeta').textContent = pairErr(e, swFrom + '/' + swTo); });
   });
   paintSels();
 
