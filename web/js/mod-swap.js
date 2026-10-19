@@ -49,6 +49,12 @@
       var v = BigInt(FtbDapi.util.toBaseUnits(str)); return v > 0n ? v : null;
     } catch (e) { return null; }
   }
+  // 0.5% slippage floor. For 0-decimal tokens (NEO) floor() would zero small
+  // amounts — no protection at all — so round UP: the min equals the intended
+  // whole unit and any drift faults the transaction instead of slipping it.
+  function slipMin(amt, sym) {
+    return decOf(sym) === 0 ? (amt * 995n + 999n) / 1000n : amt * 995n / 1000n;
+  }
   var swFrom = 'GAS', swTo = 'FTB', swQuote = null;
   function routerReady() { return !!(FtbState.configured && C.router && C.router.indexOf('0x0000') !== 0); }
   function paintSel(id, cur, setter) {
@@ -75,7 +81,7 @@
       var rr = reservesOf(st), rA = rr[0], rB = rr[1]; // order matches the queried tokens
       if (rA === 0n || rB === 0n) throw new Error('pool empty');
       var out = (amtIn * 997n * rB) / (rA * 1000n + amtIn * 997n);
-      var minOut = out * 995n / 1000n;
+      var minOut = slipMin(out, swTo);
       var spot = whole(rB, swTo) / whole(rA, swFrom);
       var impact = (1 - (whole(out, swTo) / whole(amtIn, swFrom)) / spot) * 100;
       swQuote = { amtIn: amtIn, out: out, minOut: minOut, rA: rA, rB: rB };
@@ -304,7 +310,7 @@
       amtA = amtB * st.rA / st.rB; st.inAddA.value = fmtT(amtA, st.symA);
     }
     if (amtA <= 0n || amtB <= 0n) { st.addMeta.textContent = 'amount too small for the current ratio'; return; }
-    var minA = amtA * 995n / 1000n, minB = amtB * 995n / 1000n;
+    var minA = slipMin(amtA, st.symA), minB = slipMin(amtB, st.symB);
     var lpEst = st.ts > 0n ? (amtA * st.ts / st.rA < amtB * st.ts / st.rB ? amtA * st.ts / st.rA : amtB * st.ts / st.rB) : 0n;
     st.addQ = { amtA: amtA, amtB: amtB, minA: minA, minB: minB, lpEst: lpEst };
     st.addMeta.textContent = 'rate 1 ' + st.symA + ' = ' + (whole(st.rB, st.symB) / whole(st.rA, st.symA)).toPrecision(6) + ' ' + st.symB +
@@ -317,7 +323,7 @@
     if (st.ts === 0n) { st.rmMeta.textContent = 'pool state not loaded yet'; return; }
     if (st.lpBal > 0n && lp > st.lpBal) { st.rmMeta.textContent = 'more than your lp balance (' + fmt(st.lpBal) + ')'; return; }
     var outA = lp * st.rA / st.ts, outB = lp * st.rB / st.ts;
-    var minA = outA * 995n / 1000n, minB = outB * 995n / 1000n;
+    var minA = slipMin(outA, st.symA), minB = slipMin(outB, st.symB);
     st.rmQ = { lp: lp, outA: outA, outB: outB, minA: minA, minB: minB };
     st.rmMeta.textContent = 'you receive ≈ ' + fmtT(outA, st.symA) + ' ' + st.symA + ' + ' + fmtT(outB, st.symB) + ' ' + st.symB +
       ' · mins ' + fmtT(minA, st.symA) + ' / ' + fmtT(minB, st.symB);
