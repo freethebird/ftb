@@ -81,12 +81,14 @@ challenge process working as intended.
 The dev-team allocation has exactly two sources, and it is **not** carved
 out of anyone's claim:
 
-- **The team's own post-exploit proceeds.** Wallet #2 (the confirmed whale driving the
-  relaunch) sold **his entire FLOCKS position (20,355,588.46) and his NUDES holdings**
-  into the post-exploit market, and **transferred the proceeds to the dev wallet**.
+- **A donation from holder #2.** Wallet #2 (the confirmed top-2 whale, an independent
+  community holder — not a team wallet) sold **his entire FLOCKS position (20,355,588.46)
+  and his NUDES holdings** into the post-exploit market, and **donated the proceeds to the
+  dev wallet** to fund the relaunch.
   Total so far: **61,341,856.53 FLM** (verified on-chain at
-  block 14,080,719; still accumulating, final figure re-read at launch). This is the
-  team converting its own ecosystem assets into launch funding at post-exploit prices.
+  block 14,080,719; still accumulating, final figure re-read at launch). This is a holder
+  converting his own ecosystem assets into launch funding for the community rebuild, at
+  post-exploit prices.
 - **#15 NUN32i's snapshot position, held in custody — not owned.** #15's
   6,989,116.71 FLM + 5,030,925.75 FLOCKS sits **under the custody of the dev wallet
   until someone claims it and proves ownership**. #15 was an OTC seller whose network

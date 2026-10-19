@@ -140,7 +140,7 @@ the total itself should move. The rest stays
 behind: 38 contracts (270,708,623.39 FLM + 2,383,291.51 FLOCKS), the 16 flagged
 wallets (109,999,032.43 FLM + 1,000,000.00 FLOCKS), and the attacker's pre-exploit
 balance (584,941.65 FLM). Note the dev wallet's post-exploit FLM is not part of the
-snapshot pie — it is claim-equivalent value funded by the team's own asset sales.
+snapshot pie — it is claim-equivalent value donated by holder #2 from his own asset sales.
 
 **RESOLVED (2026-10-15): the #15 OTC ring → dev wallet.** Owner decision: **all of
 #15's FLM + FLOCKS (6,989,116.71 FLM + 5,030,925.75 FLOCKS) is transferred to the new
