@@ -1,4 +1,4 @@
-# Deep Dive — Wallet #15: NUN32id3LKcSTEcfyiGCBKg6puCijwe4ZZ
+# Deep Dive - Wallet #15: NUN32id3LKcSTEcfyiGCBKg6puCijwe4ZZ
 
 Date: 2026-10-15 · Scope: full NEP-17 transfer history (961 legs), FlamingoBroker cycles, NEO
 flows, monthly aggregation. Method: `getnep17transfers` RPC against
@@ -6,7 +6,7 @@ flows, monthly aggregation. Method: `getnep17transfers` RPC against
 cross-checked against the snapshot state root at block 12,782,704.
 
 Snapshot balances: **6,989,116.71 FLM + 5,030,925.75 FLOCKS**.
-Current balances (2026-10-15): **identical** — the wallet has not moved a single token
+Current balances (2026-10-15): **identical** - the wallet has not moved a single token
 since the snapshot. NEO balance: 1.
 
 ---
@@ -14,10 +14,10 @@ since the snapshot. NEO balance: 1.
 ## 1. Origin (July 2025)
 
 The wallet was born **2025-07-06**, seeded not with FLM but with
-**3,237,662.79 FLOCKS from NT6Zw2** — a wallet that later appears as one of its four
+**3,237,662.79 FLOCKS from NT6Zw2** - a wallet that later appears as one of its four
 OTC counterparties (the "ring"). From day one it received weekly FLM yield drips
 (~5k FLM) from the FLOCKS contract NSuUJy. Early on, the yield was forwarded to
-`Na7Th1bprF5FEwh8…` — that address returns **zero legs on current RPC**, so its role
+`Na7Th1bprF5FEwh8…` - that address returns **zero legs on current RPC**, so its role
 is unresolved (an early forwarder that RPC history no longer surfaces; dead end via
 RPC, noted honestly rather than guessed).
 
@@ -37,7 +37,7 @@ RPC, noted honestly rather than guessed).
 Two distinct roles are visible: an **FLM pass-through/seller** (Nov 2025) and a
 **NEO redistribution hub** (Feb 2026). The same four wallets appear on both sides.
 
-## 3. The OTC ring — payment first, goods days later
+## 3. The OTC ring - payment first, goods days later
 
 FLM deliveries vs. NEO paid to #15, per counterparty:
 
@@ -51,23 +51,23 @@ FLM deliveries vs. NEO paid to #15, per counterparty:
 **Caveat, stated plainly:** the implied prices span 41.7–109.7 FLM/NEO, and there are
 reverse NEO flows too (Nft4JE received a net 87,237 NEO back from #15). So this is
 not a clean single-price order book. What *is* consistent is the shape: **NEO arrives
-first, round FLM amounts leave days later** — the signature of negotiated OTC trades
+first, round FLM amounts leave days later** - the signature of negotiated OTC trades
 (or of internal rebalancing dressed as trades). The "OTC sale" classification rests
 on the payment-first sequencing, not on price coherence.
 
 ## 4. Where the FLM came from
 
-- **Desk NXF8xB (#11, flagged):** 124 legs — the primary FLM source. #15 accumulated
+- **Desk NXF8xB (#11, flagged):** 124 legs - the primary FLM source. #15 accumulated
   from the same exchange/MM desk network already flagged elsewhere in the top-20.
 - **FlamingoBroker cycles:** 119 legs total. FLM in 33.52M (unlocks/yield), FLM out
   20.48M (locks), FLOCKS in 1.79M. Net effect: the wallet repeatedly locked FLM into
-  Broker for FLOCKS yield, then unwound — a yield-farmer loop, not a treasury drip.
+  Broker for FLOCKS yield, then unwound - a yield-farmer loop, not a treasury drip.
 - **FLOCKS contract NSuUJy:** weekly yield drips (~5k FLM) over the wallet's life.
 
-## 5. Where the NEO went — the collector
+## 5. Where the NEO went - the collector
 
 Nearly every NEO received was forwarded **within 1–3 minutes** to
-**NPmdLGJN47EddqYcxixdGMhtkr7Z5w4Aos** — a fan-in collection address with **33
+**NPmdLGJN47EddqYcxixdGMhtkr7Z5w4Aos** - a fan-in collection address with **33
 distinct NEO senders**. This is the exchange-deposit / cash-out pattern. The same
 collector appears twice elsewhere in this investigation:
 
@@ -76,13 +76,13 @@ collector appears twice elsewhere in this investigation:
 
 So #15, the attacker, and the desk network around #8 all share one cash-out endpoint.
 That is a venue-level fact (many unrelated users deposit to the same exchange
-address), **not** proof of common ownership — but it makes the collector the single
+address), **not** proof of common ownership - but it makes the collector the single
 most interesting address on the board for anyone with exchange-side KYC access.
 
 ## 6. Feb 2026 NEO redistribution
 
 In Feb 2026 the ring reversed direction: 133.9k NEO flowed **into** #15 from the four
-ring wallets plus NYQVQar, and 83k flowed back out — including exactly 20k NEO each
+ring wallets plus NYQVQar, and 83k flowed back out - including exactly 20k NEO each
 to two **fresh** wallets, NgHY57 and NTrujvx, created that month. Whatever the Nov
 2025 trades were, by Feb 2026 #15 was operating as the ring's NEO hub, funding new
 wallets from pooled ring NEO. This is the strongest "coordinated group" signal in the
@@ -119,7 +119,7 @@ word plus this evidence trail.
 
 - **Na7Th1bprF5FEwh8** (early yield forwarder): zero RPC history; identity unresolved.
 - **NgHY57 / NTrujvx** (Feb 2026, 20k NEO each from #15): fresh wallets funded by the
-  ring hub — worth a first-activity check before launch disclosure.
+  ring hub - worth a first-activity check before launch disclosure.
 - **NPmdLG collector:** shared by #15, the attacker, and the #8 funding wallet; only
   resolvable with venue-side data.
 

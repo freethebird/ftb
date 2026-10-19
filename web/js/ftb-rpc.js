@@ -1,5 +1,5 @@
-// ftb-rpc.js — the ONE JSON-RPC read stack (MODULES.md R3; closes WEB-01).
-// Every module reads the chain through FtbRpc — no module opens its own fetch
+// ftb-rpc.js - the ONE JSON-RPC read stack (MODULES.md R3; closes WEB-01).
+// Every module reads the chain through FtbRpc - no module opens its own fetch
 // to an RPC endpoint, and no module re-implements pick/failover.
 //
 // Owns (writes only these): #rpcNote, and the #ovRpc own-node modal
@@ -18,7 +18,7 @@
   var RPC = null;
   // probe every endpoint's height, then serve reads from the first one at tip.
   // a node that answers but is far behind is still syncing: alive for the
-  // counter, but its chain state is from the past — contracts deployed later
+  // counter, but its chain state is from the past - contracts deployed later
   // are "not found" there, so it must not serve reads until it catches up.
   var SYNC_SLACK = 1000; // blocks (~4 h at 15 s); anything further behind is syncing
 
@@ -31,7 +31,7 @@
       .then(function (j) { if (j.error) throw new Error(j.error.message || 'rpc error'); return j.result; });
   }
 
-  // say WHICH source won and, for a public fallback, why that is — the community
+  // say WHICH source won and, for a public fallback, why that is - the community
   // node list comes first in RPCS, so landing on a public endpoint means every
   // configured community node refused (still syncing, or down).
   function paintNote(url) {
@@ -39,7 +39,7 @@
     var ci = (CFG.rpcs || []).indexOf(url), note;
     if (url === ownStored()) note = ' (your node)';
     else if (ci >= 0) note = ' (community node #' + (ci + 1) + ')';
-    else if ((CFG.rpcs || []).length) note = ' (public fallback — community node unreachable or still syncing)';
+    else if ((CFG.rpcs || []).length) note = ' (public fallback - community node unreachable or still syncing)';
     else note = NET === 'MainNet' ? ' (public mainnet endpoint)' : ' (public testnet endpoint)';
     n.textContent = 'rpc: ' + url + note;
   }
@@ -56,7 +56,7 @@
         if (rs[i].h > 0 && rs[i].h >= tip - SYNC_SLACK) { RPC = rs[i].url; paintNote(RPC); return RPC; }
       }
       var e = new Error('no healthy RPC node answered');
-      var n = $('rpcNote'); if (n) n.textContent = 'rpc: ' + e.message + ' — paste your own node';
+      var n = $('rpcNote'); if (n) n.textContent = 'rpc: ' + e.message + ' - paste your own node';
       throw e;
     });
   }
@@ -67,7 +67,7 @@
       return r.stack;
     }).catch(function (e) {
       // the picked endpoint can die mid-session (node restart, rate limit, sync
-      // stall) — signing/broadcast goes through the wallet's own RPC, so writes
+      // stall) - signing/broadcast goes through the wallet's own RPC, so writes
       // land while reads show "failed to fetch". re-probe every endpoint once and
       // retry the read on the new winner; a genuinely faulting contract just
       // faults again on the retry, unchanged.

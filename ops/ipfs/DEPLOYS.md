@@ -1,4 +1,4 @@
-# FTB Deploy Log — freethebird.co
+# FTB Deploy Log - freethebird.co
 
 Every deploy pins a new CID on the IPFS node (`ftb-node` / 185.112.147.245, 1984.is Reykjavík)
 and repoints the stable IPNS name:

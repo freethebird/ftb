@@ -1,9 +1,9 @@
-// mod-verify.js — module 8: verify (MODULES.md).
+// mod-verify.js - module 8: verify (MODULES.md).
 // The verify grid (every hash from config, in the open), the cap/sealed chain
-// reads, and the IPFS mirror counter. Verify everything — trust nothing.
+// reads, and the IPFS mirror counter. Verify everything - trust nothing.
 //
-// Owns (writes only these): #verify grid — #vToken, #vMigrator, #vRegistry,
-// #vBallot, #vRoot, #vCap, #vSealed — and the tile #tMirrors.
+// Owns (writes only these): #verify grid - #vToken, #vMigrator, #vRegistry,
+// #vBallot, #vRoot, #vCap, #vSealed - and the tile #tMirrors.
 (function () {
   'use strict';
   if (!FtbUtil.$('verify')) return; // R2: inert where the markup is absent
@@ -12,21 +12,21 @@
   var CFG = FtbState.CFG, C = FtbState.C;
 
   // ---------- the grid: config, verbatim ----------
-  $('vToken').textContent = C.ftb || '—';
-  $('vMigrator').textContent = C.migrator || '—';
-  $('vRegistry').textContent = C.registry || '—';
-  // one ballot contract per proposal — list them all, newest config shape first
+  $('vToken').textContent = C.ftb || '-';
+  $('vMigrator').textContent = C.migrator || '-';
+  $('vRegistry').textContent = C.registry || '-';
+  // one ballot contract per proposal - list them all, newest config shape first
   var BL = (CFG.ballots && CFG.ballots.length)
     ? CFG.ballots.map(function (b) { return b.hash; })
     : (C.ballot ? [C.ballot] : []);
-  $('vBallot').textContent = BL.length ? BL.join('  ·  ') : '—';
-  $('vRoot').textContent = CFG.merkleRoot || '—';
+  $('vBallot').textContent = BL.length ? BL.join('  ·  ') : '-';
+  $('vRoot').textContent = CFG.merkleRoot || '-';
 
   // ---------- chain reads: hard cap and the seal ----------
   function refresh() {
     if (!FtbRpc.current() || !FtbState.configured) return;
     FtbRpc.readBool(C.ftb, 'migrationOpen').then(function (open) {
-      $('vSealed').textContent = open ? 'not yet — open for claims' : 'yes — no admin, no mint, forever';
+      $('vSealed').textContent = open ? 'not yet - open for claims' : 'yes - no admin, no mint, forever';
     }).catch(function () {});
     FtbRpc.readInt(C.ftb, 'maxSupply').then(function (v) {
       $('vCap').textContent = fmt(v) + ' FTB (hard cap, compiled in)';
@@ -41,7 +41,7 @@
   (function () {
     var tile = $('tMirrors'); if (!tile) return;
     var M = (CFG.mirrors && CFG.mirrors.length ? CFG.mirrors.slice() : []);
-    if (!M.length) { tile.textContent = '—'; return; }
+    if (!M.length) { tile.textContent = '-'; return; }
     function get(u, ms) {
       return Promise.race([
         fetch(u + (u.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' })
@@ -64,7 +64,7 @@
         });
       }).catch(function () {
         tile.textContent = '?/' + M.length;
-        tile.title = 'no beat.json on this origin — deploys are version-stamped by ftb-push-ipfs.sh';
+        tile.title = 'no beat.json on this origin - deploys are version-stamped by ftb-push-ipfs.sh';
       });
     }
     probe(); setInterval(probe, 300000);

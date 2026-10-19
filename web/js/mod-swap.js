@@ -1,6 +1,6 @@
-// mod-swap.js — module 1: swap / pools (MODULES.md).
+// mod-swap.js - module 1: swap / pools (MODULES.md).
 // The swap ticket (external Flamingo router), the pool-ratio board, the market
-// ticker, and the TVL tile — ratios only, no fiat, no oracle.
+// ticker, and the TVL tile - ratios only, no fiat, no oracle.
 //
 // Owns (writes only these): #swap (#swAmt, #swFromSel, #swToSel, #swOut,
 // #swMeta, #swGo), #market (#ratioBody, #ratioHint, #ratioBtn), #ticker, and the
@@ -27,7 +27,7 @@
     }).catch(function (e) { delete pairCache[key]; throw e; });
   }
 
-  // getReserves returns ONE stack item — a VM Array of two Integers — not two
+  // getReserves returns ONE stack item - a VM Array of two Integers - not two
   // separate items. Unwrap it once here; every reader (quote, ratios, LP) uses this.
   function reservesOf(st) {
     var v = (st && st[0] && st[0].value) || [];
@@ -41,13 +41,13 @@
     var m = errText(e);
     if (/assert|not found|fault|paircontract/i.test(m)) {
       var live = (CFG.pairs || []).map(function (p) { return p.label; }).join(' · ');
-      return 'no pool for ' + label + ' yet — live pools: ' + live;
+      return 'no pool for ' + label + ' yet - live pools: ' + live;
     }
     return m;
   }
 
   // ---------- swap ticket (enabled only when the router is configured) ----------
-  // NEO is 0 decimals (whole, indivisible units) — every parse/format goes through
+  // NEO is 0 decimals (whole, indivisible units) - every parse/format goes through
   // fmtT/parseT with the token's own decimals; quote math stays in raw base units.
   var TOKENS = { 'NEO': function () { return (CFG.assets || {}).neo; }, 'GAS': function () { return (CFG.assets || {}).gas; }, 'FTB': function () { return C.ftb; } };
   var DEC = { NEO: 0, GAS: 8, FTB: 8 };
@@ -61,7 +61,7 @@
     } catch (e) { return null; }
   }
   // 0.5% slippage floor. For 0-decimal tokens (NEO) floor() would zero small
-  // amounts — no protection at all — so round UP: the min equals the intended
+  // amounts - no protection at all - so round UP: the min equals the intended
   // whole unit and any drift faults the transaction instead of slipping it.
   function slipMin(amt, sym) {
     return decOf(sym) === 0 ? (amt * 995n + 999n) / 1000n : amt * 995n / 1000n;
@@ -85,7 +85,7 @@
     var raw = $('swAmt').value.trim();
     if (!raw) { $('swMeta').textContent = 'quote from live pool reserves · 0.3% pool fee · min received at 0.5% slippage'; return; }
     var amtIn = parseT(raw, swFrom);
-    if (amtIn === null) { $('swMeta').textContent = decOf(swFrom) === 0 ? 'bad amount — NEO moves in whole units' : 'bad amount'; return; }
+    if (amtIn === null) { $('swMeta').textContent = decOf(swFrom) === 0 ? 'bad amount - NEO moves in whole units' : 'bad amount'; return; }
     var a = TOKENS[swFrom](), b = TOKENS[swTo]();
     $('swMeta').textContent = 'quoting…';
     FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
@@ -106,12 +106,12 @@
   $('swAmt').addEventListener('input', function () { clearTimeout(swT); swT = setTimeout(quote, 250); });
   $('swGo').addEventListener('click', function () {
     if (!routerReady()) {
-      FtbShell.showPlan('swap not wired', 'the router hash is a placeholder in this deployment. the swap contracts are the reused, audited Flamingo Factory/Pair/Router — verify the method and signer scope against the deployed manifest before enabling.',
+      FtbShell.showPlan('swap not wired', 'the router hash is a placeholder in this deployment. the swap contracts are the reused, audited Flamingo Factory/Pair/Router - verify the method and signer scope against the deployed manifest before enabling.',
         [['status', 'router hash not configured']], null);
       return;
     }
     if (!FtbState.account || !FtbState.dapi) { FtbWallet.needConnect(); return; }
-    if (!swQuote) { $('swMeta').textContent = 'no quote yet — enter an amount'; return; }
+    if (!swQuote) { $('swMeta').textContent = 'no quote yet - enter an amount'; return; }
     var a = TOKENS[swFrom](), b = TOKENS[swTo]();
     var deadline = Date.now() + 10 * 60 * 1000;
     // CalledByEntry cannot cross the router boundary: the token contracts witness-check
@@ -155,7 +155,7 @@
   // ---------- fiat reference rates (Decision 12: display only, never protocol input) ----------
   // Prices come from a public market API (CoinGecko) in the browser and are crossed
   // with the on-chain pool ratio to derive the FTB leg. The contracts never see a
-  // fiat figure — ratios remain the only protocol truth. 5-minute cache; if the
+  // fiat figure - ratios remain the only protocol truth. 5-minute cache; if the
   // rate source is unreachable the fiat line simply stays empty.
   var fiatRates = null, fiatAt = 0;
   function refreshFiat() {
@@ -180,7 +180,7 @@
       }).catch(function () { return null; }); // ratios still render; fiat stays blank
   }
   function fiatFmt(v, cur) {
-    if (!(v > 0)) return '—';
+    if (!(v > 0)) return '-';
     return cur + (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(3) : v.toPrecision(3));
   }
 
@@ -213,14 +213,14 @@
         num.textContent = ratio.toPrecision(6) + ' ' + sym[1];
         inv.textContent = '1 ' + sym[1] + ' = ' + (1 / ratio).toPrecision(6) + ' ' + sym[0];
         // fiat reference: the leg with a public market rate prices the other leg
-        // through the on-chain ratio (FTB has no market rate of its own — derived)
+        // through the on-chain ratio (FTB has no market rate of its own - derived)
         var ra = fiatRates && fiatRates[sym[0]], rb = fiatRates && fiatRates[sym[1]];
         if (!rb && ra) rb = { usd: ra.usd / ratio, cny: ra.cny / ratio };
         if (!ra && rb) ra = { usd: rb.usd * ratio, cny: rb.cny * ratio };
         var fp = [];
         if (ra) fp.push('1 ' + sym[0] + ' ≈ ' + fiatFmt(ra.usd, '$') + ' · ' + fiatFmt(ra.cny, '¥'));
         if (rb) fp.push('1 ' + sym[1] + ' ≈ ' + fiatFmt(rb.usd, '$') + ' · ' + fiatFmt(rb.cny, '¥'));
-        fiatEl.textContent = fp.length ? fp.join('  ·  ') + ' — reference' : '';
+        fiatEl.textContent = fp.length ? fp.join('  ·  ') + ' - reference' : '';
         var chg = h.length > 1 ? (ratio / h[0] - 1) * 100 : 0;
         var cls = chg > 0.005 ? 'up' : (chg < -0.005 ? 'dn' : 'flat');
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
@@ -228,7 +228,7 @@
         foot.appendChild(el('span', null, sparkLine(h) || '·'));
         foot.appendChild(el('span', 'rchg ' + cls, (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% · ' + h.length + ' samples'));
       }).catch(function (e) {
-        num.textContent = '—';
+        num.textContent = '-';
         inv.textContent = e.message || 'unavailable';
       });
     });
@@ -243,13 +243,13 @@
 
   // ---------- your liquidity: add / remove LP per configured pair ----------
   // One .lpair card per CFG.pairs entry. Reads: router.getReserves + the pair's own
-  // NEP-17 (totalSupply, balanceOf) — the LP token IS the pair contract. Writes go
+  // NEP-17 (totalSupply, balanceOf) - the LP token IS the pair contract. Writes go
   // through the router's sender-variant add/removeLiquidity with a CustomContracts
   // signer: the token (and pair) contracts witness-check the sender while the caller
   // is the router, so CalledByEntry cannot cross that boundary.
   var lpStates = [];
   function lpReady() { return $('lpBody') && routerReady() && (CFG.pairs || []).length && FtbRpc.current(); }
-  function stat(l) { var d = el('div', 'fs'); d.appendChild(el('div', 'l', l)); var v = el('div', 'v', '—'); d.appendChild(v); return v; }
+  function stat(l) { var d = el('div', 'fs'); d.appendChild(el('div', 'l', l)); var v = el('div', 'v', '-'); d.appendChild(v); return v; }
   function buildLpPanels() {
     var body = $('lpBody'); if (!body || !lpReady()) return;
     if (lpStates.length) return; // built once; refresh paints
@@ -270,7 +270,7 @@
       st.vPA = stat('pooled ' + st.symA); stats.appendChild(st.vPA.parentNode);
       st.vPB = stat('pooled ' + st.symB); stats.appendChild(st.vPB.parentNode);
       card.appendChild(stats);
-      st.vYours = el('div', 'lpsub', 'your share: —'); card.appendChild(st.vYours);
+      st.vYours = el('div', 'lpsub', 'your share: -'); card.appendChild(st.vYours);
 
       card.appendChild(el('div', 'lplabel', 'add liquidity'));
       var r1 = el('div', 'trow');
@@ -311,13 +311,13 @@
     st.addQ = null;
     var rawA = st.inAddA.value.trim(), rawB = st.inAddB.value.trim();
     if (!rawA && !rawB) { st.addMeta.textContent = 'amounts quote each other from live reserves · mins at 0.5% slippage'; return; }
-    if (st.rA === 0n || st.rB === 0n) { st.addMeta.textContent = 'pool is empty — the first deposit sets the ratio; add via the seeded pool only'; return; }
+    if (st.rA === 0n || st.rB === 0n) { st.addMeta.textContent = 'pool is empty - the first deposit sets the ratio; add via the seeded pool only'; return; }
     var amtA, amtB;
     if (side === 'A') {
-      amtA = parseT(rawA, st.symA); if (amtA === null) { st.addMeta.textContent = rawA ? 'bad ' + st.symA + ' amount' + (decOf(st.symA) === 0 ? ' — whole units only' : '') : 'enter a ' + st.symA + ' amount'; return; }
+      amtA = parseT(rawA, st.symA); if (amtA === null) { st.addMeta.textContent = rawA ? 'bad ' + st.symA + ' amount' + (decOf(st.symA) === 0 ? ' - whole units only' : '') : 'enter a ' + st.symA + ' amount'; return; }
       amtB = amtA * st.rB / st.rA; st.inAddB.value = fmtT(amtB, st.symB);
     } else {
-      amtB = parseT(rawB, st.symB); if (amtB === null) { st.addMeta.textContent = rawB ? 'bad ' + st.symB + ' amount' + (decOf(st.symB) === 0 ? ' — whole units only' : '') : 'enter a ' + st.symB + ' amount'; return; }
+      amtB = parseT(rawB, st.symB); if (amtB === null) { st.addMeta.textContent = rawB ? 'bad ' + st.symB + ' amount' + (decOf(st.symB) === 0 ? ' - whole units only' : '') : 'enter a ' + st.symB + ' amount'; return; }
       amtA = amtB * st.rA / st.rB; st.inAddA.value = fmtT(amtA, st.symA);
     }
     if (amtA <= 0n || amtB <= 0n) { st.addMeta.textContent = 'amount too small for the current ratio'; return; }
@@ -341,7 +341,7 @@
   }
   function goAdd(st) {
     if (!FtbState.account) { FtbWallet.needConnect(); return; }
-    if (!st.addQ) { st.addMeta.textContent = 'no quote yet — enter an amount'; return; }
+    if (!st.addQ) { st.addMeta.textContent = 'no quote yet - enter an amount'; return; }
     var deadline = Date.now() + 10 * 60 * 1000;
     var signer = FtbState.dapi.signerFor(FtbState.account, [C.router, st.a, st.b]);
     var plan = FtbState.dapi.addLiquidity(FtbState.account, st.a, st.b,
@@ -358,7 +358,7 @@
   }
   function goRm(st) {
     if (!FtbState.account) { FtbWallet.needConnect(); return; }
-    if (!st.rmQ) { st.rmMeta.textContent = 'no quote yet — enter an lp amount'; return; }
+    if (!st.rmQ) { st.rmMeta.textContent = 'no quote yet - enter an lp amount'; return; }
     var deadline = Date.now() + 10 * 60 * 1000;
     st.rmMeta.textContent = 'preparing the signature…';
     pairOf(st.a, st.b).then(function (pair) {
@@ -404,7 +404,7 @@
           var yA = st.ts > 0n ? st.lpBal * st.rA / st.ts : 0n, yB = st.ts > 0n ? st.lpBal * st.rB / st.ts : 0n;
           st.vYours.textContent = 'your share: ' + fmtT(yA, st.symA) + ' ' + st.symA + ' · ' + fmtT(yB, st.symB) + ' ' + st.symB;
         } else {
-          st.vBal.textContent = '—'; st.vShare.textContent = '—'; st.vYours.textContent = 'connect a wallet to see your share';
+          st.vBal.textContent = '-'; st.vShare.textContent = '-'; st.vYours.textContent = 'connect a wallet to see your share';
         }
       }).catch(function (e) {
         st.vYours.textContent = 'pool read failed: ' + errText(e);
@@ -416,7 +416,7 @@
   // ---------- TVL: total value locked, per asset, read from the chain ----------
   // FTB headline: the lend pool's total assets (cash in the contract + outstanding
   // borrows); pool reserves add on top once a router is live. NEO / GAS subline:
-  // what the lend contract holds — that IS the total collateral locked (one balance
+  // what the lend contract holds - that IS the total collateral locked (one balance
   // read each, no enumeration). No fiat conversion anywhere (the invariant stands).
   function refreshTvl() {
     var e = $('tTvl'); if (!e) return;
@@ -427,7 +427,7 @@
     if (!hasLend && !hasRouter) {
       e.textContent = '0 FTB';
       if (sub) sub.textContent = '';
-      e.title = 'no lend module or router on this network yet — TVL reads live the moment value is locked.';
+      e.title = 'no lend module or router on this network yet - TVL reads live the moment value is locked.';
       return;
     }
     var h160 = function (h) { return { type: 'Hash160', value: h }; };
@@ -446,7 +446,7 @@
           var v = (st && st[0] && st[0].value) || [];
           var ra = BigInt(v[0] && v[0].value || 0), rb = BigInt(v[1] && v[1].value || 0);
           // FTB pairs contribute both legs in FTB terms; non-FTB pairs have no
-          // price path without an oracle — excluded by design
+          // price path without an oracle - excluded by design
           if (p.a === 'FTB') return ra * 2n;
           if (p.b === 'FTB') return rb * 2n;
           return 0n;
@@ -467,7 +467,7 @@
         (hasRouter ? ' + FTB-side pool reserves' : '') +
         (hasLend ? '; NEO and GAS locked as loan collateral' : '') +
         '. ratios only, no fiat.' + (failed ? ' (one leg unreadable right now)' : '');
-    }).catch(function () { e.textContent = '—'; e.title = 'TVL unreadable'; });
+    }).catch(function () { e.textContent = '-'; e.title = 'TVL unreadable'; });
   }
 
   FtbState.on('rpc', function () {
@@ -480,7 +480,7 @@
   FtbState.on('refresh', function () {
     refreshFiat().then(function () { refreshRatios(); });
     refreshTvl(); refreshLp();
-    // a confirmed write clears the ticket — no stale amount suggesting nothing happened
+    // a confirmed write clears the ticket - no stale amount suggesting nothing happened
     $('swAmt').value = ''; $('swOut').value = '';
     lpStates.forEach(function (st) {
       st.inAddA.value = ''; st.inAddB.value = ''; st.inRm.value = '';

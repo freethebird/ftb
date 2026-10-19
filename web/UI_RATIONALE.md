@@ -19,16 +19,16 @@ browser except signed transactions and public RPC reads.
 
 ### Command bar (`header.bar`)
 - **Source:** NEAR's plain-word navigation + Hyperliquid's always-on status.
-- Five anchors — `market · claim · swap · vote · verify` — collapse on mobile
+- Five anchors - `market · claim · swap · vote · verify` - collapse on mobile
   (`@media max-width:460px`). The wallet state and connect button live here, not in a hero,
   because connection state is chrome, not content.
 - **Do not** add icons, dropdowns, or a hamburger. If a sixth destination is ever needed,
-  the information architecture is wrong — fold it into an existing section.
+  the information architecture is wrong - fold it into an existing section.
 
 ### Ticker (`#ticker`)
 - **Source:** Hyperliquid, where price is never more than zero glances away.
 - One line: each pair's ratio with a ▲▼= drift mark, plus the live block height.
-  Monospace, `overflow-x:auto`, no animation — a ticker that scrolls itself is a distraction,
+  Monospace, `overflow-x:auto`, no animation - a ticker that scrolls itself is a distraction,
   and motion is reserved for the blinking cursor.
 - Fed by the same `getReserves` reads as the market board; never a separate data path.
 
@@ -37,13 +37,13 @@ browser except signed transactions and public RPC reads.
 - One card per pair. Big display-font number: `1 bNEO = 12.3457 FTB`, both directions shown
   so nobody divides in their head. Sparkline + drift + sample count, history in
   `localStorage` only.
-- Ratio only, asset against asset. **No fiat conversion ever** — a fiat price needs an
+- Ratio only, asset against asset. **No fiat conversion ever** - a fiat price needs an
   oracle, and an oracle is a trust assumption this page does not make.
 
 ### Wallet strip (`#balStrip`)
 - **Source:** Hyperliquid's funds panel, reduced to one line.
 - Appears only after connect: FTB, bNEO, GAS balances and the claimable amount (with
-  `claimed ✓` state). Hidden until then — a disconnected visitor has no wallet section.
+  `claimed ✓` state). Hidden until then - a disconnected visitor has no wallet section.
 
 ### Swap ticket (`#swap`, `.ticket`)
 - **Source:** THORSwap's select → quote → review flow; Hyperliquid's preview box.
@@ -55,7 +55,7 @@ browser except signed transactions and public RPC reads.
   wallet signs. This mirrors the contract boundary: the page builds, the wallet signs.
 
 ### Governance (`#vote`, `.gopt`)
-- **Source:** Terra Station's proposal lists — the insight that **turnout is the security
+- **Source:** Terra Station's proposal lists - the insight that **turnout is the security
   metric**. A low-turnout quorum capture only works when nobody is watching participation.
 - Every option is a card: name, tally in FTB, a solid-ink share-of-vote bar, its own vote
   button. The hint line reports total weight voted **and turnout as % of the full snapshot
@@ -64,24 +64,24 @@ browser except signed transactions and public RPC reads.
   counts identically. The UI must never imply a server is counting.
 
 ### Verify panel (`#verify`, `.prov`)
-- **Source:** our own threat model, not a reference site — THORSwap's 2023 phishing wave is
+- **Source:** our own threat model, not a reference site - THORSwap's 2023 phishing wave is
   the cautionary tale: a hostile mirror of this page is the realistic attack.
 - Every contract hash, the Merkle root, the cap, and the mint-sealed state in one
   provenance grid, with the instruction to check them against the repo before signing.
 
 ### Review modal (`#ov`)
 - **Source:** Hyperliquid's order preview: the last screen before money moves.
-- Every write — claim, swap, vote — renders the same modal: what you do, the numbers, and
+- Every write - claim, swap, vote - renders the same modal: what you do, the numbers, and
   `what you sign` verbatim from the plan summary. One modal for everything keeps the
   signing ceremony consistent; consistency is what trains users to actually read it.
 
 ## Invariants (do not break)
 
 1. No dependencies, no build step, one HTML file plus `config.js` / `ftb-dapi.js`.
-2. Strict grayscale; phosphor green is reserved for clickables. One theme — night
-   shift (dark) — everywhere; accent through weight and borders, never color.
+2. Strict grayscale; phosphor green is reserved for clickables. One theme - night
+   shift (dark) - everywhere; accent through weight and borders, never color.
 3. No fiat prices, no external APIs, no analytics, no fonts beyond the inlined Space
-   Mono (400/700/italic — replaced VT323 19 Oct 2026: users could not read the pixel
+   Mono (400/700/italic - replaced VT323 19 Oct 2026: users could not read the pixel
    font; Space Mono keeps the typewriter voice and is legible at every size).
 4. The page never holds keys and never implies custody. Builds and reads here; signs in
    the wallet.
@@ -89,10 +89,10 @@ browser except signed transactions and public RPC reads.
 
 ## Design lab outcome: Terra Station is canonical (12 October 2026)
 
-Three complete variants were built and screened — Hyperliquid (dense two-column terminal with
+Three complete variants were built and screened - Hyperliquid (dense two-column terminal with
 inverted ink bands), THORSwap (centered swap-hero), and Terra Station (governance front page).
 **Terra Station won and is now the canonical `index.html`; the lab is retired.** What carried
-it: this project's defining act is the community vote and the claim, not day trading — the
+it: this project's defining act is the community vote and the claim, not day trading - the
 proposal leads in display type inside a framed hero panel, turnout is the headline number, and
 trading sits beneath as a utility. The loser's lessons survive in the parts that were already
 canonical before the lab: the ticker and wallet strip (Hyperliquid) and the ticket's
@@ -101,11 +101,11 @@ select → quote → review flow (THORSwap).
 ## Template 2: station dashboard (12 October 2026)
 
 *(Historical note, 18 October 2026: the three template files and their builders now
-live in `archive/` — frozen design history, no longer pinned. The canonical page is
+live in `archive/` - frozen design history, no longer pinned. The canonical page is
 the modular `index.html` + `js/`; this file's invariants still bind every module.)*
 
 Template 1 (`template1.html`, frozen) kept the template 1 single-column arc even after the Terra
-skin promotion — at narrow widths and standby states the variants read as "the same page".
+skin promotion - at narrow widths and standby states the variants read as "the same page".
 Template 2 (`template2.html`) is designed from scratch instead of re-skinned: a left rail
 with plain-word vertical nav (NEAR) that collapses to a top strip on narrow panes, an
 inverted governance hero panel where the proposal is the headline (Terra), four stat tiles
@@ -113,11 +113,11 @@ inverted governance hero panel where the proposal is the headline (Terra), four 
 and a two-column working area with the market board left and the wallet strip + swap ticket
 right (THORSwap). Same ids, same signing flows, same invariants; `build_template2.py`
 assembles it from template 1's font, component CSS, modals, and script, so the two never
-drift in behavior — only in layout.
+drift in behavior - only in layout.
 
 ## Template 3: the Flamingo blend (14 October 2026)
 
-Template 3 (`template3.html`, built by `build_template3.py` from the same shared engine —
+Template 3 (`template3.html`, built by `build_template3.py` from the same shared engine -
 imports from `build_template2.py`, zero behavior drift) blends flamingo.finance's
 information architecture back into the typewriter discipline, so returning Flamingo
 users feel at home. What we took, and what we deliberately did not:
@@ -125,24 +125,24 @@ users feel at home. What we took, and what we deliberately did not:
 | flamingo.finance | template 3 |
 |---|---|
 | Top tab bar: Swap · Earn · Lend · … with connect wallet at the right | `.topbar` sticky tab bar: trade · earn · lend · vote · board · claim · verify; wallet state, connect, invert, own-node on the right |
-| Landing hero: "Trade, Earn, and Borrow Crypto with Ease" + Get Started | `.hero3`: "the flamingo, set free." + three CTAs (trade / earn / govern). No marketing images — display type only |
-| Swap card with Swap \| Pool tabs | Swap card with a `swap | pools` tab strip; `pools` anchors to the tokens table (we have no add-liquidity UI — liquidity is added at the router directly) |
-| "Tokens on Flamingo" table (# · Token · Price · Change · TVL · Volume) | Tokens table (`.toktab`): the same `.rcard` ratio cards restyled as numbered rows via CSS counters — pair, ratio, inverse, drift. **No fiat price, no TVL in dollars** — the no-oracle invariant stands; ratio and drift carry the same information honestly |
-| FLOCKS card: dividend token, big APY with steppers, payout stats | EARN card: dividend APY as the display-size headline (`.bign`), then total staked / growth per FTB / claimable as the stat row, stake-unstake-claim actions below. Our dividends accrue continuously per block, so there is no "next payout" — that stat would be a lie here |
-| Full-width rounded primary CTA buttons | `.go` goes full-width with a 3px radius — the one concession to Flamingo's button shape |
+| Landing hero: "Trade, Earn, and Borrow Crypto with Ease" + Get Started | `.hero3`: "the flamingo, set free." + three CTAs (trade / earn / govern). No marketing images - display type only |
+| Swap card with Swap \| Pool tabs | Swap card with a `swap | pools` tab strip; `pools` anchors to the tokens table (we have no add-liquidity UI - liquidity is added at the router directly) |
+| "Tokens on Flamingo" table (# · Token · Price · Change · TVL · Volume) | Tokens table (`.toktab`): the same `.rcard` ratio cards restyled as numbered rows via CSS counters - pair, ratio, inverse, drift. **No fiat price, no TVL in dollars** - the no-oracle invariant stands; ratio and drift carry the same information honestly |
+| FLOCKS card: dividend token, big APY with steppers, payout stats | EARN card: dividend APY as the display-size headline (`.bign`), then total staked / growth per FTB / claimable as the stat row, stake-unstake-claim actions below. Our dividends accrue continuously per block, so there is no "next payout" - that stat would be a lie here |
+| Full-width rounded primary CTA buttons | `.go` goes full-width with a 3px radius - the one concession to Flamingo's button shape |
 | Latest News, TradingView charts, token icons | **Not taken.** News needs a server, TradingView is a third-party dependency, icons are decoration. The invariants hold: no dependencies, no external APIs, strict grayscale |
 
 The blend is the shell, not the substance: familiar where familiarity helps a returning
 user (tabs, cards, table, APY headline), ours where the discipline matters (ratio-only
 pricing, review-and-sign modal, verify panel, no oracle anywhere).
 
-### The phosphor key (14 October 2026) — a deliberate break of the grayscale invariant
+### The phosphor key (14 October 2026) - a deliberate break of the grayscale invariant
 
 Every clickable element is the same object: a dark key-well (`#101010` in both shifts)
-with phosphor-green (`#33ff33`) uppercase lettering — the MS-DOS terminal green of the
+with phosphor-green (`#33ff33`) uppercase lettering - the MS-DOS terminal green of the
 era. Hover flips the key (green well, dark legend). Selected pills/tabs are the same key
 "pressed": double phosphor ring. The two brand marks stay bare ink and only glow green
-on hover — they are identity, not controls. Rationale: in grayscale the eye could not
+on hover - they are identity, not controls. Rationale: in grayscale the eye could not
 tell control from label; one single affordance color, used *only* for clickables, makes
-the whole page readable at a glance. Green is not decoration here — it is the universal
+the whole page readable at a glance. Green is not decoration here - it is the universal
 "this does something" signal, and nothing else is allowed to use it.

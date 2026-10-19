@@ -14,9 +14,9 @@ is exactly this folder: everything here builds and reads, the wallet signs.
   endpoint, stored only in the browser), and every write is a plan reviewed in words before
   the wallet signs. DEX patterns adapted from Hyperliquid (ticker, funds strip, preview
   before sign), THORSwap (quote → route → review flow), Terra Station (turnout vs eligible
-  weight in governance), and NEAR (plain-word anchor nav) — all inside the typewriter skin.
-  The market board sits at the top: one ratio card per pair, live from pool reserves — asset
-  against asset, no fiat oracle — with both directions, a sparkline, and drift since you
+  weight in governance), and NEAR (plain-word anchor nav) - all inside the typewriter skin.
+  The market board sits at the top: one ratio card per pair, live from pool reserves - asset
+  against asset, no fiat oracle - with both directions, a sparkline, and drift since you
   opened the page; history stays in the browser. The swap ticket quotes live from reserves
   with rate, min received at 0.5% slippage, and a price-impact warning. Governance renders
   each option as a card with its tally, a share-of-vote bar, turnout against the snapshot
@@ -25,7 +25,7 @@ is exactly this folder: everything here builds and reads, the wallet signs.
   proofs URL, ballot question, pair list) and `proofs.json` next to it; pin the whole folder
   on IPFS.
   Local preview: `npm run dev` (a 30-line dependency-free static server, `serve.mjs`).
-  Behavior is split into independent modules under `js/` — one file per panel, explicit
+  Behavior is split into independent modules under `js/` - one file per panel, explicit
   seams only; the rules are `MODULES.md` and the audit lineage is `WEB_AUDIT.md`.
 - `ftb-dapi.js` ... the adapter. Dependency-free, one file. Connects to NeoLine, reads state, and
   builds a typed invocation ("plan") for every FTB action. Plans are pure: nothing is signed until
@@ -110,31 +110,31 @@ runbooks in `../README.md`). The dApi is a convenience for users; it is not requ
 
 The canonical layout is the Terra Station skin (chosen 12 October 2026 from a three-way
 design lab against Hyperliquid and THORSwap variants, since retired): governance is the
-front page — the proposal leads in display type in a framed hero panel — with wallet, claim,
+front page - the proposal leads in display type in a framed hero panel - with wallet, claim,
 market, and swap arranged in a two-column grid beneath it. Rationale and the lab's history
 are in `UI_RATIONALE.md`.
 
 ## Templates
 
-- `index.html` — the canonical page: **template 2, the station dashboard** (left-rail nav,
+- `index.html` - the canonical page: **template 2, the station dashboard** (left-rail nav,
   bird mark, inverted governance hero, stat tiles, two-column market/swap). Chosen by the
   owner 13 October 2026. **Since 18 October 2026 the page is modular:** `index.html` is
   markup and CSS only; all behavior lives in `js/` (`ftb-rpc.js`, `ftb-state.js`,
-  `shell.js`, and one `mod-*.js` per panel) under the rules of `MODULES.md` — edit the
+  `shell.js`, and one `mod-*.js` per panel) under the rules of `MODULES.md` - edit the
   module files, never inline scripts.
-- `archive/` — the frozen pre-split designs (`template1/2/3.html`) and their builders
+- `archive/` - the frozen pre-split designs (`template1/2/3.html`) and their builders
   (`build_template2/3.py`), moved there 18 October 2026 (WEB-04 closed). Reference
   weight only: `ops/ipfs/ftb-push-ipfs.sh` excludes `archive/`, so it is never pinned.
 
 ## Profiles and the QA gate
 
-- `config.testnet.js` / `config.mainnet.js` — the two committed network profiles.
+- `config.testnet.js` / `config.mainnet.js` - the two committed network profiles.
   The active deployment is always `cp <profile> config.js`; a hand-edited `config.js`
   fails the gate. The MainNet profile is sealed at `0x0000…` placeholders until its
   contracts are deployed and recorded in `../DECISIONS.md`.
-- `QA_GATE.md` — the pre-publish procedure (static gate, build gate, browser
-  walkthrough, publish gate, MainNet promotion rules). Nothing goes live — TestNet
-  or MainNet — that has not passed it with evidence.
-- `make_export.py` — builds the single-file export (`../../ftb-export.html`) from the
+- `QA_GATE.md` - the pre-publish procedure (static gate, build gate, browser
+  walkthrough, publish gate, MainNet promotion rules). Nothing goes live - TestNet
+  or MainNet - that has not passed it with evidence.
+- `make_export.py` - builds the single-file export (`../../ftb-export.html`) from the
   modular `index.html`: config, adapter, all `js/` modules, proofs, and a beat stamp
   inlined, with a fetch shim so the file runs from `file://` with no siblings.

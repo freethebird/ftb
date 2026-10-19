@@ -7,7 +7,7 @@ before MainNet.
 
 ## 0. The principle
 
-The DEX mechanism — swap math, the sealed mint, Merkle claims, pool reserves — is contract
+The DEX mechanism - swap math, the sealed mint, Merkle claims, pool reserves - is contract
 code and contract state. Once deployed, every full node on Neo N3 verifies and replicates it.
 You do not run the mechanism; the chain does. Decentralization work is everything *around* it:
 
@@ -39,7 +39,7 @@ host, and do not let one member hold two multisig keys.
 
 Per VM: 2 vCPU, 4–8 GB RAM, 80 GB NVMe (member D's archive node: 8 GB RAM, 250 GB+, it keeps
 historic state forever). Ubuntu 24.04 or Debian 12. Harden each box with the runbook in
-`ops/1984_SETUP.md` (non-root user, key-only SSH, ufw, unattended upgrades) — that doc was
+`ops/1984_SETUP.md` (non-root user, key-only SSH, ufw, unattended upgrades) - that doc was
 written for the build box but the hardening applies to all five.
 
 ## 3. The three RPC nodes (A, B, C)
@@ -57,7 +57,7 @@ Required plugins: **RpcServer** (the endpoint), **TokensTracker** (`getnep17bala
 vote tally uses). Bind RpcServer, then put Caddy or nginx in front for TLS so wallets get an
 `https://` URL. Open only 10333 (p2p) and 443 in ufw; keep 10332 behind the proxy.
 
-A neo-go node works too (the repo's toolchain already installs it) — one language end to end.
+A neo-go node works too (the repo's toolchain already installs it) - one language end to end.
 Either way, wait for full sync (`show state` until Height matches the network) before listing
 the endpoint.
 
@@ -79,7 +79,7 @@ the snapshot is verified by construction, not by trust.
 3-of-5, created before anything deploys. Flow:
 
 1. Each member generates a keypair on their own machine (neo-cli `create address`, then
-   `list key` to see the pubkey — verify exact console commands against your pinned neo-cli
+   `list key` to see the pubkey - verify exact console commands against your pinned neo-cli
    release) and publishes only the **compressed public key**. Private keys never leave each
    member's machine; for MainNet, use hardware-backed keys.
 2. Everyone independently computes the multisig address from the five pubkeys
@@ -118,7 +118,7 @@ calls with the concrete hashes filled in:
 ```
 
 The multisig members execute those six, in order, each transaction collecting 3 of 5
-signatures (rehearse the coordination on TestNet — see §9; the exact offline-signing commands
+signatures (rehearse the coordination on TestNet - see §9; the exact offline-signing commands
 depend on your pinned neo-cli/neo-go release, so pin them in this doc after the first
 rehearsal). Publish the tool's full output next to `proofs.json` so anyone can verify the
 wiring matches the published root and cap.
@@ -136,7 +136,7 @@ empty, `migrationOpen == false`. From that block on, the token has no admin at a
 
 ## 7. The front-end
 
-Keep it pure static files — the dApi adapter (`web/ftb-dapi.js`) holds no keys and every write
+Keep it pure static files - the dApi adapter (`web/ftb-dapi.js`) holds no keys and every write
 is a plan the wallet shows the user before signing, so a compromised host can lie about what
 is displayed but cannot move funds (the signing boundary in the stack map). Still:
 
@@ -153,43 +153,43 @@ is displayed but cannot move funds (the signing boundary in the stack map). Stil
 
 ## 8. Oracle committee (Launch 2 only)
 
-Reporters on A's, B's, and C's VMs — three independent operators, each aggregating several
+Reporters on A's, B's, and C's VMs - three independent operators, each aggregating several
 venues off-chain. Deploy oracle and lend with `owner` = the same multisig, call `setParams`
 with `minReports` 3 (the shipped default of 1 is a placeholder, FTB-06), and enroll the three
 reporters. The failure mode is safe by design: too few fresh reports makes `Price` revert,
 which pauses borrowing and liquidations rather than trading on a bad number. Rehearse that
 pause on TestNet.
 
-## 9. TestNet rehearsal — the whole ceremony, end to end
+## 9. TestNet rehearsal - the whole ceremony, end to end
 
 The point of TestNet is to rehearse the *distributed operations* with the actual five people,
 not just to run the contracts. Do every step for real:
 
-- [ ] **T0 — stand up.** Five VMs hardened; three TestNet RPC nodes synced; archive node
+- [ ] **T0 - stand up.** Five VMs hardened; three TestNet RPC nodes synced; archive node
       syncing; multisig created and all five members derive the same address.
-- [ ] **T1 — deploy + wire.** `cmd/deploy` with `owner_multisig`; the six wiring calls
+- [ ] **T1 - deploy + wire.** `cmd/deploy` with `owner_multisig`; the six wiring calls
       executed by the multisig; output published. Everyone verifies `getMigrator`, the root,
       and the registry entries on-chain from their own node.
-- [ ] **T2 — snapshot reproduction.** Two members independently build the snapshot and the
+- [ ] **T2 - snapshot reproduction.** Two members independently build the snapshot and the
       Merkle root; roots compared byte-for-byte; `maxSupply` set to the exact printed total
       (FTB-01) and `proofs.json` published on IPFS.
-- [ ] **T3 — migration window.** Community testers claim via NeoLine through different RPC
+- [ ] **T3 - migration window.** Community testers claim via NeoLine through different RPC
       endpoints, including at least one user on their own node. Bug bounty runs here.
       `cmd/seed` seeds the pools (empty-pool guard on, FTB-04).
-- [ ] **T4 — failure drills.** (a) Kill RPC #1 — front-end fails over, nothing else notices.
-      (b) Take down the hosted front-end — users switch to the IPFS mirror. (c) Stop one
-      oracle reporter — price still quorums; stop two — `Price` reverts and borrowing pauses
+- [ ] **T4 - failure drills.** (a) Kill RPC #1 - front-end fails over, nothing else notices.
+      (b) Take down the hosted front-end - users switch to the IPFS mirror. (c) Stop one
+      oracle reporter - price still quorums; stop two - `Price` reverts and borrowing pauses
       cleanly. (d) Run a full registry `propose` → wait timelock → `apply` cycle and watch the
       events in the open.
-- [ ] **T5 — seal.** Multisig signs `close`, then `renounceOwnership`; verify owner empty and
+- [ ] **T5 - seal.** Multisig signs `close`, then `renounceOwnership`; verify owner empty and
       mint sealed on-chain.
-- [ ] **T6 — go/no-go.** Every box above ticked, bounty findings resolved (no external
+- [ ] **T6 - go/no-go.** Every box above ticked, bounty findings resolved (no external
       audit - withdrawn per DECISIONS.md Decision 7). Only then does MainNet repeat this script.
 
 ## 10. Key hygiene
 
 - Wallet passwords come from the environment (`password_env` in deploy config, FTB-12), never
-  committed; `.gitignore` already excludes wallets and filled configs — keep it that way.
+  committed; `.gitignore` already excludes wallets and filled configs - keep it that way.
 - MainNet multisig keys on hardware wallets; TestNet can be software keys.
 - Each member's VM holds only their own key. There is no shared machine with all five.
 
@@ -206,6 +206,6 @@ quietly, censor a user, or take the app down.
 ---
 
 *Operational plan, not financial or legal advice. Command names for multisig creation and
-offline signing vary between neo-cli/neo-go releases — pin the exact commands here after the
+offline signing vary between neo-cli/neo-go releases - pin the exact commands here after the
 first TestNet rehearsal. Nothing reaches MainNet until the pre-launch gate in
 `AUDIT_REPORT.md` passes.*

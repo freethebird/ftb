@@ -1,5 +1,5 @@
-// mod-gov.js — module 5: governance (MODULES.md).
-// The live ballots: snapshot-weighted, counted on-chain, one contract per proposal —
+// mod-gov.js - module 5: governance (MODULES.md).
+// The live ballots: snapshot-weighted, counted on-chain, one contract per proposal -
 // the hash IS the proposal id. Weight is your snapshot balance in FLM (1 FLM = 1 vote),
 // proven with the same merkle proof as the claim. Also owns the "weight voted" stat tile.
 //
@@ -24,7 +24,7 @@
   var ballotConfigured = BL.length > 0;
 
   // the voting window (DECISIONS.md, Decision 14: genesis ballots close 31 Oct), from
-  // config — UI-enforced only; the contracts have no expiry, so late votes still land
+  // config - UI-enforced only; the contracts have no expiry, so late votes still land
   // on-chain but the page won't offer them.
   function endsMsOf(b) { return b.endsAt ? Date.parse(b.endsAt) : NaN; }
   function ballotOpen(b) { var ms = endsMsOf(b); return !(ms > 0) || Date.now() < ms; }
@@ -41,7 +41,7 @@
   }
 
   // ---------- one donut per ballot: option weights vs the snapshot supply ----------
-  // Segments are the options; the ring background is the unvoted remainder — every
+  // Segments are the options; the ring background is the unvoted remainder - every
   // slice denominated in the 526,782,179.10 FLM snapshot supply.
   var SEG_COLS = ['var(--ink)', 'var(--ink-2)'];
   function donutSvg(vals, label) {
@@ -59,7 +59,7 @@
     });
     var turn = eb ? Number(total) / eb * 100 : 0;
     return '<div style="margin-bottom:6px">' +
-      '<svg viewBox="0 0 42 42" role="img" aria-label="vote split — ' + label + '" style="max-width:120px">' +
+      '<svg viewBox="0 0 42 42" role="img" aria-label="vote split - ' + label + '" style="max-width:120px">' +
       '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--hair)" stroke-width="7"/>' +
       segs.join('') +
       '<text x="21" y="20.5" text-anchor="middle" fill="var(--ink)" style="font-family:var(--disp); font-size:5px">' + turn.toFixed(1) + '%</text>' +
@@ -94,7 +94,7 @@
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   function tickClock() {
     var t = $('govClock'); if (!t) return;
-    if (!ballotConfigured || !(clockEndsMs > 0)) { t.textContent = '—'; return; }
+    if (!ballotConfigured || !(clockEndsMs > 0)) { t.textContent = '-'; return; }
     var ms = clockEndsMs - Date.now();
     if (ms <= 0) {
       t.textContent = 'CLOSED';
@@ -118,7 +118,7 @@
     }
     if (!FtbRpc.current()) return;
     $('govQ').textContent = BL.length === 1 ? BL[0].question : BL.length + ' live ballots';
-    // tally reads: every option of every ballot (on-chain options are 1-based —
+    // tally reads: every option of every ballot (on-chain options are 1-based -
     // tally keys are byte-wide; 0 faults, FTB-31)
     Promise.all(BL.map(function (b) {
       return Promise.all((b.options || []).map(function (_, i) {
@@ -163,7 +163,7 @@
       // turnout is measured against the snapshot electorate (FLM-equiv, from config),
       // NOT the FTB cap: vote weight is denominated in FLM.
       var elect = (CFG.governance && CFG.governance.electorate) || 0;
-      $('govHint').textContent = BL.length + ' ballots · electorate ' + elect.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' FLM snapshot weight · tallies are chain state — every node counts the same result.';
+      $('govHint').textContent = BL.length + ' ballots · electorate ' + elect.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' FLM snapshot weight · tallies are chain state - every node counts the same result.';
       if (FtbState.account) {
         Promise.all(BL.map(function (b) {
           return FtbRpc.read(b.hash, 'voted', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (st) { return decodeVoted(st); }).catch(function () { return false; });
@@ -189,12 +189,12 @@
       }
       FtbRpc.read(b.hash, 'voted', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (st) {
         if (decodeVoted(st)) {
-          FtbShell.showPlan('already voted', 'one vote per snapshot address per ballot — the chain has recorded this address.', [['address', FtbState.account], ['question', b.question]], null);
+          FtbShell.showPlan('already voted', 'one vote per snapshot address per ballot - the chain has recorded this address.', [['address', FtbState.account], ['question', b.question]], null);
           return;
         }
         var plan = FtbState.dapi.ballotVote(FtbState.account, en.amount, idx, en.proof, b.hash);
         FtbShell.showPlan('vote: ' + label,
-          'your weight is your snapshot balance in FLM — 1 FLM = 1 vote — proven with the same merkle proof as your claim. one vote per address per ballot, counted on-chain.',
+          'your weight is your snapshot balance in FLM - 1 FLM = 1 vote - proven with the same merkle proof as your claim. one vote per address per ballot, counted on-chain.',
           [['question', b.question],
            ['option', '#' + idx + ' ' + label],
            ['weight', fmt(en.amount) + ' FLM'],
@@ -230,7 +230,7 @@
   FtbState.on('account', refreshGov);
   FtbState.on('refresh', function () {
     refreshGov(); refreshVotedTile();
-    // a confirmed write clears the proposal form — fresh state, nothing lingering
+    // a confirmed write clears the proposal form - fresh state, nothing lingering
     var pm = $('pMeta'), pr = $('pRef');
     if (pm) pm.value = ''; if (pr) pr.value = '';
   });

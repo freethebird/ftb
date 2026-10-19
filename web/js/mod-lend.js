@@ -1,15 +1,15 @@
-// mod-lend.js — module 4: LEND (MODULES.md).
+// mod-lend.js - module 4: LEND (MODULES.md).
 // NEO+GAS collateral, FTB loans. This page is read-only for the pool; every
 // position-changing action is a review-and-sign plan through the adapter.
 //
 // Read discipline: loads coalesce (one pass in flight, at most one trailing
-// run, 3 s minimum interval) — the shell emits 'refresh' in a burst around
+// run, 3 s minimum interval) - the shell emits 'refresh' in a burst around
 // every signed tx, and the board must not re-enumerate storage per event.
 // Board enumeration paginates findstorage (next/truncated) and says so when
 // the page cap is hit; address rendering uses the adapter's codec, never
 // crypto.subtle, so the board also works on plain-http mirrors.
 //
-// Owns (writes only these): #lend card — the 4-stat panel (#lSApy liquidity apy,
+// Owns (writes only these): #lend card - the 4-stat panel (#lSApy liquidity apy,
 // #lBApy borrow apy, #lTotal total liquidity, #pHealth), #lendAct (the wizard keys
 // #lnWizLoan/#lnWizPay/#lnWizWdCol/#lnWizAdd/#lnWizRemove and the step panel
 // #lnWizard they build), #lendOff, #lendRefresh, and the loans board (#loansBody
@@ -100,7 +100,7 @@
   // ----- A) start loan -----
   // screen 1: amount. screen 2: BOTH collateral options with predetermined
   // amounts, one click chooses. screen 3: the two transactions, in plain words.
-  // every screen REPLACES the previous one — no stacking, no duplicates.
+  // every screen REPLACES the previous one - no stacking, no duplicates.
   function collatNeed(loanBase, price, wholeNeo) {
     // loan ÷ (60% LTV × price) + 10% safety, rounded up (BigInt exact)
     var num = loanBase * 110n, den = 60n * price;
@@ -121,7 +121,7 @@
   }
   function wizLoanPick(loanBase, loanDec) {
     clearWiz();
-    var s = stepBox('2', 'choose your collateral — the amounts are predetermined');
+    var s = stepBox('2', 'choose your collateral - the amounts are predetermined');
     s.row.appendChild(el('span', 'gname', 'reading oracle…'));
     var note = wizNote(s.box, '');
     wiz.appendChild(s.box);
@@ -134,7 +134,7 @@
       var needGas = collatNeed(loanBase, ps[1], false);
       s.row.removeChild(s.row.lastChild);
       // one row per option: predetermined amount on the left, the choice key on the right.
-      // [name, display, price, isNeo, rawArg] — rawArg is the exact contract integer.
+      // [name, display, price, isNeo, rawArg] - rawArg is the exact contract integer.
       [['NEO', grp(needNeo.toString()), ps[0], true, needNeo.toString()],
        ['GAS', grp(fromBase(needGas.toString())), ps[1], false, needGas.toString()]].forEach(function (o) {
         var r = el('div', 'trow');
@@ -158,17 +158,17 @@
   }
   function wizLoanSign(loanBase, loanDec, which, needDec, price, wholeNeo, needArg) {
     clearWiz();
-    var s = stepBox('3', 'two signatures — lock your collateral, then take the loan');
+    var s = stepBox('3', 'two signatures - lock your collateral, then take the loan');
     var priceDec = fromBase(price.toString());
     s.row.appendChild(el('span', 'gname', loanDec + ' FTB  against  ' + needDec + ' ' + which));
     var keys = keyWrap();
     s.row.appendChild(keys);
     wizNote(s.box, 'a loan is two transactions, signed one after the other: 1) your ' + which +
-      ' locks as collateral — wait for "confirmed on-chain" — 2) the loan lands in your wallet. your collateral is returned when you repay.');
+      ' locks as collateral - wait for "confirmed on-chain" - 2) the loan lands in your wallet. your collateral is returned when you repay.');
     wiz.appendChild(s.box);
 
     // Pre-read the position: if collateral already on-chain covers this loan
-    // (deposit confirmed, borrow failed or page reloaded), step 1 is DONE — never
+    // (deposit confirmed, borrow failed or page reloaded), step 1 is DONE - never
     // offer a second deposit. This is read from the chain, not remembered locally.
     var acct0 = FtbState.acctHash160();
     FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct0)]).then(function (maxB) {
@@ -183,7 +183,7 @@
           ? FtbState.dapi.addCollateralNeo(FtbState.account, needArg)
           : FtbState.dapi.addCollateralGas(FtbState.account, needArg);
         FtbShell.showPlan('lock ' + needDec + ' ' + which + ' as collateral',
-          'transaction 1 of 2: your ' + which + ' moves into the lend contract as collateral. it stays yours — you get it back when the loan is repaid.',
+          'transaction 1 of 2: your ' + which + ' moves into the lend contract as collateral. it stays yours - you get it back when the loan is repaid.',
           [['collateral', needDec + ' ' + which], ['oracle ratio', '1 ' + which + ' = ' + priceDec + ' FTB'], ['what you sign', plan.summary]],
           plan);
       }), keys.firstChild);
@@ -194,9 +194,9 @@
 
   // The borrow button, shared by the loan wizard (step 2) and the loans board's
   // direct "take loan" action. Pre-checks BOTH chain gates before asking for a
-  // signature: LTV headroom (existingDebt counts — the board path borrows against
+  // signature: LTV headroom (existingDebt counts - the board path borrows against
   // collateral that may already back a loan) and pool liquidity. An empty pool
-  // faults the borrow with "not enough liquidity" — show it here, in words,
+  // faults the borrow with "not enough liquidity" - show it here, in words,
   // instead of an opaque wallet error after signing.
   function borrowPlanKey(label, loanBase, loanDec, existingDebt) {
     return mkKey(label, function () {
@@ -210,18 +210,18 @@
         var okLtv = BigInt(loanBase) <= head;
         var okLiq = BigInt(loanBase) <= liquid;
         // express the limit the way users think about it: the % LTV after this loan
-        var ltvAfter = maxB > 0n ? (Number((BigInt(existingDebt) + BigInt(loanBase)) * 10000n / maxB) * 0.006).toFixed(1) : '—';
+        var ltvAfter = maxB > 0n ? (Number((BigInt(existingDebt) + BigInt(loanBase)) * 10000n / maxB) * 0.006).toFixed(1) : '-';
         FtbShell.showPlan('take a ' + loanDec + ' FTB loan',
           okLtv && okLiq
             ? 'the contract sends you ' + loanDec + ' FTB against your locked collateral. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.'
-            : 'this will be REJECTED on-chain — fix the failing check first.',
+            : 'this will be REJECTED on-chain - fix the failing check first.',
           [['you receive', loanDec + ' FTB'],
-           ['ltv after this loan', ltvAfter + '% of the 60% max — ' + (okLtv ? 'within limit' : 'NO — over the limit; lock more collateral or repay first')],
-           ['pool liquidity', fmt(liquid) + ' FTB — ' + (okLiq ? 'enough' : 'NO — the pool is short. add liquidity (ADD LIQUIDITY below) or borrow less')],
+           ['ltv after this loan', ltvAfter + '% of the 60% max - ' + (okLtv ? 'within limit' : 'NO - over the limit; lock more collateral or repay first')],
+           ['pool liquidity', fmt(liquid) + ' FTB - ' + (okLiq ? 'enough' : 'NO - the pool is short. add liquidity (ADD LIQUIDITY below) or borrow less')],
            ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
           okLtv && okLiq ? FtbState.dapi.borrow(FtbState.account, loanBase.toString()) : null);
       }).catch(function () {
-        FtbShell.showPlan('take a ' + loanDec + ' FTB loan', 'could not pre-check the chain — the contract enforces both limits regardless.',
+        FtbShell.showPlan('take a ' + loanDec + ' FTB loan', 'could not pre-check the chain - the contract enforces both limits regardless.',
           [['you receive', loanDec + ' FTB']], FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
       });
     });
@@ -248,8 +248,8 @@
       if (head < 0n) head = 0n;
       var ltv = vs[0] > 0n ? (Number(vs[1] * 10000n / vs[0]) * 0.006).toFixed(1) : '0.0';
       input.value = fromBase(head.toString());
-      note.textContent = 'your ltv is ' + ltv + '% (max 60%). headroom: ' + fmt(head) + ' FTB — prefilled with the maximum; borrow less for a bigger safety buffer against liquidation.';
-    }).catch(function () { note.textContent = 'could not read your position — the chain enforces the limit regardless.'; });
+      note.textContent = 'your ltv is ' + ltv + '% (max 60%). headroom: ' + fmt(head) + ' FTB - prefilled with the maximum; borrow less for a bigger safety buffer against liquidation.';
+    }).catch(function () { note.textContent = 'could not read your position - the chain enforces the limit regardless.'; });
     var keys = keyWrap();
     keys.appendChild(mkKey('review borrow ->', function () {
       var a = amtVal(input.value); if (a === null) return badAmt();
@@ -270,9 +270,9 @@
     var input = mkInput('0.0');
     FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)]).then(function (d) {
       // interest accrues per block, so the exact debt at read-time is already
-      // stale when the tx lands — prefill +0.001 FTB; repayIn refunds the excess.
+      // stale when the tx lands - prefill +0.001 FTB; repayIn refunds the excess.
       input.value = fromBase((d + 100000n).toString());
-      note.textContent = 'your debt right now: ' + fmt(d) + ' FTB (prefilled a hair higher — interest ticks every block; the contract refunds whatever isn\'t owed).';
+      note.textContent = 'your debt right now: ' + fmt(d) + ' FTB (prefilled a hair higher - interest ticks every block; the contract refunds whatever isn\'t owed).';
     }).catch(function () {});
     var note = wizNote(s.box, 'reading your debt…');
     var keys = keyWrap();
@@ -296,8 +296,8 @@
     var input = mkInput('0.0');
     var note = wizNote(s.box, 'reading the rate…');
     FtbRpc.readInt(C.lend, 'supplyApyBps', []).then(function (v) {
-      note.textContent = 'approximate apy right now: ' + (Number(v) / 100).toFixed(2) + '% — it floats with how much of the pool is loaned out (borrow rate × % loaned × 2/3).';
-    }).catch(function () { note.textContent = 'apy unreadable — the chain still enforces the curve.'; });
+      note.textContent = 'approximate apy right now: ' + (Number(v) / 100).toFixed(2) + '% - it floats with how much of the pool is loaned out (borrow rate × % loaned × 2/3).';
+    }).catch(function () { note.textContent = 'apy unreadable - the chain still enforces the curve.'; });
     var keys = keyWrap();
     keys.appendChild(mkKey('sign liquidity ->', function () {
       var a = amtVal(input.value); if (a === null) return badAmt();
@@ -321,13 +321,13 @@
     var acct = FtbState.acctHash160();
     FtbRpc.readInt(C.lend, 'sharesOf', [h160(acct)]).then(function (v) {
       input.value = v.toString();
-      note.textContent = 'you hold ' + fmt(v) + ' shares (shares are 8-decimal, like FTB — prefilled with all of them). shares pay out FTB at the current share price.';
+      note.textContent = 'you hold ' + fmt(v) + ' shares (shares are 8-decimal, like FTB - prefilled with all of them). shares pay out FTB at the current share price.';
     }).catch(function () {});
     var keys = keyWrap();
     keys.appendChild(mkKey('sign withdrawal ->', function () {
       var a = amtVal(input.value, true); if (a === null) return badAmt();
       FtbShell.showPlan('withdraw ' + fmt(BigInt(a)) + ' shares',
-        'burns pool shares and returns FTB at the current share price. only free cash can leave — borrows stay funded.',
+        'burns pool shares and returns FTB at the current share price. only free cash can leave - borrows stay funded.',
         [['shares', fmt(BigInt(a))], ['what you sign', 'lend.withdrawSupply(you, ' + a + ')']],
         FtbState.dapi.withdrawSupply(FtbState.account, a));
     }));
@@ -353,11 +353,11 @@
       state.neo = vs[0]; state.gas = vs[1]; state.debt = vs[2];
       keys.innerHTML = '';
       if (vs[2] > 0n) {
-        note.textContent = 'you still owe ' + fmt(vs[2]) + ' FTB — even dust debt locks collateral. repay it first (PAY LOAN over-prefills and the contract refunds the excess), or take back only what stays free.';
+        note.textContent = 'you still owe ' + fmt(vs[2]) + ' FTB - even dust debt locks collateral. repay it first (PAY LOAN over-prefills and the contract refunds the excess), or take back only what stays free.';
         keys.appendChild(mkKey('pay loan first ->', wizPay));
         keys.appendChild(mkKey('claim collateral ->', function () { wizWdFree(state); }));
       } else {
-        note.textContent = 'locked: ' + grp(vs[0].toString()) + ' NEO · ' + fmt(vs[1]) + ' GAS — debt is zero, so everything comes back in one transaction.';
+        note.textContent = 'locked: ' + grp(vs[0].toString()) + ' NEO · ' + fmt(vs[1]) + ' GAS - debt is zero, so everything comes back in one transaction.';
         keys.appendChild(mkKey('claim collateral ->', function () {
           if (state.neo === 0n && state.gas === 0n) {
             FtbShell.showPlan('nothing locked', 'you have no collateral in the lend contract.', [], null);
@@ -416,7 +416,7 @@
   // ----- loans board: every position enumerated from contract storage -----
   // prefixes 0x31–0x34 via findstorage, PAGINATED: the C# RPC caps one page at
   // 100 entries and answers {results, next, truncated}; we follow `next` until
-  // done, capped at MAX_PAGES — past the cap the board SAYS it is truncated
+  // done, capped at MAX_PAGES - past the cap the board SAYS it is truncated
   // instead of silently showing a partial enumeration (R5/R8).
   var MAX_PAGES = 5;
   function findAll(hash, prefixB64) {
@@ -438,19 +438,19 @@
 
   // Refresh coalescing lives in the shared seam (FtbUtil.coalesce): the shell
   // emits 'refresh' in a burst around every signed transaction (optimistic, each
-  // 5 s confirmation poll, confirmed, the modal's ok & refresh) — up to ~17 events
-  // for one landing — and without coalescing a slower STALE pass can resolve last
+  // 5 s confirmation poll, confirmed, the modal's ok & refresh) - up to ~17 events
+  // for one landing - and without coalescing a slower STALE pass can resolve last
   // and paint old numbers over fresh ones.
 
   // Addresses render through the adapter's scriptHashToAddress (pure-JS SHA-256,
-  // no crypto.subtle) — the Article 10 single toolkit; this module keeps no codec.
+  // no crypto.subtle) - the Article 10 single toolkit; this module keeps no codec.
   function loadLoans() {
     var body = $('loansBody'); if (!body || !FtbRpc.current() || !C.lend) return;
     body.textContent = 'reading chain storage…';
     // Four prefixes: 0x31 debt ('MQ=='), 0x32 NEO collateral ('Mg=='), 0x33 GAS
     // collateral ('Mw=='), 0x34 liquidation count ('NA=='). A deposit can land
     // without its borrow (failed second signature), collateral outlives a repaid
-    // loan, and a LIQUIDATION outlives the position itself — all must be VISIBLE,
+    // loan, and a LIQUIDATION outlives the position itself - all must be VISIBLE,
     // or users think funds (or history) vanished.
     Promise.all(['MQ==', 'Mg==', 'Mw==', 'NA=='].map(function (p) {
       return findAll(C.lend, p).catch(function () { return { items: [], truncated: false }; });
@@ -501,7 +501,7 @@
         var ec = $('lbCollat'); if (ec) ec.textContent = grp(totNeo.toString()) + ' NEO + ' + fmt(totGas) + ' GAS';
         var en = $('lbCount'); if (en) en.textContent = nLoans + (rows.length > nLoans ? ' (+ ' + (rows.length - nLoans) + ' closed/collateral-only)' : '');
         body.innerHTML = '';
-        if (!open.length) { body.textContent = 'no open positions — ' + rows.length + ' closed.'; return; }
+        if (!open.length) { body.textContent = 'no open positions - ' + rows.length + ' closed.'; return; }
         open.forEach(function (r) {
           var row = el('div', 'entry');
           row.style.padding = '8px 0';
@@ -532,12 +532,12 @@
             ? el('span', 'tag pub', 'LIQUIDATABLE')
             : (r.liqs > 0n
               ? el('span', 'tag pub', 'liquidated ×' + r.liqs.toString())
-              : (r.debt > 0n ? el('span', 'tag', 'healthy') : el('span', 'tag', 'collateral only — claimable')));
+              : (r.debt > 0n ? el('span', 'tag', 'healthy') : el('span', 'tag', 'collateral only - claimable')));
           meta.appendChild(tag);
           var btnWrap = el('div', 'read');
           if (mine && !r.bad) {
             // your own position is actionable straight from the board: draw a loan
-            // against collateral already locked — no wizard restart (the deposit
+            // against collateral already locked - no wizard restart (the deposit
             // is a fact on-chain; the borrow should be one click from seeing it).
             var bk = el('button', 'linkish', 'take loan ->');
             bk.addEventListener('click', wizBorrowDirect);
@@ -559,8 +559,8 @@
           mid.appendChild(meta);
           body.appendChild(row);
         });
-        body.appendChild(el('div', 'small muted', open.length + ' open · ' + (rows.length - open.length) + ' closed — enumerated from contract storage, not a server.'));
-        if (boardTrunc) body.appendChild(el('div', 'small muted', 'board truncated at ' + (MAX_PAGES * 100) + ' entries per prefix — point the page at your own node (OWN NODE) for the full enumeration.'));
+        body.appendChild(el('div', 'small muted', open.length + ' open · ' + (rows.length - open.length) + ' closed - enumerated from contract storage, not a server.'));
+        if (boardTrunc) body.appendChild(el('div', 'small muted', 'board truncated at ' + (MAX_PAGES * 100) + ' entries per prefix - point the page at your own node (OWN NODE) for the full enumeration.'));
       });
     }).catch(function (e) { body.textContent = 'board unavailable: ' + FtbUtil.errText(e); });
   }
@@ -571,7 +571,7 @@
     setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
   }
 
-  // every entry point goes through the coalesced pass — manual buttons included:
+  // every entry point goes through the coalesced pass - manual buttons included:
   // a click during an in-flight pass queues exactly one trailing run.
   var loadLendC = FtbUtil.coalesce(loadLend, 3000), loadLoansC = FtbUtil.coalesce(loadLoans, 3000);
   var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', function () { flash(lb); loadLendC(); });
@@ -581,7 +581,7 @@
   FtbState.on('rpc', loadLendC);
   FtbState.on('account', loadLendC);
   FtbState.on('refresh', loadLendC);
-  // a confirmed write means the wizard's job is done — tear it down so no stale
+  // a confirmed write means the wizard's job is done - tear it down so no stale
   // amounts linger on screen looking like the transaction never happened.
   FtbState.on('refresh', clearWiz);
   // keep the pool fresh while the page is open

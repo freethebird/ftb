@@ -87,7 +87,7 @@ the module and seam design.
 - `Flamingo_share_of_NEO_transactions.xlsx` / `.png`, `Flamingo_community_size.png` ... the
   on-chain evidence that the community is the asset.
 - `NEO_DEX_Drained_Two_Men_High_Castle.pdf` ... the forensic account of the exploit.
-- `docs/STACK_MAP.png` / `docs/STACK_MAP.md` — the stack from wallet to chain, with the NeoLine layer.
+- `docs/STACK_MAP.png` / `docs/STACK_MAP.md` - the stack from wallet to chain, with the NeoLine layer.
 - `web/` ... the NeoLine wallet integration: adapter, wallet-neutral spec, reference demo.
 - `AUDIT.md`, `AUDIT_REPORT.md`, `DECISIONS.md` ... the auditor brief, the first audit (findings +
   fixes), and the two decisions left to the owner.

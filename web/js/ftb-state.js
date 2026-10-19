@@ -1,13 +1,13 @@
-// ftb-state.js — shared page state, event hub, and the two cross-module seams
+// ftb-state.js - shared page state, event hub, and the two cross-module seams
 // (MODULES.md R7; closes WEB-05 and WEB-02).
 //
 // Owns no DOM. Holds: the connected account, the dapi instance, the lazy
-// proofs cache (fetched once, indexed once), and quoteFtb — the conversion
+// proofs cache (fetched once, indexed once), and quoteFtb - the conversion
 // preview seam that reads the migrator's on-chain quote() and only falls back
 // to the local ratio mirror when the chain cannot answer.
 //
 // Events: 'rpc' (a healthy endpoint is serving reads), 'account' (wallet
-// connected / changed / disconnected), 'refresh' (a transaction landed —
+// connected / changed / disconnected), 'refresh' (a transaction landed -
 // re-read what you display).
 (function () {
   'use strict';
@@ -20,8 +20,8 @@
   // ---------- tiny shared helpers ----------
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-  function short(h) { return (h && h.length > 14) ? h.slice(0, 8) + '…' + h.slice(-6) : (h || '—'); }
-  // thousands separators on the integer part of a decimal string — every displayed
+  function short(h) { return (h && h.length > 14) ? h.slice(0, 8) + '…' + h.slice(-6) : (h || '-'); }
+  // thousands separators on the integer part of a decimal string - every displayed
   // number is readable at a glance (100,000,000 not 100000000). Display-only; input
   // fields and builder arguments always use the raw string.
   function grp(s) {
@@ -31,7 +31,7 @@
   }
   function fmt(base) { return grp(FtbDapi.util.fromBaseUnits(base.toString())); }
   // tile headline: two decimals max so the number always fits one line; the FULL
-  // precision value goes in the element's tooltip — trim the display, never the data.
+  // precision value goes in the element's tooltip - trim the display, never the data.
   function tileNum(elm, base, suffix) {
     var full = fmt(base);
     var p = full.split('.');
@@ -42,7 +42,7 @@
   // Refresh coalescing, shared by every module that loads on 'refresh' bursts:
   // one read pass in flight, at most one trailing run queued, a minimum interval
   // between passes. Without it, rapid events start overlapping reads and a slower
-  // STALE pass can resolve last — painting old numbers over fresh ones.
+  // STALE pass can resolve last - painting old numbers over fresh ones.
   function coalesce(fn, minMs) {
     var inflight = false, last = 0, timer = null, queued = false;
     function done() {
@@ -62,7 +62,7 @@
       else if (!timer) timer = setTimeout(run, wait);
     };
   }
-  // wallet errors are often plain objects ({type, description, data}) — never String()
+  // wallet errors are often plain objects ({type, description, data}) - never String()
   // them raw, or the user reads "[object Object]" and learns nothing.
   function errText(e) {
     if (!e) return 'unknown error';
@@ -71,7 +71,7 @@
     if (m && typeof m === 'object') { try { m = JSON.stringify(m); } catch (_) { m = String(m); } }
     var d = e.data ? (typeof e.data === 'string' ? e.data : (function () { try { return JSON.stringify(e.data); } catch (_) { return String(e.data); } })()) : '';
     if (!m && !d) { try { return JSON.stringify(e); } catch (_) { return String(e); } }
-    return d ? m + ' — ' + d : m;
+    return d ? m + ' - ' + d : m;
   }
 
   // ---------- event hub ----------
@@ -98,7 +98,7 @@
   function entryFor(addr) { return (proofsIdx && addr) ? (proofsIdx[addr] || null) : null; }
 
   // ---------- the conversion seam (WEB-02) ----------
-  // The preview reads migrator.quote() on-chain — the same integer arithmetic the
+  // The preview reads migrator.quote() on-chain - the same integer arithmetic the
   // mint will apply (floor(amount × ratioNum / ratioDen), DECISIONS.md 18 Oct).
   // The local mirror FtbDapi.util.ftbOf is only a fallback for when the chain
   // cannot answer; the chain converts authoritatively at mint time regardless.

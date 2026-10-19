@@ -1,4 +1,4 @@
-# Node #1 sync stall — lz4 amd64 assembly bug (2026-10-16)
+# Node #1 sync stall - lz4 amd64 assembly bug (2026-10-16)
 
 ## Symptom
 
@@ -25,14 +25,14 @@ fails decompression **only when decoded through the amd64 assembly path**:
 
 | decoder | platform | result |
 | --- | --- | --- |
-| lz4 v2.6.1 pure-Go | any (e.g. darwin/arm64) | OK — md5 `f108be2ca7cb6f77877d3d68b940263f` |
+| lz4 v2.6.1 pure-Go | any (e.g. darwin/arm64) | OK - md5 `f108be2ca7cb6f77877d3d68b940263f` |
 | lz4 v2.6.1 asm | linux/amd64 (the VM) | `ErrInvalidSourceShortBuffer` |
-| lz4 v2.6.1 `-tags noasm` | linux/amd64 (the VM) | OK — identical md5 |
+| lz4 v2.6.1 `-tags noasm` | linux/amd64 (the VM) | OK - identical md5 |
 
 Every peer sends this message right after handshake, so every connection died at
 the first decode, and the node could never hold peers long enough to pull the one
 batch it needed (blocks 956157–956656). Out-of-order batches filled the block
-queue cache and were silently discarded — ~44 MB/25 s of wasted inbound traffic,
+queue cache and were silently discarded - ~44 MB/25 s of wasted inbound traffic,
 which also made C# peers RST us as abusive.
 
 The stall started the moment the NeoFS BlockFetcher stopped carrying the sync

@@ -1,14 +1,14 @@
 # Run an FTB mirror node
 
-Free the Bird's front-end lives on IPFS. Any IPFS node — a VPS, a home server, a
-Raspberry Pi, even a laptop — can mirror it and make it more available for everyone.
+Free the Bird's front-end lives on IPFS. Any IPFS node - a VPS, a home server, a
+Raspberry Pi, even a laptop - can mirror it and make it more available for everyone.
 You do **not** need any credentials or permission from the FTB operators.
 
 There are two levels. Level 1 is 10 minutes and is what we ask of supporters.
 
 ---
 
-## Level 1 — mirror the site (recommended for most people)
+## Level 1 - mirror the site (recommended for most people)
 
 **1. Install Kubo** (the IPFS node software):
 
@@ -47,12 +47,12 @@ chmod +x ftb-follow.sh
 ( crontab -l 2>/dev/null; echo '*/15 * * * * IPFS_PATH=$HOME/.ipfs /path/to/ftb-follow.sh >> $HOME/.ftb-follow.log 2>&1' ) | crontab -
 ```
 
-It resolves the IPNS name, pins new versions, and unpins superseded ones —
+It resolves the IPNS name, pins new versions, and unpins superseded ones -
 your mirror tracks releases within minutes, hands-free.
 
 ---
 
-## Level 2 — full replica of the FTB node
+## Level 2 - full replica of the FTB node
 
 If you want the exact setup of the primary node (Kubo as a hardened systemd
 service on a VPS, Caddy serving your own hostname over HTTPS):
@@ -61,7 +61,7 @@ service on a VPS, Caddy serving your own hostname over HTTPS):
 2. Run [`ipfs-node-setup.sh`](./ipfs-node-setup.sh) on it.
 3. Run `ftb-follow.sh` via cron to mirror content.
 4. To serve `https://<your-domain>` from your node, add a Caddy block proxying
-   to `127.0.0.1:8080` (the local gateway) — Caddy handles TLS automatically.
+   to `127.0.0.1:8080` (the local gateway) - Caddy handles TLS automatically.
 
 The full architecture and deploy history of the primary node are documented
 in [`DEPLOYS.md`](./DEPLOYS.md).
@@ -71,8 +71,8 @@ in [`DEPLOYS.md`](./DEPLOYS.md).
 ## Why this works
 
 IPFS content is addressed by hash (CID), not by location. The FTB site is
-currently `QmdKwwMEqAeWP8tokfDmiEAxqDYDF6DeAuuA6cDWktRPaw` — whoever pins that
+currently `QmdKwwMEqAeWP8tokfDmiEAxqDYDF6DeAuuA6cDWktRPaw` - whoever pins that
 CID serves bit-identical content, verifiable by anyone. The IPNS name above is
 the stable pointer that always resolves to the latest release; DNSLink on
 `freethebird.co` points at the same name. There is no central server in the
-critical path — only publishers and mirrors.
+critical path - only publishers and mirrors.

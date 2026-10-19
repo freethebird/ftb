@@ -3,10 +3,10 @@
 Every user-facing action, the contract it invokes, and who published that contract.
 Three provenance classes:
 
-- **Neo native** — published by the Neo project, built into every N3 node, same hash on
+- **Neo native** - published by the Neo project, built into every N3 node, same hash on
   every network. Not ours, not upgradeable by us.
-- **FTB (this repo)** — written here, MIT, in `contracts/`, compiled to `build/`.
-- **External immutable** — the audited Flamingo AMM, called by hash. A protocol peer,
+- **FTB (this repo)** - written here, MIT, in `contracts/`, compiled to `build/`.
+- **External immutable** - the audited Flamingo AMM, called by hash. A protocol peer,
   not a vendor: no one can revoke or change it. Absent on TestNet (DECISIONS.md, #3).
 
 | # | Use case | Invokes | Provenance |
@@ -43,6 +43,6 @@ Three provenance classes:
 | 30 | Hash proofs (claim/vote verification) | `CryptoLib.sha256` | Neo native |
 | 31 | Block height (timelocks, accrual, treasury soak) | `Ledger.currentIndex` | Neo native |
 
-**What is NOT used:** bNEO / NeoBurger (dropped — collateral is native NEO and GAS, one
+**What is NOT used:** bNEO / NeoBurger (dropped - collateral is native NEO and GAS, one
 less external dependency), any hosted API, any custodial service. The front end talks to
 nodes over plain JSON-RPC; wallets sign via the N3 dApi.

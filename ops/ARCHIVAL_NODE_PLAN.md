@@ -1,4 +1,4 @@
-# FTB Archival Node — Commissioning Checklist (Explorer Backend)
+# FTB Archival Node - Commissioning Checklist (Explorer Backend)
 
 Status: **planned, post-mainnet**. Decision recorded 2026-10-17: skip TestNet
 archival entirely; commission a MainNet archival node only, when explorer work
@@ -23,7 +23,7 @@ begins after the Nov 7 launch.
 | vCPU | 2 | Sync is CPU-bound on block verification |
 | Network | Public IP, RPC behind reverse proxy | Explorer backend only |
 
-## Binary — critical
+## Binary - critical
 
 Do **not** install the official neo-go v0.123.0 release binary. It ships the
 lz4 v2.6.1 amd64 assembly decoder bug that freezes sync (see
@@ -41,9 +41,9 @@ Use the clean-room rebuild with `-tags noasm`:
 ## Config deltas vs the DEX node
 
 - `protocol.mainnet.yml` (not testnet)
-- `RemoveUntraceableBlocks` **absent or false** — this is the whole point
+- `RemoveUntraceableBlocks` **absent or false** - this is the whole point
 - No `GarbageCollectionPeriod`
-- NeoFS BlockFetcher: leave disabled/absent — its endpoints are dead globally,
+- NeoFS BlockFetcher: leave disabled/absent - its endpoints are dead globally,
   so archival sync is full P2P from genesis regardless
 - RPC: bind localhost, front with nginx + rate limit for the explorer
 
@@ -62,4 +62,4 @@ Start the sync before explorer development needs data, not after.
 - [ ] systemd unit `ftb-explorer-node.service` (mirror `ftb-node.service`)
 - [ ] Sync from genesis to tip verified (`getblockcount` vs a public seed)
 - [ ] RPC exposed only via reverse proxy with rate limiting
-- [ ] No deploy keys, no IPNS keys, no wallet material on this box — ever
+- [ ] No deploy keys, no IPNS keys, no wallet material on this box - ever

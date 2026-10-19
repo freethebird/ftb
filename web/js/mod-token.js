@@ -1,9 +1,9 @@
-// mod-token.js — module 2: token on FTB (MODULES.md).
+// mod-token.js - module 2: token on FTB (MODULES.md).
 // Stat tiles for the token itself plus the connected wallet's balance strip.
 //
 // Owns (writes only these): tiles #tSupply, #tCap, #tBlock, and the balance
 // strip #balStrip (#balFtb, #balNeo, #balGas, #balClaim). Reads overlap freely
-// (totalSupply / maxSupply are also read by mod-claim and mod-verify — each
+// (totalSupply / maxSupply are also read by mod-claim and mod-verify - each
 // module answers to its own corner of the page).
 (function () {
   'use strict';

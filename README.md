@@ -1,27 +1,27 @@
-# FTB — Free the Bird
+# FTB - Free the Bird
 
 [![ci](https://github.com/freethebird/ftb/actions/workflows/ci.yml/badge.svg)](https://github.com/freethebird/ftb/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **A community relaunch of Flamingo-style DeFi on Neo N3.** Trade, earn, borrow, and
-govern — the mechanism lives 100% on-chain, the front end is a static page served from
+govern - the mechanism lives 100% on-chain, the front end is a static page served from
 IPFS by community nodes, and after launch there are no admin keys at all.
 
 Three promises, enforced in code and readable by anyone:
 
 - **No mint beyond the hard cap.** The only mint is the migration claim, then it seals
   forever. FTB is dividend-bearing, never inflationary.
-- **No fiat oracle.** Prices on the front end are ratios between assets — nothing to
+- **No fiat oracle.** Prices on the front end are ratios between assets - nothing to
   manipulate, nothing to trust.
 - **No single point of control.** Governance, the treasury, and even the website run on
   contracts and community nodes. A gift to the Flamingo community.
 
 One language end to end: Go, via [neo-go](https://github.com/nspcc-dev/neo-go) (contract
 compiler, SDK, and node). The audited Flamingo swap is reused as a deployed NEF and called
-by hash — battle-tested code, and no second language ever enters the repo.
+by hash - battle-tested code, and no second language ever enters the repo.
 
-> **Status: pre-TestNet.** Reference implementation — internal audit lineage only, no
-> external audit was performed (Decision 7) — see [Safety](#safety) before trusting value.
+> **Status: pre-TestNet.** Reference implementation - internal audit lineage only, no
+> external audit was performed (Decision 7) - see [Safety](#safety) before trusting value.
 
 ## The documents
 
@@ -55,7 +55,7 @@ so nothing merges unless it compiles and all tests pass.
 
 ## Status
 
-- [x] Token: `ftb_token` — capped NEP-17, mint only by the Migrator, sealable,
+- [x] Token: `ftb_token` - capped NEP-17, mint only by the Migrator, sealable,
       renounceable, full neotest suite.
 - [x] Migration: `ftb_migrator` + `pkg/merkle` + `cmd/merkleroot`, with an on-chain claim
       test proving the off-chain and on-chain leaf formats agree byte for byte.
@@ -63,11 +63,11 @@ so nothing merges unless it compiles and all tests pass.
 - [x] Liquidity seeding: `cmd/seed` driver + the swap/seed runbook.
 - [x] Oracle (reporter-median, staleness-safe) + lend (no-mint supply/borrow, native
       NEO+GAS collateral, kinked utilization curve), oracle resolved via the registry seam.
-- [x] Ballot: on-chain snapshot-weighted governance — one contract per proposal, the
+- [x] Ballot: on-chain snapshot-weighted governance - one contract per proposal, the
       contract hash IS the proposal id, voters reuse their migration Merkle proof as
       weight, tallies in chain state so every node counts the same result.
 - [x] Governance economy: `bondvault` (listing bonds locked while a project is listed),
-      `treasury` (proposal escrow — auditor-attested NEF hash, tranche payouts, the fund is
+      `treasury` (proposal escrow - auditor-attested NEF hash, tranche payouts, the fund is
       a contract, not a wallet), `dividends` (xSUSHI-style distributor paying FTB stakers
       the holders' 2/9 of every fee). Fee constitution: 2/3 LPs, 2/9 holders, 1/9 treasury.
 - [x] Front end: static, dependency-free, ratio-only pricing (no fiat oracle), served from
@@ -202,8 +202,8 @@ is the highest-risk primitive and a lend-side bug is what destroyed Flamingo.
   cap, liquidation, and cToken-style supply shares. It resolves the oracle through the
   registry seam, so the oracle can be upgraded behind the timelock without touching lend.
 
-These ship only after their own dedicated internal audit pass — a hardened multi-source
-oracle and far more exhaustive tests (interest over time, rounding, partial liquidations) —
+These ship only after their own dedicated internal audit pass - a hardened multi-source
+oracle and far more exhaustive tests (interest over time, rounding, partial liquidations) -
 before any value.
 
 ## The one rule, enforced in code
@@ -220,5 +220,5 @@ bounty. Lending ships later, on its own, because it is the highest-risk module.
 
 ## License
 
-MIT (see `LICENSE`), copyright the Free the Bird community — matching the reused Flamingo
+MIT (see `LICENSE`), copyright the Free the Bird community - matching the reused Flamingo
 swap and neo-go, both MIT.

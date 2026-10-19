@@ -1,4 +1,4 @@
-// shell.js — page chrome and the single review modal (MODULES.md R4).
+// shell.js - page chrome and the single review modal (MODULES.md R4).
 //
 // Owns (writes only these): #shiftLine, #tminus (launchbar countdown),
 // #dateline, and the #ov review modal (#ovTitle, #ovWarn, #ovBody, #ovMsg, #ovGo).
@@ -13,7 +13,7 @@
   var NET = CFG.network || 'TestNet';
 
   // ---------- theme: one shift only ----------
-  // night shift (dark) is the ONLY theme — decided 18 Oct; the pink alternative
+  // night shift (dark) is the ONLY theme - decided 18 Oct; the pink alternative
   // is retired. There is no toggle and no theme key in localStorage.
   var sl = $('shiftLine'); if (sl) sl.textContent = '// night shift';
 
@@ -24,7 +24,7 @@
     function pad(n) { return (n < 10 ? '0' : '') + n; }
     function tick() {
       var ms = target - Date.now();
-      if (ms <= 0) { t.textContent = 'T-0 — MAIN-NET WINDOW OPEN'; return; }
+      if (ms <= 0) { t.textContent = 'T-0 - MAIN-NET WINDOW OPEN'; return; }
       var sec = Math.floor(ms / 1000);
       var d = Math.floor(sec / 86400); sec -= d * 86400;
       var h = Math.floor(sec / 3600); sec -= h * 3600;
@@ -57,9 +57,9 @@
       // then a live on-chain confirmation once the tx lands in a block.
       // "ok & refresh" closes the panel and forces a module refresh.
       msg.innerHTML = '';
-      msg.appendChild(el('div', 'err ok', 'approved and relayed — ' + (plan.summary || 'see your wallet')));
+      msg.appendChild(el('div', 'err ok', 'approved and relayed - ' + (plan.summary || 'see your wallet')));
       if (txid) msg.appendChild(el('div', 'keybox', 'tx: ' + txid));
-      var st = el('div', 'small muted', 'waiting for a block — this panel updates itself, no need to refresh.');
+      var st = el('div', 'small muted', 'waiting for a block - this panel updates itself, no need to refresh.');
       msg.appendChild(st);
       var done = el('button', null, 'ok & refresh ->');
       done.style.marginTop = '10px';
@@ -77,7 +77,7 @@
           if (!ex) return;
           clearInterval(iv);
           if (ex.vmstate === 'HALT') {
-            st.textContent = 'confirmed on-chain — the modules now show it.';
+            st.textContent = 'confirmed on-chain - the modules now show it.';
             st.className = 'err ok';
           } else {
             st.textContent = 'the chain rejected it: ' + (ex.exception || ex.vmstate);
@@ -87,7 +87,7 @@
         }).catch(function () {
           if (tries >= 15) {
             clearInterval(iv);
-            st.textContent = 'still waiting for the node — the modules will catch up on their own.';
+            st.textContent = 'still waiting for the node - the modules will catch up on their own.';
           }
         });
       }, 5000);

@@ -34,7 +34,7 @@
 
 
 :root{
-  /* night shift — the only shift. The terminal never sleeps. */
+  /* night shift - the only shift. The terminal never sleeps. */
   --paper:#0a0a0a;   /* ground */
   --ink:#ededed;     /* primary mark */
   --ink-2:#a9a9a9;   /* secondary text */
@@ -283,7 +283,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 /* ---- canonical layout: terra station skin (promoted 12 October 2026) ---- */
 /* ============================================================
-   3. TERRA STATION — governance is the front page.
+   3. TERRA STATION - governance is the front page.
    The proposal is a framed hero panel with display type and heavy
    bars; wallet + claim sit beside it like a station portfolio row;
    trading and verification are utilities underneath.
@@ -339,7 +339,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 
 /* ============================================================
-   TEMPLATE 3 — the Flamingo blend. flamingo.finance's familiar
+   TEMPLATE 3 - the Flamingo blend. flamingo.finance's familiar
    shell (top tabs, hero, swap card, tokens table, FLOCKS-style
    APY card) re-expressed in strict grayscale Space Mono. Same ids,
    same flows, same invariants as templates 1 and 2.
@@ -350,7 +350,7 @@ body{font-size:15px}
 .topbar{position:sticky; top:0; z-index:50; background:var(--paper);
   border-bottom:1px solid var(--ink); display:flex; align-items:center;
   gap:18px; padding:10px 20px; flex-wrap:wrap}
-/* launch countdown strip: status, not a button — strict grayscale, one line */
+/* launch countdown strip: status, not a button - strict grayscale, one line */
 .launchbar{border-bottom:1px solid var(--ink); background:var(--paper); color:var(--ink);
   text-align:center; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
   padding:6px 12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -408,7 +408,7 @@ body{font-size:15px}
 .ctabs span.cur{background:var(--ink); color:var(--paper)}
 .ctabs a:hover{background:var(--ink); color:var(--paper)}
 
-/* ---- trade: swap card over tokens table — every module full width, stacked
+/* ---- trade: swap card over tokens table - every module full width, stacked
    like claim/verify (18 Oct: one column, equal horizontal size everywhere) ---- */
 .tradegrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
 
@@ -461,7 +461,7 @@ body{font-size:15px}
 .foot3{margin-top:44px; padding-top:16px; border-top:3px double var(--ink);
   font-size:12px; color:var(--ink-2); line-height:1.9; max-width:70ch}
 
-/* full-width primary button, slightly rounded — the Flamingo CTA shape */
+/* full-width primary button, slightly rounded - the Flamingo CTA shape */
 .go{border-radius:3px; width:100%; text-align:center}
 
 /* ---- clickable = phosphor key (MS-DOS terminal green, one size everywhere) ---- */
@@ -540,7 +540,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
 <section class="hero3">
   <h1>the flamingo, set free.</h1>
-  <p class="sub">trade · earn · borrow · govern — ratios only, no fiat, no oracle, no admin.</p>
+  <p class="sub">trade · earn · borrow · govern - ratios only, no fiat, no oracle, no admin.</p>
   <div class="cta-row">
     <a class="cta solid" href="#trade">start trading -&gt;</a>
     <a class="cta" href="#earn">earn dividends -&gt;</a>
@@ -552,12 +552,12 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
   <!-- ============ STAT BAND ============ -->
   <div class="tiles">
-    <div class="tile"><div class="tl">ftb supply</div><div class="tn" id="tSupply">—</div></div>
-    <div class="tile"><div class="tl">hard cap</div><div class="tn" id="tCap">—</div></div>
-    <div class="tile"><div class="tl">weight voted</div><div class="tn" id="tVoted">—</div></div>
-    <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">—</div></div>
-    <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">—</div></div>
-    <div class="tile"><div class="tl">tvl locked</div><div class="tn" id="tTvl">—</div><div class="tl" id="tTvlSub"></div></div>
+    <div class="tile"><div class="tl">ftb supply</div><div class="tn" id="tSupply">-</div></div>
+    <div class="tile"><div class="tl">hard cap</div><div class="tn" id="tCap">-</div></div>
+    <div class="tile"><div class="tl">weight voted</div><div class="tn" id="tVoted">-</div></div>
+    <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">-</div></div>
+    <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">-</div></div>
+    <div class="tile"><div class="tl">tvl locked</div><div class="tn" id="tTvl">-</div><div class="tl" id="tTvlSub"></div></div>
   </div>
 
   <div class="ticker" id="ticker" style="margin-top:12px">// market: waiting for the pools</div>
@@ -571,10 +571,10 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       <div class="card-b">
         <div class="bal" id="balStrip" hidden>
           <span>wallet:</span>
-          <span>FTB <b id="balFtb">—</b></span>
-          <span>NEO <b id="balNeo">—</b></span>
-          <span>GAS <b id="balGas">—</b></span>
-          <span>claimable <b id="balClaim">—</b></span>
+          <span>FTB <b id="balFtb">-</b></span>
+          <span>NEO <b id="balNeo">-</b></span>
+          <span>GAS <b id="balGas">-</b></span>
+          <span>claimable <b id="balClaim">-</b></span>
         </div>
         <div id="swap">
           <div class="ticket" style="border:0; padding:0">
@@ -585,7 +585,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
             </div>
             <div class="trow">
               <label for="swOut">you receive</label>
-              <input id="swOut" readonly placeholder="—" tabindex="-1">
+              <input id="swOut" readonly placeholder="-" tabindex="-1">
               <div class="tsel" id="swToSel" role="group" aria-label="receive asset"></div>
             </div>
             <div class="tmeta" id="swMeta">quote from live pool reserves · 0.3% pool fee · min received at 0.5% slippage</div>
@@ -608,7 +608,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <div class="rgrid" id="ratioBody">
           <div class="rcard">
             <div class="rp">standby</div>
-            <div class="rnum">—</div>
+            <div class="rnum">-</div>
             <div class="rinv" id="ratioHint">loads when the router and pairs are configured for this network</div>
           </div>
         </div>
@@ -637,29 +637,29 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       </div>
       <div class="card-b">
         <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
-          <div class="fs"><div class="l">this month</div><div class="v" id="dMonth">—</div></div>
-          <div class="fs"><div class="l">last month</div><div class="v" id="dLast">—</div></div>
-          <div class="fs"><div class="l">lifetime</div><div class="v" id="dLife">—</div></div>
-          <div class="fs"><div class="l">dividend apy</div><div class="v" id="dApy">—</div></div>
+          <div class="fs"><div class="l">this month</div><div class="v" id="dMonth">-</div></div>
+          <div class="fs"><div class="l">last month</div><div class="v" id="dLast">-</div></div>
+          <div class="fs"><div class="l">lifetime</div><div class="v" id="dLife">-</div></div>
+          <div class="fs"><div class="l">dividend apy</div><div class="v" id="dApy">-</div></div>
         </div>
         <div id="feeFlows" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
-          <span class="biglabel">where every fee goes — the split is compiled in</span>
+          <span class="biglabel">where every fee goes - the split is compiled in</span>
           <div class="ticket" style="margin-top:10px">
-            <div class="trow"><label>to lp</label><span class="gname" style="font-size:13px">2/3 — accrues into the pool itself; no mint, no transfers</span><div class="tsel"><span id="fLp" style="font-family:var(--disp); font-size:15px">—</span></div></div>
-            <div class="trow"><label>to staked ftb</label><span class="gname" style="font-size:13px">2/9 — swept here; the stake board below</span><div class="tsel"><span id="fStake" style="font-family:var(--disp); font-size:15px">—</span></div></div>
-            <div class="trow"><label>to dev treasury</label><span class="gname" style="font-size:13px">1/9 — pays only passed, auditor-attested proposals</span><div class="tsel"><span id="fTres" style="font-family:var(--disp); font-size:15px">—</span></div></div>
+            <div class="trow"><label>to lp</label><span class="gname" style="font-size:13px">2/3 - accrues into the pool itself; no mint, no transfers</span><div class="tsel"><span id="fLp" style="font-family:var(--disp); font-size:15px">-</span></div></div>
+            <div class="trow"><label>to staked ftb</label><span class="gname" style="font-size:13px">2/9 - swept here; the stake board below</span><div class="tsel"><span id="fStake" style="font-family:var(--disp); font-size:15px">-</span></div></div>
+            <div class="trow"><label>to dev treasury</label><span class="gname" style="font-size:13px">1/9 - pays only passed, auditor-attested proposals</span><div class="tsel"><span id="fTres" style="font-family:var(--disp); font-size:15px">-</span></div></div>
           </div>
           <p class="small muted">no burn and no loan leg exist: every fee reaches a provider, a staker,
-          or a funded proposal. FTB is hard-capped at 100,000,000 — nothing is destroyed, nothing is
+          or a funded proposal. FTB is hard-capped at 100,000,000 - nothing is destroyed, nothing is
           minted past the cap.</p>
         </div>
         <div id="stakeBoard" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
-          <span class="biglabel">stake board — the global pool and your share of it</span>
+          <span class="biglabel">stake board - the global pool and your share of it</span>
           <div class="flockstats" style="margin-top:10px; grid-template-columns:repeat(4,1fr)">
-            <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">—</div></div>
-            <div class="fs"><div class="l">my stake</div><div class="v" id="dStaked">—</div></div>
-            <div class="fs"><div class="l">my share</div><div class="v" id="dShare">—</div></div>
-            <div class="fs"><div class="l">i can claim</div><div class="v" id="dPending">—</div></div>
+            <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">-</div></div>
+            <div class="fs"><div class="l">my stake</div><div class="v" id="dStaked">-</div></div>
+            <div class="fs"><div class="l">my share</div><div class="v" id="dShare">-</div></div>
+            <div class="fs"><div class="l">i can claim</div><div class="v" id="dPending">-</div></div>
           </div>
           <div id="earnPos" hidden style="margin-top:12px">
             <div class="ticket" style="margin-top:0">
@@ -667,10 +667,10 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
               <div class="trow"><label>unstake</label><input id="dvUnstakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 FTB"><div class="tsel"><button id="dvUnstakeGo">unstake -&gt;</button></div></div>
               <div class="trow"><label>claim</label><span class="gname" style="font-size:13px">everything your stake has earned to this block</span><div class="tsel"><button id="dvClaimGo">claim -&gt;</button></div></div>
             </div>
-            <p class="small muted" id="dvHint">review-and-sign in your wallet — the page never holds keys</p>
+            <p class="small muted" id="dvHint">review-and-sign in your wallet - the page never holds keys</p>
           </div>
         </div>
-        <p class="small muted" id="earnOff">standby — goes live when the dividends module hash is configured for this network</p>
+        <p class="small muted" id="earnOff">standby - goes live when the dividends module hash is configured for this network</p>
       </div>
     </div>
 
@@ -683,10 +683,10 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       </div>
       <div class="card-b">
         <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
-          <div class="fs"><div class="l">liquidity apy</div><div class="v" id="lSApy">—</div></div>
-          <div class="fs"><div class="l">borrow apy</div><div class="v" id="lBApy">—</div></div>
-          <div class="fs"><div class="l">total liquidity</div><div class="v" id="lTotal">—</div></div>
-          <div class="fs"><div class="l">health</div><div class="v"><span class="tag pub" id="pHealth">—</span></div></div>
+          <div class="fs"><div class="l">liquidity apy</div><div class="v" id="lSApy">-</div></div>
+          <div class="fs"><div class="l">borrow apy</div><div class="v" id="lBApy">-</div></div>
+          <div class="fs"><div class="l">total liquidity</div><div class="v" id="lTotal">-</div></div>
+          <div class="fs"><div class="l">health</div><div class="v"><span class="tag pub" id="pHealth">-</span></div></div>
         </div>
         <div id="lendAct" hidden style="margin-top:14px">
           <div class="row" style="gap:8px; flex-wrap:wrap">
@@ -697,26 +697,26 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
             <button id="lnWizRemove">remove liquidity -&gt;</button>
           </div>
           <div id="lnWizard" style="margin-top:12px"></div>
-          <p class="small muted">review-and-sign in your wallet — the page never holds keys. NEO collateral is whole units. oracle ratios: 1 NEO = 100 FTB, 1 GAS = 40 FTB · 60% LTV · 75% liquidation.</p>
+          <p class="small muted">review-and-sign in your wallet - the page never holds keys. NEO collateral is whole units. oracle ratios: 1 NEO = 100 FTB, 1 GAS = 40 FTB · 60% LTV · 75% liquidation.</p>
         </div>
         <div id="loansBoard" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
           <div style="display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; flex-wrap:wrap">
-            <span class="biglabel">loans board — every position, read from chain storage</span>
+            <span class="biglabel">loans board - every position, read from chain storage</span>
             <button class="linkish" id="loansRefresh">refresh -&gt;</button>
           </div>
           <div class="flockstats" style="margin-top:10px; grid-template-columns:repeat(4,1fr)">
-            <div class="fs"><div class="l">total ftb loaned</div><div class="v" id="lbLoaned">—</div></div>
-            <div class="fs"><div class="l">collateral locked</div><div class="v" id="lbCollat">—</div></div>
-            <div class="fs"><div class="l">open loans</div><div class="v" id="lbCount">—</div></div>
-            <div class="fs"><div class="l">% liquidity loaned</div><div class="v" id="lbUtil">—</div></div>
+            <div class="fs"><div class="l">total ftb loaned</div><div class="v" id="lbLoaned">-</div></div>
+            <div class="fs"><div class="l">collateral locked</div><div class="v" id="lbCollat">-</div></div>
+            <div class="fs"><div class="l">open loans</div><div class="v" id="lbCount">-</div></div>
+            <div class="fs"><div class="l">% liquidity loaned</div><div class="v" id="lbUtil">-</div></div>
           </div>
-          <div id="loansBody" style="margin-top:8px" class="small">—</div>
+          <div id="loansBody" style="margin-top:8px" class="small">-</div>
           <p class="small muted">health = collateral × 75% vs debt. anyone can liquidate an unhealthy
-          position and earn the 8% bonus — that is what keeps the pool solvent.
-          interest is dynamic: the more of the pool is loaned out, the higher the rate —
+          position and earn the 8% bonus - that is what keeps the pool solvent.
+          interest is dynamic: the more of the pool is loaned out, the higher the rate -
           2% base, 12% when 80% of liquidity is loaned, up to 72% near full.</p>
         </div>
-        <p class="small muted" id="lendOff">standby — goes live when the lend contract hash is configured for this network</p>
+        <p class="small muted" id="lendOff">standby - goes live when the lend contract hash is configured for this network</p>
       </div>
     </div>
   </div>
@@ -739,7 +739,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <div class="govside">
           <div id="govDonut" aria-label="vote split of snapshot supply"></div>
           <div class="biglabel" style="margin-top:14px">voting ends in</div>
-          <div class="disp" id="govClock" style="font-size:34px; line-height:1.15">—</div>
+          <div class="disp" id="govClock" style="font-size:34px; line-height:1.15">-</div>
           <div class="small muted" id="govLegend" style="margin-top:8px; line-height:1.8"></div>
         </div>
       </div>
@@ -750,14 +750,14 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <div class="card-h">
       <span class="no">proposals</span>
       <span class="spacer"></span>
-      <span class="lede">bonded — spam pays</span>
+      <span class="lede">bonded - spam pays</span>
       <button class="linkish" id="boardRefresh">refresh -&gt;</button>
     </div>
     <div class="card-b">
       <div id="boardBody">
         <div class="entry">
           <span class="idx">//</span>
-          <div><span class="ttl">standby — the board loads when the registry is configured for this network</span></div>
+          <div><span class="ttl">standby - the board loads when the registry is configured for this network</span></div>
           <div class="meta"><span class="tag">standby</span></div>
         </div>
       </div>
@@ -771,7 +771,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
           <label for="pRef">reference</label>
           <input id="pRef" autocomplete="off" spellcheck="false" placeholder="0x… ballot contract hash, or the token hash for a listing">
         </div>
-        <div class="tmeta" id="pMetaHint">bond: — FTB · exact, escrowed — refunded on a legitimate close, kept against spam</div>
+        <div class="tmeta" id="pMetaHint">bond: - FTB · exact, escrowed - refunded on a legitimate close, kept against spam</div>
         <button class="go" id="pGo">review &amp; sign -&gt;</button>
       </div>
     </div>
@@ -782,7 +782,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <div class="card-h">
       <span class="no">claim</span>
       <span class="spacer"></span>
-      <span class="lede">migration — claim your FTB</span>
+      <span class="lede">migration - claim your FTB</span>
     </div>
     <div class="card-b">
       <button class="go" id="claimGo" style="margin-bottom:16px">claim your ftb -&gt;</button>
@@ -792,8 +792,8 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <button class="read linkish" id="refreshBtn">refresh -&gt;</button>
         <div class="meta">
           <span class="tag pub" id="migState">reading</span>
-          <span id="supplyLine">supply —</span>
-          <span id="capLine">cap —</span>
+          <span id="supplyLine">supply -</span>
+          <span id="capLine">cap -</span>
         </div>
       </div>
       <div class="entry">
@@ -806,7 +806,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <span class="idx">03</span>
         <div><span class="ttl">The attacker is not in the snapshot.</span></div>
         <button class="read linkish" id="proofsBtn">proofs -&gt;</button>
-        <div class="meta"><span class="tag">merkle</span><span id="rootLine">root —</span><span id="rootCount">—</span></div>
+        <div class="meta"><span class="tag">merkle</span><span id="rootLine">root -</span><span id="rootCount">-</span></div>
       </div>
     </div>
   </div>
@@ -816,22 +816,22 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <div class="card-h">
       <span class="no">verify</span>
       <span class="spacer"></span>
-      <span class="lede">verify everything — trust nothing</span>
+      <span class="lede">verify everything - trust nothing</span>
     </div>
     <div class="card-b">
       <dl class="prov">
-        <dt>token</dt><dd id="vToken">—</dd>
-        <dt>migrator</dt><dd id="vMigrator">—</dd>
-        <dt>registry</dt><dd id="vRegistry">—</dd>
-        <dt>ballots</dt><dd id="vBallot">—</dd>
-        <dt>merkle root</dt><dd id="vRoot">—</dd>
-        <dt>max supply</dt><dd id="vCap">—</dd>
-        <dt>mint sealed</dt><dd id="vSealed">—</dd>
-        <dt>snapshot</dt><dd>block 12,782,704 — reproducible with snapshot_state.py against any archive node</dd>
+        <dt>token</dt><dd id="vToken">-</dd>
+        <dt>migrator</dt><dd id="vMigrator">-</dd>
+        <dt>registry</dt><dd id="vRegistry">-</dd>
+        <dt>ballots</dt><dd id="vBallot">-</dd>
+        <dt>merkle root</dt><dd id="vRoot">-</dd>
+        <dt>max supply</dt><dd id="vCap">-</dd>
+        <dt>mint sealed</dt><dd id="vSealed">-</dd>
+        <dt>snapshot</dt><dd>block 12,782,704 - reproducible with snapshot_state.py against any archive node</dd>
       </dl>
       <p class="sealnote">
         Check every hash against the repo before you sign. After close + renounceOwnership
-        the token has no admin — readable on-chain, forever.
+        the token has no admin - readable on-chain, forever.
       </p>
     </div>
   </div>
@@ -840,7 +840,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <span class="disp" style="font-size:20px">free the bird</span><br>
     <span class="muted" id="shiftLine">// night shift</span><br>
     Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
-    MIT code, public proofs — a gift to the Flamingo community.
+    MIT code, public proofs - a gift to the Flamingo community.
   </footer>
 </div>
 

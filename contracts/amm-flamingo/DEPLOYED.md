@@ -1,13 +1,13 @@
-# Community AMM on TestNet — the Decision 3 follow-through (19 October 2026)
+# Community AMM on TestNet - the Decision 3 follow-through (19 October 2026)
 
 Decision 3 (11 Oct) left the router a placeholder on TestNet "until pools exist
-(MainNet, or a minimal community AMM stood up for TestNet later — a separate
+(MainNet, or a minimal community AMM stood up for TestNet later - a separate
 decision)". This is that separate decision, executed: the swap module must be
 testable before the IAR, and TestNet has no AMM (neo-project/neo#3285).
 
 ## What is deployed
 
-The reused, audited Flamingo swap contracts — byte-source-identical to
+The reused, audited Flamingo swap contracts - byte-source-identical to
 `github.com/flamingo-finance/flamingo-contract-swap` (master, vendored here
 with its .git removed), compiled with the project's pinned compiler
 (`Neo3.Compiler.CSharp.Dev` 3.0.3, .NET 6 SDK). The ONLY source edits are
@@ -20,7 +20,7 @@ deployment constants, each visible in `git log -p` for this directory:
 | `FlamingoSwapPair…Admin.cs` | `WhiteListContract` | MainNet whitelist | `0x0009b28b…` (below) |
 | `FlamingoSwapPair…Admin.cs` | `TokenA` / `TokenB` / `Symbol` | fWBTC/fUSDT | GAS / FTB / `FLP-GAS-FTB` |
 
-Admin on TestNet is the deployer's single key — same FTB-14 caveat as the
+Admin on TestNet is the deployer's single key - same FTB-14 caveat as the
 core, acceptable on a valueless network; MainNet redeploys with the
 published multisig and recomputed constants.
 
@@ -35,7 +35,7 @@ published multisig and recomputed constants.
 
 Wiring: `whitelist.addRouter(router)` tx `0x1e56af9e…`,
 `factory.registerExchangePair(pair)` tx `0xc3c540c8…`.
-Seed: `router.addLiquidity(1.25 GAS, 50 FTB)` tx `0x31880ada…` — first pool,
+Seed: `router.addLiquidity(1.25 GAS, 50 FTB)` tx `0x31880ada…` - first pool,
 ratio 1 GAS = 40 FTB (the Decision placeholder).
 
 Dead first-deploy contracts (immutable, harmless, documented for the IAR):
@@ -48,26 +48,26 @@ against `getcontractstate` for all four live hashes.
 
 ## Verified before wiring the UI
 
-- `router.getReserves(GAS, FTB)` → `[125000000, 5000000000]` (HALT) — the
+- `router.getReserves(GAS, FTB)` → `[125000000, 5000000000]` (HALT) - the
   exact read the swap ticket, ratio board, ticker, and TVL tile all share.
 - Simulated `swapTokenInForTokenOut(0.1 GAS → FTB)` → HALT, 3.69341335 FTB
   out (matches the UI's constant-product formula), both Transfer events plus
   the pair's Synced/Swapped, 0.0247 GAS system fee.
 - `addLiquidity` / swap writes need a `CustomContracts` signer naming the
-  router, both path tokens, and the pair — the same scope `ftb-dapi.js`
+  router, both path tokens, and the pair - the same scope `ftb-dapi.js`
   documents for swap (CalledByEntry cannot cross the router boundary).
 
 ## Tooling added
 
-- `cmd/ammdeploy` — phased deployer (deploy | wire | seed), resume-safe,
+- `cmd/ammdeploy` - phased deployer (deploy | wire | seed), resume-safe,
   same self-check discipline as cmd/deploy.
-- `cmd/contracthash` — prints the canonical 0x hash a NEF will have when
+- `cmd/contracthash` - prints the canonical 0x hash a NEF will have when
   deployed by a given address (sender + checksum + name).
 
 ## FTB/NEO pair (19 October 2026, second pool)
 
-Same source, constants-only variant `FlamingoSwapPairFtbNeo/` (TokenA = FTB — the
-smaller hash, token0 by router convention — TokenB = NEO, Symbol `FLP-FTB-NEO`;
+Same source, constants-only variant `FlamingoSwapPairFtbNeo/` (TokenA = FTB - the
+smaller hash, token0 by router convention - TokenB = NEO, Symbol `FLP-FTB-NEO`;
 superAdmin and WhiteListContract unchanged). Tool: `cmd/neopair`.
 
 | Contract | Hash | Deploy tx |
@@ -75,7 +75,7 @@ superAdmin and WhiteListContract unchanged). Tool: `cmd/neopair`.
 | FlamingoSwapPairFtbNeo (FTB/NEO) | `0x0c81a5c6202c6ddb2a007da9d21fa6fe44a70742` | `0x314420ba…f8fc13` |
 
 Wiring: `factory.registerExchangePair(pair)` tx `0x13cb94e4…50d361`.
-Seed: `router.addLiquidity(40 FTB, 1 NEO)` tx `0x4d9a4848…95ec28` — ratio
+Seed: `router.addLiquidity(40 FTB, 1 NEO)` tx `0x4d9a4848…95ec28` - ratio
 1 NEO = 40 FTB, matching the GAS pool's placeholder. NEO is 0 decimals; the
 front-end parses/formats it in whole units (web/js/mod-swap.js fmtT/parseT).
 Verified after seeding: `router.getReserves(NEO, FTB)` = (1, 4,000,000,000) and

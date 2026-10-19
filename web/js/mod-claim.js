@@ -1,8 +1,8 @@
-// mod-claim.js — module 7: claim (MODULES.md).
+// mod-claim.js - module 7: claim (MODULES.md).
 // The migration card: status reads, the snapshot check, and the claim plan.
 // One claim per address, verified on-chain against the published merkle root.
 //
-// Owns (writes only these): #claim card — #migState, #supplyLine, #capLine,
+// Owns (writes only these): #claim card - #migState, #supplyLine, #capLine,
 // #refreshBtn, #checkBtn, #claimGo, #proofsBtn, #rootLine, #rootCount, #claimHint.
 (function () {
   'use strict';
@@ -14,10 +14,10 @@
 
   // ---------- merkle row: root from config, holder count from the tree itself ----------
   // (WEB-03: the count is derived from proofs.json, never a hand-typed literal.)
-  $('rootLine').textContent = MERKLE_ROOT ? short(MERKLE_ROOT) : '—';
+  $('rootLine').textContent = MERKLE_ROOT ? short(MERKLE_ROOT) : '-';
   FtbState.proofs().then(function (j) {
     $('rootCount').textContent = j.entries.length.toLocaleString('en-US') + ' holders';
-  }).catch(function () { $('rootCount').textContent = 'holders —'; });
+  }).catch(function () { $('rootCount').textContent = 'holders -'; });
 
   // ---------- migration status reads ----------
   function refresh() {

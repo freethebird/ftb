@@ -1,9 +1,9 @@
-# FTB web — module canon
+# FTB web - module canon
 
 **Status:** law for the `web/` layer, under MO V8, the Canonical Bible (Go edition), and
 the QRN threat model. Ratified 18 October 2026 alongside `WEB_AUDIT.md`.
 **The rule that creates this file:** every module is independent. One concern, one file,
-one DOM subtree, explicit seams only. The page may ship any subset of modules — each must
+one DOM subtree, explicit seams only. The page may ship any subset of modules - each must
 run correctly with its own panel present and every other panel absent.
 
 ## The cross-cutting rules (bind every module)
@@ -17,12 +17,12 @@ R3. **No direct `fetch` outside the seams.** All chain reads go through `ftb-rpc
    writes are pure plans built by `ftb-dapi` builders, reviewed in the shell's one modal,
    and signed only by the wallet. A module that calls `fetch` itself is a defect.
 R4. **No keys, ever.** No module stores, requests, derives, or displays secret material.
-   No module requests a witness scope beyond `CalledByEntry` — the single documented
+   No module requests a witness scope beyond `CalledByEntry` - the single documented
    exception is the swap module's `CustomContracts` signer, and it is built only by
    `ftb-dapi.signerFor()`.
 R5. **Numbers are earned or absent.** Every displayed number comes from a chain read, a
    published artifact (`proofs.json`, `beat.json`), or `config.js`. A module that cannot
-   read shows its named standby state — never a fabricated, cached-as-fresh, or
+   read shows its named standby state - never a fabricated, cached-as-fresh, or
    hard-coded figure. Constants may live only in `config.js`.
 R6. **One review modal.** The shell owns `#ov`. A write is: module builds a plan →
    `showPlan(title, warn, rows, plan)` → the user reviews → the shell executes. No module
@@ -37,7 +37,7 @@ R8. **Degrade in the open.** If a module's contract hash is a placeholder (`0x00
    degraded module never blocks, blanks, or crashes the others.
 R9. **localStorage is browser-local and named.** Keys are prefixed `ftb_`, hold no
    secrets, and their loss changes nothing but convenience (own node, ratio
-   history, APY sample). There is no theme key — night shift is the only theme.
+   history, APY sample). There is no theme key - night shift is the only theme.
 R10. **The invariants of `UI_RATIONALE.md` bind every module:** no dependencies, no build
     step, strict grayscale with the phosphor key reserved for clickables only, no fiat
     prices, no external APIs, no analytics, motion is the blinking cursor.
@@ -47,8 +47,8 @@ R10. **The invariants of `UI_RATIONALE.md` bind every module:** no dependencies,
 ```
 web/
   index.html            # shell markup: one <section>/<div> root per module, nothing else
-  ftb-dapi.js           # module 11 (the adapter) — unchanged role
-  js/ftb-rpc.js         # module 10 — the one read seam
+  ftb-dapi.js           # module 11 (the adapter) - unchanged role
+  js/ftb-rpc.js         # module 10 - the one read seam
   js/ftb-state.js       # the state seam (R7) + shared display helpers (grp, fmt, coalesce)
   js/shell.js           # module 12
   js/mod-token.js       # module 2
@@ -60,11 +60,11 @@ web/
   js/mod-claim.js       # module 7
   js/mod-verify.js      # module 8
   js/mod-wallet.js      # module 9
-  config.testnet.js     # module 13 — committed TESTNET profile
-  config.mainnet.js     # module 13 — committed MAINNET profile (sealed at placeholders)
+  config.testnet.js     # module 13 - committed TESTNET profile
+  config.mainnet.js     # module 13 - committed MAINNET profile (sealed at placeholders)
   config.js             # the ACTIVE profile (a copy of one of the two; git-ignored)
   proofs.json, beat.json
-  archive/              # frozen pre-split designs + builders — reference only, never pinned
+  archive/              # frozen pre-split designs + builders - reference only, never pinned
   QA_GATE.md            # the pre-publish gate; nothing ships without its evidence
 ```
 
@@ -73,30 +73,30 @@ modules in any order (R2 makes order irrelevant among them).
 
 ## The modules
 
-### 1. Swap / Pools — `mod-swap.js` — owns `#trade`, `#market`, `#ticker`, and the TVL tile (`#tTvl` + subline `#tTvlSub`)
+### 1. Swap / Pools - `mod-swap.js` - owns `#trade`, `#market`, `#ticker`, and the TVL tile (`#tTvl` + subline `#tTvlSub`)
 
 - **Reads:** `router.getReserves(tokenA, tokenB)` for each configured pair; nothing else.
-- **Writes:** `dapi.swap(sender, amtIn, minOut, path, deadlineMs)` — the only module that
+- **Writes:** `dapi.swap(sender, amtIn, minOut, path, deadlineMs)` - the only module that
   may attach a `CustomContracts` signer, via `dapi.signerFor()` and naming the router, the
   path tokens, and the pair contracts.
 - **Rules.** The quote is computed from live reserves at 0.3% fee, constant product; min
   received is 0.5% under the quote; price impact past 5% draws the warning style. The
-  market board and ticker show asset-against-asset ratios only — no fiat, no oracle, both
+  market board and ticker show asset-against-asset ratios only - no fiat, no oracle, both
   directions, drift history in `localStorage.ftb_ratios` (display-only, never trusted as
   fresh). TVL (tile `tTvl`) is protocol-wide and per-asset: the headline is FTB locked
   in the lend pool (cash in the contract + outstanding borrows) plus FTB-side pool
   reserves once a router is live; the subline (`tTvlSub`) is the NEO and GAS the lend
-  contract holds — exactly the collateral locked, one balance read each, no
+  contract holds - exactly the collateral locked, one balance read each, no
   enumeration. Non-FTB pairs stay excluded (no price path without an oracle); nothing
   is ever converted to fiat. On a network with neither lend nor router it reads
   `0 FTB` with the reason in the tooltip. All three surfaces
-  (board, ticker, ticket) are fed by the same reserves reads — never a second data path.
+  (board, ticker, ticket) are fed by the same reserves reads - never a second data path.
 - **Standby:** router hash placeholder → "loads when the router hash is configured";
   TVL still reads the lend legs (lend is live on TestNet), and with neither configured
   it reads `0 FTB` with the reason in the tooltip.
 - **Anchors:** MO Articles 4, 6; Annex B 11; QRN F (app-layer honesty).
 
-### 2. Token on FTB — `mod-token.js` — owns the stat tiles `#tSupply #tCap #tBlock` and the wallet strip `#balStrip`
+### 2. Token on FTB - `mod-token.js` - owns the stat tiles `#tSupply #tCap #tBlock` and the wallet strip `#balStrip`
 
 - **Reads:** `ftb.totalSupply`, `ftb.maxSupply`, `getblockcount`, `ftb.balanceOf(acct)`,
   `neo.balanceOf` (whole units, never scaled), `gas.balanceOf`.
@@ -105,48 +105,48 @@ modules in any order (R2 makes order irrelevant among them).
 - **Rules.** Supply and cap always read the chain, never config. NEO displays whole
   units; FTB and GAS display base-units-formatted. The strip appears only when an account
   is connected. The seal state (`migrationOpen`) is rendered as `migration open` /
-  `mint sealed` — the two honest states, nothing between — by the claim module (`#migState`)
+  `mint sealed` - the two honest states, nothing between - by the claim module (`#migState`)
   and the verify module (`#vSealed`), each from its own read.
-- **Standby:** ftb hash placeholder → tiles show `—`.
+- **Standby:** ftb hash placeholder → tiles show `-`.
 - **Anchors:** MO 5, 6; the token is the supply invariant, and its panel is read-only by
   construction.
 
-### 3. FTB dividends — `mod-earn.js` — owns `#earn`
+### 3. FTB dividends - `mod-earn.js` - owns `#earn`
 
-- **Reads:** the v2 monthly revenue ledger — `dividends.monthIndex`, then
-  `dividends.monthTotal(i)` for this month and last — plus `dividends.totalReceived`,
+- **Reads:** the v2 monthly revenue ledger - `dividends.monthIndex`, then
+  `dividends.monthTotal(i)` for this month and last - plus `dividends.totalReceived`,
   `dividends.totalStaked`, `dividends.accPerShare`, and per account
   `dividends.stakedOf(acct)`, `dividends.pendingOf(acct)`. The fee-flow strip adds
   `lend.supplyApyBps` (the lp leg's live figure) and `ftb.balanceOf(treasury)` (the
   dev leg's escrowed balance).
 - **Writes:** `dapi.stakeFtb` (tagged FTB transfer, `["stake"]`), `dapi.claimDividends`,
-  `dapi.unstakeFtb`. Revenue enters the module only via `lend.sweepDividends` — an
+  `dapi.unstakeFtb`. Revenue enters the module only via `lend.sweepDividends` - an
   operator call, never a page write.
 - **Rules.** The lede states the mechanism plainly: the holders' 2/9 of every fee
   (Decision 6). Monthly figures are counted at receipt in 175200-block months and read
-  straight from contract storage — no indexer, no server, no estimation. The layout is
+  straight from contract storage - no indexer, no server, no estimation. The layout is
   two uniform 4-stat grids: revenue (this month / last month / lifetime / sampled APY),
-  then the **fee-flow strip** — the whole constitution in three rows: 2/3 to lp
+  then the **fee-flow strip** - the whole constitution in three rows: 2/3 to lp
   (accrues into the pool itself, shown as live lp apy), 2/9 to staked FTB (shown as the
   same sampled apy as the revenue grid), 1/9 to the dev treasury (shown as its live
-  escrowed balance). The strip states plainly that **no burn and no loan leg exist** —
+  escrowed balance). The strip states plainly that **no burn and no loan leg exist** -
   adding either would be a contract-level constitutional amendment via the proposal
-  lifecycle, not a UI change — then the **stake board** — total staked, my stake, my
+  lifecycle, not a UI change - then the **stake board** - total staked, my stake, my
   share (`stakedOf ÷ totalStaked`,
-  one read pass), my claimable — with stake, unstake, and claim each on its own line
-  of one ticket. Disconnected, the my-side figures read `—` and the action ticket hides
-  — never a stale position painted over a logged-out page (R5). Loads coalesce through
+  one read pass), my claimable - with stake, unstake, and claim each on its own line
+  of one ticket. Disconnected, the my-side figures read `-` and the action ticket hides
+  - never a stale position painted over a logged-out page (R5). Loads coalesce through
   `FtbUtil.coalesce`: a signed stake bursts `refresh` events, and without coalescing a
   slower stale pass can resolve last and paint old numbers over fresh ones. The APY is
   **sampled, never asserted**: it appears only after two `accPerShare` samples at
   least 20 h apart (`localStorage.ftb_div_acc`); before that the panel says "sampling
-  — check back tomorrow". Dividends accrue per block, so no "next payout" stat may
-  ever be shown — that number would be a lie. Stake/unstake/claim all go through the
+  - check back tomorrow". Dividends accrue per block, so no "next payout" stat may
+  ever be shown - that number would be a lie. Stake/unstake/claim all go through the
   one modal with the plan summary verbatim.
 - **Standby:** dividends hash placeholder → `#earnOff` names it.
 - **Anchors:** MO 6 (a number you cannot yet measure is not shown); Annex B 11.
 
-### 4. LEND — `mod-lend.js` — owns `#lend`
+### 4. LEND - `mod-lend.js` - owns `#lend`
 
 - **Reads:** `lend.borrowApyBps`, `lend.supplyApyBps`, `lend.utilizationBps`, pool cash
   (`ftb.balanceOf(lend)`), `lend.totalBorrows`, `lend.reserveAccrued`; oracle `price`
@@ -154,14 +154,14 @@ modules in any order (R2 makes order irrelevant among them).
   `isUnhealthy`, `sharesOf`, `liquidationsOf`. The loans board enumerates contract
   storage directly: `findstorage` over prefixes 0x31 (debt), 0x32 (NEO collateral),
   0x33 (GAS collateral), 0x34 (liquidation count), **paginated** through
-  `next`/`truncated` with a hard page cap — past the cap the board says it is
+  `next`/`truncated` with a hard page cap - past the cap the board says it is
   truncated rather than showing a silently partial enumeration.
 - **Writes (live since 18 Oct):** `supply` and `repay` (tagged FTB transfers),
   `borrow`, `withdrawSupply`, `withdrawCollateral`, `addCollateralNeo` (whole units),
-  `addCollateralGas`, `liquidate` — all pure plans through the one modal (R6).
+  `addCollateralGas`, `liquidate` - all pure plans through the one modal (R6).
 - **Rules.** Lend is the highest-risk module (it is the class of bug that destroyed
   Flamingo), so its panel is read-first: position and health are visible before any
-  action exists. The health tag shows `isUnhealthy` verbatim — never a softened
+  action exists. The health tag shows `isUnhealthy` verbatim - never a softened
   paraphrase. Collateral display separates NEO (whole) from GAS (base units). Oracle
   dependence is stated, not hidden: if the oracle is paused, borrow-side figures read
   as unavailable, and the panel says why. The wizard asks one question at a time
@@ -170,7 +170,7 @@ modules in any order (R2 makes order irrelevant among them).
   per-position debt/collateral/health, your headroom and LTV, a `take loan ->` action
   on your own collateral-only row, a `liquidate ->` action on any LIQUIDATABLE row,
   and a permanent liquidation mark. The totals strip (FTB loaned, NEO+GAS locked,
-  loan count) is summed from the same enumeration — never a second data path — and
+  loan count) is summed from the same enumeration - never a second data path - and
   reads zero, not a stale sum, when no positions exist. Address rendering uses the
   adapter's `scriptHashToAddress` (pure-JS SHA-256, never `crypto.subtle`), so the
   board works on plain-http mirrors. Refresh coalescing (the shared `FtbUtil.coalesce`):
@@ -179,43 +179,43 @@ modules in any order (R2 makes order irrelevant among them).
 - **Standby:** lend hash placeholder → `#lendOff` names it.
 - **Anchors:** MO 5, 6, 10; QRN F; the launch-gating discipline of `ARCHITECTURE.md`.
 
-### 5. Governance — `mod-gov.js` — owns `#vote` and the tile `#tVoted`
+### 5. Governance - `mod-gov.js` - owns `#vote` and the tile `#tVoted`
 
 - **Reads:** `ballot.tally(option)` per configured option (1-based on-chain), per account
   `ballot.voted(acct)`; turnout denominator from `config.governance.electorate`.
-- **Writes:** `dapi.ballotVote(account, amount, option, proof)` — the voter's migration
+- **Writes:** `dapi.ballotVote(account, amount, option, proof)` - the voter's migration
   proof as weight, one vote per snapshot address.
 - **Rules.** Turnout is the security metric (Terra Station rule): the hint line always
-  reports total weight voted and turnout as % of the snapshot electorate — the genesis
+  reports total weight voted and turnout as % of the snapshot electorate - the genesis
   vote is denominated in FLM (1 FLM = 1 vote, Decision 10); post-migration votes in FTB
   (1 FTB = 1 vote), and the label must say which. Tallies are chain state: the UI must
   never imply a server is counting. An address that has voted sees that state; an address
   outside the snapshot sees "no vote weight" with the reason. Options render in on-chain
-  order (1-based — option 0 faults on-chain, FTB-31).
+  order (1-based - option 0 faults on-chain, FTB-31).
 - **Standby:** no live ballot (`question` empty) → "no live ballot" + how a ballot works.
 - **Anchors:** MO 6, 8; QRN C (counting is replicated state, not a service).
 
-### 6. Proposals — `mod-board.js` — owns `#board`
+### 6. Proposals - `mod-board.js` - owns `#board`
 
 - **Reads:** `registry.proposalBond`, `registry.proposalCount`, `registry.proposal(id)`
   (newest first), `registry.escrow`.
-- **Writes:** `dapi.submitProposal(account, kind, ref, meta, bond)` — a tagged FTB
+- **Writes:** `dapi.submitProposal(account, kind, ref, meta, bond)` - a tagged FTB
   transfer of exactly the bond to the registry, kinds `ballot` | `listing`.
 - **Rules.** The bond rule is printed next to the form at all times: exact, escrowed,
   refunded on a legitimate close, kept against spam. `meta` is validated (non-empty,
   length-capped by the input) and `ref` must be a `0x` 20-byte hash before a plan is
-  built. The board is replicated chain state — rendered newest-first, never reordered,
+  built. The board is replicated chain state - rendered newest-first, never reordered,
   never editorialized. A bond read failure blocks submission with the reason, not a
   guessed amount.
 - **Standby:** registry placeholder → the standby entry naming it.
 - **Anchors:** MO 5, 6; QRN A (bonded admission is the anti-gatekeeper: spam pays).
 
-### 7. Claim — `mod-claim.js` — owns `#claim`
+### 7. Claim - `mod-claim.js` - owns `#claim`
 
 - **Reads:** `ftb.migrationOpen`, `ftb.totalSupply`, `ftb.maxSupply`,
   `migrator.claimed(acct)`; the artifact `proofs.json` (lazy, once).
 - **Writes:** `dapi.claim(account, amount, proof)`.
-- **Rules.** Entitlement, root, and holder count come from `proofs.json` itself — never
+- **Rules.** Entitlement, root, and holder count come from `proofs.json` itself - never
   hard-coded (WEB-03). The claimable preview uses the on-chain conversion: read
   `migrator.quote(amount)` (the canonical implementation); the JS mirror `ftbOf` is a
   documented offline fallback only, pinned by a KAT, and the preview always labels that
@@ -226,30 +226,30 @@ modules in any order (R2 makes order irrelevant among them).
 - **Anchors:** MO 5, 6; Annex B 7 (the mirror must be pinned); QRN E (the exit artifact
   is published and reproducible).
 
-### 8. Verify — `mod-verify.js` — owns `#verify` and the mirrors tile `#tMirrors`
+### 8. Verify - `mod-verify.js` - owns `#verify` and the mirrors tile `#tMirrors`
 
 - **Reads:** every hash from `config.js` (displayed verbatim), `ftb.maxSupply`,
   `ftb.migrationOpen`; `beat.json` from self and every configured mirror.
 - **Writes:** none.
 - **Rules.** The provenance grid shows token, migrator, registry, ballot, merkle root,
   cap, and seal state, with the standing instruction to check them against the repo
-  before signing — the page assumes a hostile mirror is the realistic attack (THORSwap
+  before signing - the page assumes a hostile mirror is the realistic attack (THORSwap
   2023). A mirror counts as live only if its `beat.json` is reachable AND carries this
   exact commit; reachable-but-older is stale, and the hover breakdown shows all three
   states per mirror. Nothing in this module may be interpolated, shortened without an
   ellipsis marker, or colored by opinion.
-- **Standby:** beat.json absent → mirrors tile `—`.
+- **Standby:** beat.json absent → mirrors tile `-`.
 - **Anchors:** MO 6; QRN D (reproducibility) and B (mirrors are censorship defense).
 
-### 9. Wallet connect — `mod-wallet.js` — owns `#connectBtn`, `#idstate`, and the account half of the state seam
+### 9. Wallet connect - `mod-wallet.js` - owns `#connectBtn`, `#idstate`, and the account half of the state seam
 
 - **Reads:** `dapi.init()` detection, `dapi.connect()` on click, `accountChanged` /
   `networkChanged` events.
-- **Writes:** none of its own — it signs nothing; it supplies the account every other
+- **Writes:** none of its own - it signs nothing; it supplies the account every other
   module's plans charge.
 - **Rules.** Connection state is chrome, not content: it lives in the header, never in a
   hero. The state line is always truthful: `[ no wallet ]`, the short address with the
-  network, `[ connect first ]`, `[ install NeoLine or a dApi wallet ]` — no other strings.
+  network, `[ connect first ]`, `[ install NeoLine or a dApi wallet ]` - no other strings.
   Other modules nudge toward connecting only through the wallet module's
   `FtbWallet.needConnect()` seam; they never write `#idstate` directly (R1).
   The wallet strip (balances) appears only while connected. Account changes propagate
@@ -259,62 +259,62 @@ modules in any order (R2 makes order irrelevant among them).
   disconnected.
 - **Anchors:** MO 8 (the signing boundary); QRN B (reads never require a wallet).
 
-### 10. Network / RPC seam — `ftb-rpc.js` — owns the RPC list, failover, the own-node modal `#ovRpc`, and `#rpcNote`
+### 10. Network / RPC seam - `ftb-rpc.js` - owns the RPC list, failover, the own-node modal `#ovRpc`, and `#rpcNote`
 
 - **Reads:** `getblockcount` (probes), `invokefunction` (reads it serves to modules).
 - **Writes:** none.
 - **Rules.** THE ONE read stack in the page (retires the duplicated stacks, WEB-01): one
-  `rpcCall`, one tip-aware `pick` (`SYNC_SLACK` — a syncing node never serves reads), one
+  `rpcCall`, one tip-aware `pick` (`SYNC_SLACK` - a syncing node never serves reads), one
   `readFn`/`readInt`/`readBool`. Community nodes lead the list; public endpoints are
-  appended as fallback and are named when they win ("public fallback — community node
+  appended as fallback and are named when they win ("public fallback - community node
   unreachable or still syncing"). A user-pastable node is validated (`getblockcount`
   answers) before use, stored only in `localStorage.ftb_rpc`, and labeled "(your node)".
   Failover affinity is a recorded decision (WEB-06): first at-tip endpoint serves reads.
-- **Standby:** no healthy endpoint → `rpc: no healthy RPC node answered — paste your own
+- **Standby:** no healthy endpoint → `rpc: no healthy RPC node answered - paste your own
   node`, and every module degrades per R8.
 - **Anchors:** MO 3, 10; QRN B (a user on their own node cannot be censored).
 
-### 11. The adapter — `ftb-dapi.js` — owns the wallet dApi and every chain primitive
+### 11. The adapter - `ftb-dapi.js` - owns the wallet dApi and every chain primitive
 
 - **Role:** the Article 10 shared toolkit: one canonical implementation of every builder,
   reader, decoder, and byte/address primitive. Pages and modules consume it; none
-  re-implement it. (The pure-JS SHA-256 + full base58check live here and only here —
+  re-implement it. (The pure-JS SHA-256 + full base58check live here and only here -
   decode for untrusted input, encode for rendering storage-derived script hashes as
   addresses via `scriptHashToAddress`. No module re-implements either, and no module
   touches `crypto.subtle`.)
 - **Rules.** Builders stay pure: build, expose `.summary`, sign nothing. Reads carry no
-  signer. New chain capabilities enter as adapter builders first — a module may never
+  signer. New chain capabilities enter as adapter builders first - a module may never
   hand-assemble an invocation. Every builder's summary is a plain sentence a user can
   check against the wallet's own display. The NEP-21 path stays informational until it is
   a module-level decision recorded in DECISIONS.md.
 - **Anchors:** MO 2, 8, 10; `invocations.md` is its spec and must be updated in the same
   change as any builder.
 
-### 12. Shell — `shell.js` — owns the header/nav, theme, hero, launchbar countdown, footer, the review modal `#ov`, and the page grid
+### 12. Shell - `shell.js` - owns the header/nav, theme, hero, launchbar countdown, footer, the review modal `#ov`, and the page grid
 
 - **Rules.** The shell owns the theme tokens and the phosphor key (only clickables are
-  green — nothing else, ever). There is exactly one theme — night shift (dark) — on
+  green - nothing else, ever). There is exactly one theme - night shift (dark) - on
   every page; the pink and light alternatives were retired 18 Oct and no toggle or
   theme key remains. The countdown is a dated public commitment: one target
   (MainNet window, 7 Nov 2026 00:00 UTC), self-contained, no chain; at zero it flips to
-  the window-open notice and stops — it never counts past. The footer carries the audit
-  posture verbatim ("internal audit lineage only — no external audit was performed") and
+  the window-open notice and stops - it never counts past. The footer carries the audit
+  posture verbatim ("internal audit lineage only - no external audit was performed") and
   may never be softened. The one review modal (R6) renders any module's plan in the same
   ceremony; consistency is what trains users to read it. The nav is plain words, five to
-  seven anchors; a sixth destination means the information architecture is wrong — fold,
+  seven anchors; a sixth destination means the information architecture is wrong - fold,
   don't add.
 - **Anchors:** MO 6; `UI_RATIONALE.md` invariants; Annex B 11.
 
-### 13. Config — `config.js` + `beat.json` — owns every deployment constant
+### 13. Config - `config.js` + `beat.json` - owns every deployment constant
 
 - **Rules.** Every contract hash, RPC endpoint, mirror, pair definition, electorate
-  figure, ratio, and the ballot question enters through this one file — no constant may
+  figure, ratio, and the ballot question enters through this one file - no constant may
   live inside a module (R5). Placeholders are `0x0000…` and every module treats them as
-  standby (R8). Two committed profiles exist — `config.testnet.js` and
+  standby (R8). Two committed profiles exist - `config.testnet.js` and
   `config.mainnet.js`; the active `config.js` is always a byte-copy of one of them
   (git-ignored), and a hand-edited `config.js` fails the QA gate. `config.example.js`
   stays the shape template for other deployments. `beat.json` is written per deploy by
-  the push script and carries `{project, commit, published}` — it is how the verify
+  the push script and carries `{project, commit, published}` - it is how the verify
   module proves a mirror serves this exact build. A config value that contradicts a
   published artifact (root, electorate, count) is a defect at gate time, not a display
   bug (WEB-03's class).
@@ -327,7 +327,7 @@ its panel alone); no module fetches, signs, or hard-codes outside the rules; `in
 and this file agree with the adapter; and the whole folder pins to IPFS with a `beat.json`
 that the verify module confirms live on at least two mirrors.
 
-**Landed 18 October 2026:** the module split itself — WEB-01, WEB-02, WEB-03, and WEB-05
+**Landed 18 October 2026:** the module split itself - WEB-01, WEB-02, WEB-03, and WEB-05
 are closed in code (see `WEB_AUDIT.md` § Remediation). Remaining: WEB-04 (template
 archive) and the two-mirror `beat.json` confirmation at the next publish.
 

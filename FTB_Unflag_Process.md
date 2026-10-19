@@ -1,4 +1,4 @@
-# FTB Unflag Request — Ownership Proof Process (DRAFT)
+# FTB Unflag Request - Ownership Proof Process (DRAFT)
 
 Date: 2026-10-17 · Status: draft for owner review · Applies to: flagged wallets whose
 owners dispute the flag (e.g. wallet #8 `NWu2ng1hBxU6w6AUmGy4QDkscQTXY3pnVM`).
@@ -11,7 +11,7 @@ things: **they control the private key** and **a human stands behind it**.
 
 Neo N3 MainNet and TestNet derive the *same address* from the *same key*. So
 whoever controls a flagged MainNet wallet also controls that exact address on
-TestNet — where GAS is free. The proof costs the claimant nothing real, and it
+TestNet - where GAS is free. The proof costs the claimant nothing real, and it
 cannot be faked by anyone who does not hold the key.
 
 ## The message claimants send us
@@ -30,7 +30,7 @@ Contact:         <how we reach you for follow-up>
 
 ## The on-chain proof (step by step for the claimant)
 
-1. Open your wallet (NeoLine, NEON, O3 — any wallet that holds the flagged
+1. Open your wallet (NeoLine, NEON, O3 - any wallet that holds the flagged
    wallet's key) and switch it to **Neo N3 TestNet**. Your address string is
    identical there.
 2. Get free TestNet GAS from the public faucet to your address.
@@ -46,9 +46,9 @@ Contact:         <how we reach you for follow-up>
 - Pull `getnep17transfers` for the team TestNet wallet and find the txid.
 - Confirm the **sender address is character-identical** to the flagged MainNet
   wallet being claimed. Same address on TestNet can only be sent from by the
-  holder of the same private key — that is the whole proof.
+  holder of the same private key - that is the whole proof.
 - Confirm the claim message and the tx match (address + txid pair, one per claim).
-- Unflagging is still a human decision after the technical proof passes —
+- Unflagging is still a human decision after the technical proof passes -
   the proof establishes key control, not entitlement; the flag rationale is
   re-reviewed against the claim (as done for #8).
 
@@ -61,10 +61,10 @@ Contact:         <how we reach you for follow-up>
 
 ## Operational notes (internal)
 
-- Team TestNet wallet: `NeNEyksWAkbJdEXqVta2X1N3rx1hmzwReP` (the deploy wallet —
+- Team TestNet wallet: `NeNEyksWAkbJdEXqVta2X1N3rx1hmzwReP` (the deploy wallet -
   receive-only for this purpose; no spending from it is involved).
 - One txid per claim; a txid already used for a claim cannot back a second one.
-- Keep a public log of reviewed claims (wallet, verdict, reason) — the flag list
+- Keep a public log of reviewed claims (wallet, verdict, reason) - the flag list
   is a published, challengeable decision, so reviews must be published too.
 - SLA to state publicly: acknowledge within 7 days, verdict within 30 days.
 

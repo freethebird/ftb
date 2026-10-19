@@ -1,8 +1,8 @@
-// mod-board.js — module 6: proposals (MODULES.md).
+// mod-board.js - module 6: proposals (MODULES.md).
 // The bonded proposals board (registry v2): the bond is escrowed on-chain,
 // refunded on a legitimate close, kept against spam.
 //
-// Owns (writes only these): #board card — #boardBody, #boardRefresh, and the
+// Owns (writes only these): #board card - #boardBody, #boardRefresh, and the
 // submit ticket #pMeta, #pKindSel, #pRef, #pMetaHint, #pGo.
 (function () {
   'use strict';
@@ -15,7 +15,7 @@
   function boardReady() { return !!(FtbState.configured && C.registry && C.registry.indexOf('0x0000') !== 0); }
   function b64ToStr(s) { try { return decodeURIComponent(escape(atob(s))); } catch (e) { return atob(s); } }
   function hashFromItem(it) {
-    return (it && it.value) ? '0x' + FtbDapi.util.reverseHex(FtbDapi.util.b64ToHex(it.value)) : '—';
+    return (it && it.value) ? '0x' + FtbDapi.util.reverseHex(FtbDapi.util.b64ToHex(it.value)) : '-';
   }
   function paintKindSel() {
     var box = $('pKindSel'); box.innerHTML = '';
@@ -30,13 +30,13 @@
     if (!FtbRpc.current() || !boardReady()) return; // standby markup already in place
     FtbRpc.readInt(C.registry, 'proposalBond').then(function (v) {
       boardBond = v;
-      $('pMetaHint').textContent = 'bond: ' + fmt(v) + ' FTB · exact, escrowed — refunded on a legitimate close, kept against spam';
+      $('pMetaHint').textContent = 'bond: ' + fmt(v) + ' FTB · exact, escrowed - refunded on a legitimate close, kept against spam';
     }).catch(function () {});
     FtbRpc.readInt(C.registry, 'proposalCount').then(function (n) {
       body.innerHTML = '';
       var count = Number(n);
       if (!count) {
-        body.appendChild(el('div', 'small muted', 'no proposals yet — the board is open; the first one costs the bond.'));
+        body.appendChild(el('div', 'small muted', 'no proposals yet - the board is open; the first one costs the bond.'));
         return;
       }
       for (var id = count; id >= 1; id--) { (function (pid) { // newest first

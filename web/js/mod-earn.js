@@ -1,10 +1,10 @@
-// mod-earn.js — module 3: FTB dividends (MODULES.md).
+// mod-earn.js - module 3: FTB dividends (MODULES.md).
 // The holders' 2/9 of every fee: monthly revenue (this month vs last month, from
 // the v2 on-chain ledger), lifetime received, the sampled APY, and the stake
-// board — global pool, my stake, my % share, my claimable, with stake / unstake /
+// board - global pool, my stake, my % share, my claimable, with stake / unstake /
 // claim each on its own line.
 //
-// Owns (writes only these): #earn card — #dMonth, #dLast, #dLife, #dApy, the fee-flow
+// Owns (writes only these): #earn card - #dMonth, #dLast, #dLife, #dApy, the fee-flow
 // strip (#feeFlows: #fLp, #fStake, #fTres), the stake
 // board (#dTotal, #dStaked, #dShare, #dPending), #earnPos (#dvStakeAmt, #dvStakeGo,
 // #dvUnstakeAmt, #dvUnstakeGo, #dvClaimGo, #dvHint), #earnOff, #earnRefresh.
@@ -31,7 +31,7 @@
     if (!divReady() || !FtbRpc.current()) { var off0 = $('earnOff'); if (off0) off0.hidden = false; return; }
     var off = $('earnOff'); if (off) off.hidden = true;
     // monthly revenue ledger (v2): dividends GENERATED this month vs last month,
-    // counted at receipt — no indexer, straight from contract storage.
+    // counted at receipt - no indexer, straight from contract storage.
     FtbRpc.readInt(dv, 'monthIndex').then(function (mi) {
       Promise.all([
         FtbRpc.readInt(dv, 'monthTotal', [{ type: 'Integer', value: mi.toString() }]),
@@ -66,8 +66,8 @@
           localStorage.setItem('ftb_div_acc', JSON.stringify({ v: v.toString(), t: now }));
         } else if (!prev) {
           localStorage.setItem('ftb_div_acc', JSON.stringify({ v: v.toString(), t: now }));
-          $('dApy').textContent = 'sampling — check back tomorrow';
-          $('fStake').textContent = 'stake apy sampling — check back tomorrow';
+          $('dApy').textContent = 'sampling - check back tomorrow';
+          $('fStake').textContent = 'stake apy sampling - check back tomorrow';
         }
       } catch (e) {}
     }).catch(function () {});
@@ -75,7 +75,7 @@
     if (!acct) {
       // disconnected: my-side figures are absent, never stale (R5)
       var p0 = $('earnPos'); if (p0) p0.hidden = true;
-      $('dStaked').textContent = '—'; $('dShare').textContent = '—'; $('dPending').textContent = '—';
+      $('dStaked').textContent = '-'; $('dShare').textContent = '-'; $('dPending').textContent = '-';
       return;
     }
     var pos = $('earnPos'); if (pos) pos.hidden = false;
@@ -88,7 +88,7 @@
       $('dStaked').textContent = fmt(vs[0]) + ' FTB';
       $('dPending').textContent = fmt(vs[1]) + ' FTB';
       // my share of the pool = my stake ÷ total staked (chain numbers, one pass)
-      $('dShare').textContent = vs[2] > 0n ? (Number(vs[0] * 10000n / vs[2]) / 100).toFixed(2) + '%' : '—';
+      $('dShare').textContent = vs[2] > 0n ? (Number(vs[0] * 10000n / vs[2]) / 100).toFixed(2) + '%' : '-';
     }).catch(function () {});
   }
 
@@ -103,7 +103,7 @@
         'staked FTB earns the holders\' 2/9 of every fee. unstake any time; dividends already earned stay claimable.',
         [['you stake', amt + ' FTB'],
          ['earns', 'pro-rata share of every sweep into the dividends module'],
-         ['lockup', 'none — unstake any time'],
+         ['lockup', 'none - unstake any time'],
          ['what you sign', plan.summary]],
         plan);
     });
@@ -116,7 +116,7 @@
       FtbShell.showPlan('unstake ' + amt + ' FTB',
         'principal returns to your wallet. dividends earned up to this block stay claimable.',
         [['you unstake', amt + ' FTB'],
-         ['dividends', 'unaffected — claim whenever you like'],
+         ['dividends', 'unaffected - claim whenever you like'],
          ['what you sign', plan.summary]],
         plan);
     });
@@ -137,14 +137,14 @@
     var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
     setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
   }
-  // a successful write bursts 'refresh' — clear the amount boxes with it, so the
+  // a successful write bursts 'refresh' - clear the amount boxes with it, so the
   // panel reads as a fresh state instead of looking like nothing happened.
   FtbState.on('refresh', function () {
     var s = $('dvStakeAmt'), u = $('dvUnstakeAmt');
     if (s) s.value = '';
     if (u) u.value = '';
   });
-  // every load goes through the shared coalescer — a signed stake bursts 'refresh'
+  // every load goes through the shared coalescer - a signed stake bursts 'refresh'
   // events, and without this a slower stale pass can paint over the fresh one.
   var loadEarnC = FtbUtil.coalesce(loadEarn, 3000);
   var eb = $('earnRefresh'); if (eb) eb.addEventListener('click', function () { flash(eb); loadEarnC(); });

@@ -19,7 +19,7 @@ window.FTB_CONFIG = {
     // treasury escrows proposal budgets; dividends pays the holders' 2/9 to stakers
     treasury:  '0x0000000000000000000000000000000000000000',
     dividends: '0x0000000000000000000000000000000000000000',
-    // bNEO (NeoBurger) — ratio-board listing only; lend collateral is native NEO + GAS.
+    // bNEO (NeoBurger) - ratio-board listing only; lend collateral is native NEO + GAS.
     // This is the MainNet hash; use the correct one for your network.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
     // router is the external Flamingo swap; set only if you wire swap in your UI.
@@ -61,7 +61,7 @@ window.FTB_CONFIG = {
   vote: { ftb: '', wait: '' },
 
   // committed economics (DECISIONS.md 18 Oct): hard cap 100,000,000 FTB.
-  // r = 100,000,000 ÷ 526,782,179.10 = 0.189832 FTB per FLM/FLOCKS — the migrator
+  // r = 100,000,000 ÷ 526,782,179.10 = 0.189832 FTB per FLM/FLOCKS - the migrator
   // mints floor(entitlement × r), verifiable on-chain via migrator.quote().
   // the genesis vote weighs 1 FLM = 1 vote over the snapshot electorate (FLM-equiv);
   // future votes weigh 1 FTB = 1 vote. electorate drives the turnout readout.

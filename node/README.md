@@ -1,7 +1,7 @@
 # FTB node: operator runbook (Neo N3 TestNet)
 
 Each community VM runs a **neo-go full node** on Neo N3 TestNet with a public, TLS-wrapped,
-CORS-enabled JSON-RPC endpoint. The FTB front end reads from these endpoints with failover —
+CORS-enabled JSON-RPC endpoint. The FTB front end reads from these endpoints with failover -
 no server-side code, no keys, nothing custodial. This is what makes the DEX front end
 decentralized: anyone's node can serve anyone's reads.
 
@@ -25,7 +25,7 @@ Time: ~30 minutes. Cost: a small VM (2 vCPU / 4 GB RAM / 40 GB disk is comfortab
    It installs the pinned neo-go release, writes `protocol.testnet.yml`, registers and
    starts the `ftb-node` systemd unit, and installs Caddy.
 3. Put your domain into `/etc/caddy/Caddyfile` (the installer writes a template with
-   `node.example.invalid` — replace it), then `sudo systemctl reload caddy`.
+   `node.example.invalid` - replace it), then `sudo systemctl reload caddy`.
 4. Verify:
 
    ```sh
@@ -34,7 +34,7 @@ Time: ~30 minutes. Cost: a small VM (2 vCPU / 4 GB RAM / 40 GB disk is comfortab
    ```
 
    A number means healthy. Initial sync takes a while; the endpoint answers during sync.
-5. Hand your URL to whoever maintains `web/config.js` — it goes at the top of the `rpcs`
+5. Hand your URL to whoever maintains `web/config.js` - it goes at the top of the `rpcs`
    list, ahead of the public fallbacks.
 
 ## Rules of the road

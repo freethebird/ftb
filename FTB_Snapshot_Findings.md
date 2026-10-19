@@ -1,4 +1,4 @@
-# FTB Migration — Pre-Exploit Snapshot Findings
+# FTB Migration - Pre-Exploit Snapshot Findings
 
 *Community disclosure · published 2026-10-16 · everything below is verifiable on-chain
 with the tools linked at the end. Nothing here is final until the challenge window closes.*
@@ -14,13 +14,13 @@ classified every large wallet, and set the FTB migration math:
 - **Dev-team wallet:** 68,330,973.24 FLM-equivalent + 5,030,925.75 FLOCKS (disclosed below)
 - **FTB total supply (committed): 373,721,196.93** at 1 FLM = 1 FTB, 1 FLOCKS = 1 FTB
 - **Excluded from claims:** 38 protocol contracts, the attacker's wallet, and 16 flagged
-  wallets (110.0M FLM + 1.0M FLOCKS) — each with published evidence, open to challenge
+  wallets (110.0M FLM + 1.0M FLOCKS) - each with published evidence, open to challenge
 
 ## 1. The snapshot
 
 The exploit minted 37.7 trillion FLM, so today's balances are meaningless for a fair
-migration. Instead we took the state at **block 12,782,704** — one block before the
-exploit transaction — directly from authenticated chain state (state root
+migration. Instead we took the state at **block 12,782,704** - one block before the
+exploit transaction - directly from authenticated chain state (state root
 `0x86a3042d…baf7`), not from any explorer API.
 
 The reconstruction sums **exactly** to the on-chain total-supply anchors
@@ -30,7 +30,7 @@ reproduce it with `snapshot_state.py`.
 
 ## 2. Who is excluded from the claim
 
-### 2a. Protocol contracts (38) — automatic
+### 2a. Protocol contracts (38) - automatic
 
 Flamingo pair contracts, the FLOCKS staking contract, FLUND, vaults and routers:
 270,708,623.39 FLM + 2,383,291.51 FLOCKS. Tokens inside protocol contracts are not
@@ -41,7 +41,7 @@ owned by any claimer; they are excluded automatically.
 The pre-exploit attacker address held a real 584,941.65 FLM before the exploit. It is
 excluded anyway.
 
-### 2c. Flagged wallets (23) — evidence published, open to challenge
+### 2c. Flagged wallets (23) - evidence published, open to challenge
 
 | Wallet | FLM at snapshot | Why flagged |
 |--------|----------------:|-------------|
@@ -51,52 +51,52 @@ excluded anyway.
 | NLdYPX (#10) | 12,961,268.28 | Exchange/MM desk; ~416k NEO, one of the largest NEO movers chain-wide |
 | NXF8xB (#11) | 10,385,342.33 | The central desk: 44,404 transfers, 6,028 counterparties; funded #15, NjEFZv and the 13 sub-storage wallets below |
 | NQSbtd (#12) | 8,000,000.00 | Member of the #15 OTC ring; counterparties are almost entirely ring wallets |
-| Nfps2r (#16) | 6,324,107.88 | Owner call — on-chain evidence is actually clean (possible LP whale); **strongest challenge candidate** |
+| Nfps2r (#16) | 6,324,107.88 | Owner call - on-chain evidence is actually clean (possible LP whale); **strongest challenge candidate** |
 | NiF2ukj | 5,000,000.00 | #15 ring buyer (paid NEO, received 5M FLM) |
 | NRfDCVn | 4,836,421.34 | Quiet accumulator; entire position from one 9.24M transfer, 11 lifetime transfers, no payment trail |
 | NjEFZv | 4,266,865.91 | Desk sub-storage: funded by NXF8xB in seven identical 599,999.90 chunks, zero sends ever |
-| NNuxvz, Ndwkrm, NNkbhJ, NazUQh, NLPAk2, Ndx6j9 (6 wallets) | 4,209,961.10 combined | Desk sub-storage: each received its **entire exact snapshot balance** directly from desk NXF8xB, then sat completely inert — zero sends ever, single counterparty, dormant since funding |
+| NNuxvz, Ndwkrm, NNkbhJ, NazUQh, NLPAk2, Ndx6j9 (6 wallets) | 4,209,961.10 combined | Desk sub-storage: each received its **entire exact snapshot balance** directly from desk NXF8xB, then sat completely inert - zero sends ever, single counterparty, dormant since funding |
 
 Total flagged: **109,999,032.43 FLM + 1,000,000.00 FLOCKS** (19.1% of FLM supply).
 
 ### 2d. Review list (7 wallets, not flagged)
 
 Seven more top-100 wallets received desk money but also moved it (#30 NbSMUD,
-#37 NeQzBT, #39 NQuH4t, #68 NMLtz, #80 NesaYc, #90 NUupYC, #93 NhSCNK — ~7.04M FLM
+#37 NeQzBT, #39 NQuH4t, #68 NMLtz, #80 NesaYc, #90 NUupYC, #93 NhSCNK - ~7.04M FLM
 combined). The signature is weaker, so they **remain claimable** unless the community
 decides otherwise.
 
 **Disclosed caveat on the desk-funded flags:** a venue hot wallet paying customer
-withdrawals produces a similar one-way signature, and the desk is an *unnamed* venue —
+withdrawals produces a similar one-way signature, and the desk is an *unnamed* venue -
 so these flags are behavior-pattern judgments, not proof. Thirteen wallets originally
 matched the "entire balance from the desk" pattern; we then pulled each wallet's full
 history. Six were completely inert (zero sends ever, funded in a day) and stay
-flagged. Seven (NSCvRc, NLFsAv, NR9vB6, NTTsRc, NQ6h93, NNa7NT, NN9VpH —
-5,715,799.19 FLM) turned out to be long-active, multi-token wallets — ordinary users
-by every measure — and **were unflagged and remain fully claimable**. This is the
+flagged. Seven (NSCvRc, NLFsAv, NR9vB6, NTTsRc, NQ6h93, NNa7NT, NN9VpH -
+5,715,799.19 FLM) turned out to be long-active, multi-token wallets - ordinary users
+by every measure - and **were unflagged and remain fully claimable**. This is the
 challenge process working as intended.
 
-## 3. The dev-team wallet — full disclosure
+## 3. The dev-team wallet - full disclosure
 
 The dev-team allocation has exactly two sources, and it is **not** carved
 out of anyone's claim:
 
 - **A donation from holder #2.** Wallet #2 (the confirmed top-2 whale, an independent
-  community holder — not a team wallet) sold **his entire FLOCKS position (20,355,588.46)
+  community holder - not a team wallet) sold **his entire FLOCKS position (20,355,588.46)
   and his NUDES holdings** into the post-exploit market, and **donated the proceeds to the
   dev wallet** to fund the relaunch.
   Total so far: **61,341,856.53 FLM** (verified on-chain at
   block 14,080,719; still accumulating, final figure re-read at launch). This is a holder
   converting his own ecosystem assets into launch funding for the community rebuild, at
   post-exploit prices.
-- **#15 NUN32i's snapshot position, held in custody — not owned.** #15's
+- **#15 NUN32i's snapshot position, held in custody - not owned.** #15's
   6,989,116.71 FLM + 5,030,925.75 FLOCKS sits **under the custody of the dev wallet
   until someone claims it and proves ownership**. #15 was an OTC seller whose network
   ties (desk funding, ring hub behavior, shared cash-out collector) made an automatic
-  community claim inappropriate — but custody is not confiscation: **if a legitimate
+  community claim inappropriate - but custody is not confiscation: **if a legitimate
   owner proves control during the challenge window, the position is released to them.
   If it is never claimed, the amount moves to the Governance contract proposal
-  wallet** — community-controlled, not team-controlled.
+  wallet** - community-controlled, not team-controlled.
 
 Dev wallet total: **68,330,973.24 FLM-equivalent + 5,030,925.75 FLOCKS** (of which
 12,020,042.46 is the #15 custody position, not team property), earmarked
@@ -107,7 +107,7 @@ published before launch.**
 
 Wallet #2 (NTRGiig, 85,103,198.42 FLM + 20,355,588.46 FLOCKS at snapshot) is a
 confirmed real person, attested by the project owner. It claims at the snapshot block
-like everyone else — no special treatment in either direction. Its post-exploit
+like everyone else - no special treatment in either direction. Its post-exploit
 accumulation is the dev-wallet funding described above, not a claim.
 
 ## 5. The committed numbers
@@ -133,7 +133,7 @@ settled inside this total.
 **Every flag is challengeable.** If you own a flagged wallet, come forward with the
 address and your side of the story before the migrator's exclusion list is finalized;
 one wallet (#2) has already been reclassified this way. No address here is provably a
-named exchange or team wallet from chain data alone — every classification is a
+named exchange or team wallet from chain data alone - every classification is a
 behavior pattern that anyone can re-check.
 
 ---

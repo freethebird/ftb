@@ -2,24 +2,24 @@
 
 ## Fee split (the constitution of the flows)
 
-Trader-facing price: **0.30% per swap — Flamingo parity.** With Flamingo gone, its pool
+Trader-facing price: **0.30% per swap - Flamingo parity.** With Flamingo gone, its pool
 fee is the rate the community already knows; we match it exactly and differ only in where
 the money goes.
 
 Every fee the system earns splits the same way:
 
-- **2/3 → the liquidity providers** — swap LPs and lend suppliers. It accrues into the
+- **2/3 → the liquidity providers** - swap LPs and lend suppliers. It accrues into the
   pool itself (share value rises; no mint, no transfers). Untouchable: LP yield is the
   liquidity moat.
-- **2/9 → FTB holders** — the dividend. It accrues to a reserve and is swept to the
+- **2/9 → FTB holders** - the dividend. It accrues to a reserve and is swept to the
   dividends module; FTB is dividend-bearing by construction. The module
   (`contracts/dividends`) is xSUSHI-style: stake FTB, every distribution raises the
   per-share accumulator, claim any time, unstake any time. Staking rather than
   hold-and-earn because pro-rata snapshots on a transferable token would need a
   transfer hook inside the sealed token; staking keeps `ftb_token` untouched and the
   accounting exact. Revenue that arrives while nothing is staked is queued, not lost.
-  The module has no committee and no owner knob after configure — pure accounting.
-- **1/9 → the treasury** — the development fund. Of the holders' old third, one share in
+  The module has no committee and no owner knob after configure - pure accounting.
+- **1/9 → the treasury** - the development fund. Of the holders' old third, one share in
   three now funds the proposals the holders themselves vote for: they reinvest part of
   their own dividend into the code they approved.
 
@@ -27,7 +27,7 @@ In basis points of swap volume at the 0.30% fee: LPs 20, holders ≈6.7, treasur
 On lend interest the same ratio falls out of the sweep: the reserve (reserveBps = 3333,
 the holders' third) pays 1/3 to the treasury and 2/3 to dividends at sweep time. The split
 is compiled in as the default and governable only through the proposal lifecycle, capped
-at 50% so holders can never be voted into funding the whole pool alone — and providers can
+at 50% so holders can never be voted into funding the whole pool alone - and providers can
 never quietly zero the dividend, because the change needs a passed ballot.
 
 ## The treasury is a contract, not a wallet
@@ -37,7 +37,7 @@ a regulator or an adversary looks for. The treasury (`contracts/treasury`) holds
 in chain state and pays out only through the pipeline:
 
 1. The proposal ballot passes 2/3 with a budget, a dev team, and a named auditor.
-2. The operator committee escrows the budget to the proposal id — funds stay in the
+2. The operator committee escrows the budget to the proposal id - funds stay in the
    contract until earned.
 3. The auditor attests on-chain, binding the **exact audited NEF hash** (the bytes recorded
    in `build/NEF_HASHES.sha256`): payment is tied to the reviewed code, not to a promise.
@@ -47,7 +47,7 @@ in chain state and pays out only through the pipeline:
    There is no clawback after attestation: reviewed work is earned.
 
 The accrual cap is the `returnExcess` lever: surplus above what live proposals need can
-only go back to the registry-bound dividends module — fail-closed, never to an arbitrary
+only go back to the registry-bound dividends module - fail-closed, never to an arbitrary
 address. Dev team and auditor must be different addresses by construction.
 
 
@@ -77,11 +77,11 @@ supplyApyBps = supplyRatePerBlock · blocksPerYear · 10^4 / 1e18
 
 Daily activity drives the APY through utilization itself: more borrowing raises `u`,
 which raises both rates; the dividend reserve grows with `interest · reserveBps` per
-accrual, so holder APY is read from reserve growth over a window — the front end samples
+accrual, so holder APY is read from reserve growth over a window - the front end samples
 `reserveAccrued` daily and annualizes (same pattern as the ratio ticker).
 
 ## Collateral
 
-NEO and GAS only — the two native assets. NEO is indivisible (0 decimals): collateral
+NEO and GAS only - the two native assets. NEO is indivisible (0 decimals): collateral
 math prices it per whole NEO, and liquidation seizes floor-divided whole NEO (any dust
 value stays with the borrower). No wrapped assets, no external dependency.

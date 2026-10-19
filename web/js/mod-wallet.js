@@ -1,4 +1,4 @@
-// mod-wallet.js — module 9: wallet connect (MODULES.md).
+// mod-wallet.js - module 9: wallet connect (MODULES.md).
 // The dApi adapter lifecycle: connect, account-changed, disconnect. The page
 // never holds keys; every write is review-and-sign in the wallet.
 //
@@ -32,13 +32,13 @@
   });
 
   // UI-level detach: NeoLine has no programmatic disconnect, so this clears the
-  // page's account state only — the wallet itself stays connected to the site
+  // page's account state only - the wallet itself stays connected to the site
   // until the user revokes it in NeoLine.
   if ($('disconnectBtn')) $('disconnectBtn').addEventListener('click', function () {
     FtbState.account = null;
     if (FtbState.dapi) FtbState.dapi.account = null;
     setState();
-    $('idstate').textContent = '[ detached — revoke in NeoLine to fully disconnect ]';
+    $('idstate').textContent = '[ detached - revoke in NeoLine to fully disconnect ]';
     FtbState.emit('account', null);
   });
 
@@ -55,7 +55,7 @@
   } else {
     $('idstate').textContent = FtbState.configured ? '[ adapter missing ]' : '[ hashes not configured ]';
   }
-  // the seam other modules use to nudge the user toward connecting — they never
+  // the seam other modules use to nudge the user toward connecting - they never
   // write #idstate directly (R1: one writer per element).
   window.FtbWallet = {
     needConnect: function () { $('idstate').textContent = '[ connect first ]'; }
