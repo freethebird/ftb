@@ -80,7 +80,9 @@ browser except signed transactions and public RPC reads.
 1. No dependencies, no build step, one HTML file plus `config.js` / `ftb-dapi.js`.
 2. Strict grayscale; phosphor green is reserved for clickables. One theme — night
    shift (dark) — everywhere; accent through weight and borders, never color.
-3. No fiat prices, no external APIs, no analytics, no fonts beyond the inlined VT323.
+3. No fiat prices, no external APIs, no analytics, no fonts beyond the inlined Space
+   Mono (400/700/italic — replaced VT323 19 Oct 2026: users could not read the pixel
+   font; Space Mono keeps the typewriter voice and is legible at every size).
 4. The page never holds keys and never implies custody. Builds and reads here; signs in
    the wallet.
 5. Motion is the blinking cursor. Everything else is still.
