@@ -196,19 +196,21 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .rcard{border:1px solid var(--ink); padding:14px 15px}
 .rcard .rp{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
 /* pooled reserves: two boxes under the pool title, same height as the change boxes */
-.lpoolrow{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px}
+.lpoolrow{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:9px}
 .lpoolbox{border:1px solid var(--ok); color:var(--ok); padding:10px 12px; min-height:82px;
   display:flex; flex-direction:column; justify-content:center; font-size:13px; line-height:1.5}
 .lpoolbox .lpl{font-size:10px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--faint); margin-bottom:4px}
 .lpoolbox .lpv{white-space:nowrap; overflow:visible}
-.rwrap{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px; align-items:stretch}
-.rcol{display:flex; flex-direction:column}
+/* minmax(0,1fr): tracks never grow past half - a wide ratio line ellipsizes
+   (full value on hover) instead of squeezing the change column */
+.rwrap{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:9px; align-items:stretch}
+.rcol{display:flex; flex-direction:column; min-width:0}
 .rcolh{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint);
   margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px}
 /* ratio + price: green boxes, one horizontal line each - never wrapped digits */
 .rbox{border:1px solid var(--ok); color:var(--ok); padding:8px 12px;
-  font-size:13px; line-height:1.5; white-space:nowrap; overflow:visible}
+  font-size:13px; line-height:1.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .rbox + .rbox{margin-top:8px}
 /* change column: boxes flex to exactly the ratio column's height - % on top,
    arrow below, so both columns always share their top and bottom edges */

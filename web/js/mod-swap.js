@@ -283,6 +283,7 @@
         try { localStorage.setItem('ftb_ratios', JSON.stringify(hist)); } catch (e) {}
         num.textContent = '1 ' + sym[0] + ' = ' + ratio.toPrecision(6) + ' ' + sym[1];
         inv.textContent = '1 ' + sym[1] + ' = ' + (1 / ratio).toPrecision(6) + ' ' + sym[0];
+        num.title = num.textContent; inv.title = inv.textContent; // full precision on hover if ellipsized
         // fiat reference: the leg with a public market rate prices the other leg
         // through the on-chain ratio (FTB has no market rate of its own - derived).
         // the card shows the NON-FTB leg only: FTB's price lives exactly once,
@@ -293,6 +294,7 @@
         var ro = sym[0] === 'FTB' ? rb : ra;
         usd.textContent = '1 ' + other + ' = ' + (ro ? fiatFmt(ro.usd, '$') : '-');
         cny.textContent = '1 ' + other + ' = ' + (ro ? fiatFmt(ro.cny, '¥') : '-');
+        usd.title = usd.textContent; cny.title = cny.textContent;
         // the canonical FTB price tile: FTB leg of this pair feeds it
         if (sym[1] === 'FTB') noteFtbPx(sym[0], rb);
         if (sym[0] === 'FTB') noteFtbPx(sym[1], ra);
