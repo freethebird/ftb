@@ -178,35 +178,6 @@
     t.innerHTML = parts.length ? '// market&nbsp; ' + parts.join('<span class="sep">·</span>') : '// market: waiting for the pools';
   }
   function resolveTok(t) { return t === 'FTB' ? C.ftb : (t === 'GAS' ? ((CFG.assets || {}).gas) : (t === 'NEO' ? ((CFG.assets || {}).neo) : t)); }
-  // inline SVG sparkline: the old block-element glyphs (U+2581-2588) are missing
-  // from some system font fallbacks and rendered as empty squares - vector marks
-  // render identically everywhere, font or no font.
-  function sparkEl(vals) {
-    var NS = 'http://www.w3.org/2000/svg';
-    var w = 96, h = 16, n = vals.length;
-    var svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-    svg.setAttribute('class', 'sparkline');
-    svg.setAttribute('aria-hidden', 'true');
-    if (!n) return svg;
-    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), span = (hi - lo) || 1;
-    var y = function (v) { return (h - 2 - ((v - lo) / span) * (h - 4)).toFixed(1); };
-    var d;
-    if (n === 1) d = 'M0 ' + y(vals[0]) + ' L' + w + ' ' + y(vals[0]);
-    else {
-      d = '';
-      vals.forEach(function (v, i) {
-        d += (i ? 'L' : 'M') + ((i / (n - 1)) * w).toFixed(1) + ' ' + y(v);
-      });
-    }
-    var p = document.createElementNS(NS, 'path');
-    p.setAttribute('d', d);
-    p.setAttribute('fill', 'none');
-    p.setAttribute('stroke', 'currentColor');
-    p.setAttribute('stroke-width', '1.5');
-    svg.appendChild(p);
-    return svg;
-  }
   // ---------- fiat reference rates (Decision 12: display only, never protocol input) ----------
   // Prices come from a public market API (CoinGecko) in the browser and are crossed
   // with the on-chain pool ratio to derive the FTB leg. The contracts never see a
@@ -258,13 +229,6 @@
     if (symA === 'GAS') ftbPx.gas = fiatOfFtb; else ftbPx.other = fiatOfFtb;
     paintFtbPx();
   }
-  function refRow(sym, f) {
-    var r = el('div', 'rrefrow');
-    r.appendChild(el('span', null, '1 ' + sym));
-    r.appendChild(el('span', null, f ? fiatFmt(f.usd, '$') : '-'));
-    r.appendChild(el('span', null, f ? fiatFmt(f.cny, '¥') : '-'));
-    return r;
-  }
 
   function refreshRatios() {
     var body = $('ratioBody'); if (!body) return;
@@ -277,20 +241,22 @@
     body.innerHTML = '';
     pairs.forEach(function (p) {
       var sym = p.label.split('/'), a = resolveTok(p.a), b = resolveTok(p.b);
+      var other = sym[0] === 'FTB' ? sym[1] : sym[0]; // the non-FTB leg
       var card = el('div', 'rcard');
       card.appendChild(el('div', 'rp', sym[0] + ' / ' + sym[1] + ' pool'));
-      var cols = el('div', 'rcols');
-      var colR = el('div', 'rcol');
-      colR.appendChild(el('div', 'rcolh', 'ratio'));
-      var num = el('div', 'rbox', 'reading…'); colR.appendChild(num);
-      var inv = el('div', 'rbox', ''); colR.appendChild(inv);
-      cols.appendChild(colR);
-      var colP = el('div', 'rcol');
-      colP.appendChild(el('div', 'rcolh', 'price reference · usd / cny'));
-      var ref = el('div', 'rref'); colP.appendChild(ref);
-      cols.appendChild(colP);
-      card.appendChild(cols);
-      var foot = el('div', 'rspark'); card.appendChild(foot);
+      var wrap = el('div', 'rwrap');
+      var left = el('div');
+      left.appendChild(el('div', 'rcolh', 'ratio · price reference'));
+      var num = el('div', 'rbox', 'reading…'); left.appendChild(num);
+      var inv = el('div', 'rbox', ''); left.appendChild(inv);
+      var usd = el('div', 'rbox', ''); left.appendChild(usd);
+      var cny = el('div', 'rbox', ''); left.appendChild(cny);
+      wrap.appendChild(left);
+      var right = el('div');
+      right.appendChild(el('div', 'rcolh', 'change'));
+      var chgBox = el('div', 'rchgbox', '-'); right.appendChild(chgBox);
+      wrap.appendChild(right);
+      card.appendChild(wrap);
       body.appendChild(card);
       FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
         var rr = reservesOf(st);
@@ -303,24 +269,25 @@
         num.textContent = '1 ' + sym[0] + ' = ' + ratio.toPrecision(6) + ' ' + sym[1];
         inv.textContent = '1 ' + sym[1] + ' = ' + (1 / ratio).toPrecision(6) + ' ' + sym[0];
         // fiat reference: the leg with a public market rate prices the other leg
-        // through the on-chain ratio (FTB has no market rate of its own - derived)
+        // through the on-chain ratio (FTB has no market rate of its own - derived).
+        // the card shows the NON-FTB leg only: FTB's price lives exactly once,
+        // in the stat-band tile - never per card, never two different figures.
         var ra = fiatRates && fiatRates[sym[0]], rb = fiatRates && fiatRates[sym[1]];
         if (!rb && ra) rb = { usd: ra.usd / ratio, cny: ra.cny / ratio };
         if (!ra && rb) ra = { usd: rb.usd * ratio, cny: rb.cny * ratio };
-        // the card shows the NON-FTB leg only: FTB's price lives exactly once,
-        // in the stat-band tile - never per card, never two different figures.
-        ref.innerHTML = '';
-        ref.appendChild(refRow(sym[0] === 'FTB' ? sym[1] : sym[0], sym[0] === 'FTB' ? rb : ra));
-        ref.appendChild(el('div', 'rrefnote', 'reference only - coingecko rate. ftb price is in the top band; the ratio is the truth.'));
+        var ro = sym[0] === 'FTB' ? rb : ra;
+        usd.textContent = '1 ' + other + ' = ' + (ro ? fiatFmt(ro.usd, '$') : '-');
+        cny.textContent = '1 ' + other + ' = ' + (ro ? fiatFmt(ro.cny, '¥') : '-');
         // the canonical FTB price tile: FTB leg of this pair feeds it
         if (sym[1] === 'FTB') noteFtbPx(sym[0], rb);
         if (sym[0] === 'FTB') noteFtbPx(sym[1], ra);
         var chg = h.length > 1 ? (ratio / h[0] - 1) * 100 : 0;
         var cls = chg > 0.005 ? 'up' : (chg < -0.005 ? 'dn' : 'flat');
+        chgBox.className = 'rchgbox' + (cls === 'dn' ? ' dn' : '');
+        chgBox.textContent = (cls === 'up' ? '▲ +' : cls === 'dn' ? '▼ -' : '= ') + Math.abs(chg).toFixed(2) + '%';
+        chgBox.title = 'ratio change across ' + h.length + ' reads in this browser';
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
         paintTicker();
-        foot.appendChild(sparkEl(h));
-        foot.appendChild(el('span', 'rchg ' + cls, 'drift ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% · ' + h.length + ' reads'));
       }).catch(function (e) {
         num.textContent = '-';
         inv.textContent = e.message || 'unavailable';

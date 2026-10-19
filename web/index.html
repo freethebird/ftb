@@ -41,7 +41,7 @@
   --faint:#6f6f6f;   /* meta / tertiary */
   --hair:#2b2b2b;    /* hairlines */
   --panel:#151515;   /* subtle fill */
-  --ok:#57d98a;      /* phosphor green - ratios, reference prices, wallet boxes */
+  --ok:#33ff33;      /* the one phosphor green - same as the menu keys, everywhere */
   --dn:#e0655c;      /* negative drift */
   --sel:#ededed;     /* hover/selection ground */
   --sel-ink:#0a0a0a; /* hover/selection mark */
@@ -195,27 +195,18 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .rgrid{display:grid; grid-template-columns:1fr; gap:10px}
 .rcard{border:1px solid var(--ink); padding:14px 15px}
 .rcard .rp{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
-.rcols{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px}
+.rwrap{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px}
 .rcolh{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint);
   margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px}
-/* ratio column: two green boxes, one horizontal line each - never wrapped digits */
+/* ratio + reference: green boxes, one horizontal line each - never wrapped digits */
 .rbox{border:1px solid var(--ok); color:var(--ok); padding:8px 12px;
   font-size:13px; line-height:1.5; white-space:nowrap; overflow:visible}
 .rbox + .rbox{margin-top:8px}
-/* price reference column: one organized, readable grid; values share one size */
-.rref{border:1px solid var(--hair); padding:8px 12px; height:calc(100% - 26px)}
-.rrefrow{display:grid; grid-template-columns:5.5em 1fr 1fr; gap:.4em .8em;
-  font-size:13px; line-height:2.0; color:var(--ok); white-space:nowrap}
-.rrefrow > span:first-child{color:var(--ink-2)}
-.rrefnote{font-size:11px; color:var(--faint); line-height:1.6; margin-top:7px}
-.rcard .rspark{display:flex; justify-content:space-between; align-items:baseline; gap:.6rem;
-  margin-top:11px; padding-top:8px; border-top:1px solid var(--hair);
-  font-size:13px; letter-spacing:.05em; color:var(--ink-2)}
-.rcard .rchg.up{color:var(--ok)}
-.rcard .rchg.up::before{content:"▲ "}
-.rcard .rchg.dn{color:var(--dn)}
-.rcard .rchg.dn::before{content:"▼ "}
-.rcard .rchg.flat::before{content:"= "}
+/* change box: as tall as two small boxes, % and arrow only */
+.rchgbox{border:1px solid var(--ok); color:var(--ok); font-size:13px;
+  display:flex; align-items:center; justify-content:center; letter-spacing:.08em;
+  height:82px}
+.rchgbox.dn{border-color:var(--dn); color:var(--dn)}
 
 /* ---- governance: option bars ---- */
 .gopt{border:1px solid var(--ink); padding:11px 13px; margin-top:10px}
@@ -276,7 +267,6 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   font-family:inherit; font-size:11.5px; letter-spacing:.06em; color:var(--ink-2);
   cursor:pointer; white-space:nowrap}
 .balchip:hover{color:var(--ink); border-bottom-color:var(--ink)}
-svg.sparkline{width:96px; height:16px; vertical-align:middle; color:var(--ink-2)}
 
 /* liquidity panel (pools card) */
 #lp{margin-top:16px; border-top:1px solid var(--hair); padding-top:10px}
