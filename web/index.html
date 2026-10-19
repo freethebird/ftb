@@ -246,6 +246,19 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .tmeta .impact-warn{border:1px dashed var(--ink); padding:0 .4em}
 .ticket .go{width:100%; margin-top:6px; font-size:15px; padding:.55em; letter-spacing:.06em}
 
+/* liquidity panel (pools card) */
+#lp{margin-top:16px; border-top:1px solid var(--hair); padding-top:10px}
+.lp-head{display:flex; align-items:center; gap:.6rem; margin-bottom:8px}
+.lp-head .spacer{flex:1}
+.lpair{border:2px solid var(--ink); padding:14px 16px; margin-top:10px}
+.lpair .lpp{font-size:13px; letter-spacing:.14em; text-transform:uppercase}
+.lpair .lpstats{display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin:10px 0 4px}
+.lpair .lpstats .fs{min-width:0}
+.lpair .lpsub{font-size:12px; color:var(--ink-2); padding:4px 0 8px; border-bottom:1px solid var(--hair)}
+.lpair .lplabel{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-top:12px}
+.lpair .go{width:100%; margin-top:6px; font-size:12px; padding:.7em .8em}
+@media (max-width:560px){ .lpair .lpstats{grid-template-columns:repeat(2,1fr)} }
+
 @media (max-width:460px){
   .idstate{display:none}
   .bar nav{display:none}
@@ -593,6 +606,16 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
             <div class="rp">standby</div>
             <div class="rnum">—</div>
             <div class="rinv" id="ratioHint">loads when the router and pairs are configured for this network</div>
+          </div>
+        </div>
+        <div id="lp">
+          <div class="lp-head">
+            <span class="biglabel">your liquidity</span>
+            <span class="spacer"></span>
+            <button class="linkish" id="lpRefresh">refresh -&gt;</button>
+          </div>
+          <div id="lpBody">
+            <p class="small muted" id="lpHint">connect a wallet to add or remove liquidity.</p>
           </div>
         </div>
       </div>

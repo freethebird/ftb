@@ -430,6 +430,32 @@
     return plan;
   };
 
+  // Add liquidity through the SAME external router (sender variant: CheckWitness(sender)).
+  // The router pulls both tokens from the sender into the pair contract, so the token
+  // contracts witness-check the sender with the router as caller — a plain CalledByEntry
+  // signer fails there. Pass a CustomContracts signer (signerFor) naming the tokens.
+  FtbDapi.prototype.addLiquidity = function (sender, tokenA, tokenB, amtADesired, amtBDesired, amtAMin, amtBMin, deadlineMs, signer) {
+    var plan = this._w(this._need('router'), 'addLiquidity',
+      [A.h160(sender), A.h160(tokenA), A.h160(tokenB),
+       A.int(amtADesired), A.int(amtBDesired), A.int(amtAMin), A.int(amtBMin), A.int(deadlineMs)],
+      'Add liquidity: ' + fromBaseUnits(amtADesired) + ' + ' + fromBaseUnits(amtBDesired) +
+      ' (mins ' + fromBaseUnits(amtAMin) + ' / ' + fromBaseUnits(amtBMin) + ')');
+    if (signer) plan.signers = [signer];
+    return plan;
+  };
+  // Remove liquidity: the LP token IS the pair contract, and the router transfers it from
+  // the sender into the pair to burn — so the pair hash must be in the signer's
+  // allowedContracts (CustomContracts), same witness boundary as addLiquidity.
+  FtbDapi.prototype.removeLiquidity = function (sender, tokenA, tokenB, liquidity, amtAMin, amtBMin, deadlineMs, signer) {
+    var plan = this._w(this._need('router'), 'removeLiquidity',
+      [A.h160(sender), A.h160(tokenA), A.h160(tokenB),
+       A.int(liquidity), A.int(amtAMin), A.int(amtBMin), A.int(deadlineMs)],
+      'Remove liquidity: burn ' + fromBaseUnits(liquidity) + ' LP' +
+      ' (mins ' + fromBaseUnits(amtAMin) + ' / ' + fromBaseUnits(amtBMin) + ')');
+    if (signer) plan.signers = [signer];
+    return plan;
+  };
+
   // build an explicit CustomContracts signer for swap, from the connected address
   FtbDapi.prototype.signerFor = function (address, allowedContracts, opts) {
     // NeoLine expects the signer account as the little-endian script hash hex (verified). Pass
