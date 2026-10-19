@@ -118,17 +118,17 @@
     // the sender while the caller is the router, so sign with CustomContracts naming
     // the router, both tokens, and the pair.
     $('swMeta').textContent = 'preparing the signature…';
+    var q = swQuote; // capture BEFORE quote() re-runs — it nulls swQuote synchronously
     pairOf(a, b).then(function (pair) {
       var allowed = [C.router, a, b]; if (pair) allowed.push(pair);
       var signer = FtbState.dapi.signerFor(FtbState.account, allowed);
-      var plan = FtbState.dapi.swap(FtbState.account, swQuote.amtIn.toString(), swQuote.minOut.toString(), [a, b], deadline, signer);
-      plan.summary = 'Swap ' + fmtT(swQuote.amtIn, swFrom) + ' ' + swFrom + ' for at least ' + fmtT(swQuote.minOut, swTo) + ' ' + swTo;
-      quote(); // repaint the meta line under the modal
-      FtbShell.showPlan('swap ' + fmtT(swQuote.amtIn, swFrom) + ' ' + swFrom,
+      var plan = FtbState.dapi.swap(FtbState.account, q.amtIn.toString(), q.minOut.toString(), [a, b], deadline, signer);
+      plan.summary = 'Swap ' + fmtT(q.amtIn, swFrom) + ' ' + swFrom + ' for at least ' + fmtT(q.minOut, swTo) + ' ' + swTo;
+      FtbShell.showPlan('swap ' + fmtT(q.amtIn, swFrom) + ' ' + swFrom,
         'external flamingo router. quote from live reserves; min received is 0.5% under the quote. verify the router hash in section IV first.',
-        [['you pay', fmtT(swQuote.amtIn, swFrom) + ' ' + swFrom],
-         ['you receive (est.)', fmtT(swQuote.out, swTo) + ' ' + swTo],
-         ['min received', fmtT(swQuote.minOut, swTo) + ' ' + swTo],
+        [['you pay', fmtT(q.amtIn, swFrom) + ' ' + swFrom],
+         ['you receive (est.)', fmtT(q.out, swTo) + ' ' + swTo],
+         ['min received', fmtT(q.minOut, swTo) + ' ' + swTo],
          ['route', swFrom + ' → ' + swTo],
          ['what you sign', plan.summary]],
         plan);
