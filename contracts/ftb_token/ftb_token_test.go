@@ -137,3 +137,60 @@ func TestRenounceRequiresCloseThenIsFinal(t *testing.T) {
 	tok.InvokeFail(t, "only owner", "setMigrator", tok.Hash.BytesBE())
 	_ = e
 }
+
+// The claimed ledger lives in the TOKEN (v2): once an account has minted, it can never
+// mint again — not through the same migrator, and not through a replacement migrator.
+// This is the exact R2 + R3 double-claim path that inflated TestNet supply by ~20.16M.
+func TestClaimedLedgerBlocksDoubleMint(t *testing.T) {
+	e, tok, owner, other := deploy(t)
+	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
+	e.DeployContract(t, cc, nil)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+
+	callerInv := e.NewInvoker(cc.Hash, owner)
+	to := other.ScriptHash()
+
+	// before any mint: not claimed, zero amount
+	tok.Invoke(t, stackitem.Make(false), "claimed", to.BytesBE())
+	tok.Invoke(t, stackitem.Make(0), "claimedAmount", to.BytesBE())
+
+	// first mint marks the ledger with the minted amount
+	callerInv.Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), to.BytesBE(), 5_000)
+	tok.Invoke(t, stackitem.Make(true), "claimed", to.BytesBE())
+	tok.Invoke(t, stackitem.Make(5_000), "claimedAmount", to.BytesBE())
+
+	// a second mint to the SAME account faults, even from the same trusted migrator
+	callerInv.InvokeFail(t, "already claimed", "mint", tok.Hash.BytesBE(), to.BytesBE(), 5_000)
+	// the ledger blocked it BEFORE the cap check: supply did not move
+	tok.Invoke(t, stackitem.Make(5_000), "totalSupply")
+
+	// ...while a DIFFERENT account still mints fine (the ledger is per-account)
+	callerInv.Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), owner.ScriptHash().BytesBE(), 7_000)
+	tok.Invoke(t, stackitem.Make(12_000), "totalSupply")
+}
+
+// The regression test for the live exploit: claim via migrator A, swap in migrator B
+// (setMigrator, owner action), attempt the same claim again -> the token refuses.
+func TestNewMigratorCannotRemintClaimed(t *testing.T) {
+	e, tok, owner, other := deploy(t)
+	cc1 := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
+	e.DeployContract(t, cc1, nil)
+	cc2 := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller2/caller2.go", "testdata/caller2/caller2.yml")
+	e.DeployContract(t, cc2, nil)
+	if cc1.Hash == cc2.Hash {
+		t.Fatal("test setup broken: the two callers must have distinct hashes")
+	}
+
+	to := other.ScriptHash()
+	// migrator A mints
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc1.Hash.BytesBE())
+	e.NewInvoker(cc1.Hash, owner).Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), to.BytesBE(), 5_000)
+
+	// the owner swaps in migrator B (this is what R2 -> R3 did on TestNet)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc2.Hash.BytesBE())
+	// migrator B can mint to a fresh account...
+	e.NewInvoker(cc2.Hash, owner).Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), owner.ScriptHash().BytesBE(), 1_000)
+	// ...but NEVER to an account that already claimed through migrator A
+	e.NewInvoker(cc2.Hash, owner).InvokeFail(t, "already claimed", "mint", tok.Hash.BytesBE(), to.BytesBE(), 5_000)
+	tok.Invoke(t, stackitem.Make(6_000), "totalSupply")
+}

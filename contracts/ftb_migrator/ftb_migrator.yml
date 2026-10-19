@@ -25,3 +25,5 @@ permissions:
     methods:
       - mintForMigration
       - closeMigration
+      # R4: Claimed is a passthrough to the token's canonical ledger
+      - claimed

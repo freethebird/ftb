@@ -35,7 +35,7 @@ type config struct {
 	Wallet        string `json:"wallet"`
 	PasswordEnv   string `json:"password_env"`
 	ContractsDir  string `json:"contracts_dir"`
-	Artifact      string `json:"artifact"` // build artifact basename, e.g. "ballot_r4"
+	Artifact      string `json:"artifact"`        // build artifact basename, e.g. "ballot_r4"
 	MerkleRootHex string `json:"merkle_root_hex"` // the v2 root (0x9a36b6a0…)
 	NumOptions    int    `json:"num_options"`     // same question as R2: the ratio vote, 2 options
 }

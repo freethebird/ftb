@@ -1,0 +1,5 @@
+name: MintCaller2
+permissions:
+  - contract: '*'
+    methods:
+      - mintForMigration

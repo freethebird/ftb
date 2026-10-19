@@ -2,6 +2,12 @@
 // published pre-exploit snapshot, proven by a Merkle proof. The attacker is not in the
 // snapshot, so it cannot claim. This is the ONLY thing allowed to mint FTB.
 //
+// R4: this contract is now a STATELESS proof-checker. It holds no claim ledger of its
+// own — the claimed ledger lives inside the token (the R2+R3 double-claim proved that a
+// ledger the migrator owns dies with the migrator: deploy a new one and every claim
+// reopens). Here we verify the proof and ask the token to mint; the token alone decides
+// who has claimed, across all migrators, forever. Church and state, separated.
+//
 // Leaves are denominated in FLM-equivalent base units (8 decimals). The governance
 // ratio r (DECISIONS.md 18 Oct: 1 FLM/FLOCKS = 0.189832 FTB, i.e. the 100,000,000 FTB
 // hard cap ÷ 526,782,179.10 total FLM-equiv supply) is applied AT MINT TIME:
@@ -29,10 +35,10 @@ import (
 )
 
 var (
-	keyOwner   = []byte{0x01}
-	keyFTB     = []byte{0x02}
-	keyRoot    = []byte{0x03}
-	prefixDone = []byte{0x10}
+	keyOwner = []byte{0x01}
+	keyFTB   = []byte{0x02}
+	keyRoot  = []byte{0x03}
+	// no claim ledger here (R4): claim status lives in the token - see Claimed below.
 )
 
 const (
@@ -91,13 +97,23 @@ func Configure(ftb interop.Hash160, merkleRoot []byte) {
 	runtime.Notify("Configured", ftb, merkleRoot)
 }
 
+// Claimed is a read-only passthrough to the token's canonical claim ledger. Before
+// Configure there is no token, so nothing has been claimed.
 func Claimed(account interop.Hash160) bool {
-	return storage.Get(storage.GetContext(), append(prefixDone, account...)) != nil
+	if len(account) != 20 {
+		panic("claimed: bad account")
+	}
+	ftb := storage.Get(storage.GetContext(), keyFTB)
+	if ftb == nil {
+		return false
+	}
+	return contract.Call(ftb.(interop.Hash160), "claimed", contract.ReadOnly, account).(bool)
 }
 
-// Claim verifies the caller's (account, amount) entitlement against the published root,
-// marks it claimed once, and mints floor(amount × r) FTB to the account — `amount` is
-// the snapshot entitlement in FLM-equivalent base units, r the committed ratio.
+// Claim verifies the caller's (account, amount) entitlement against the published root
+// and mints floor(amount × r) FTB to the account — `amount` is the snapshot entitlement
+// in FLM-equivalent base units, r the committed ratio. The token's claimed ledger makes
+// the mint once-per-account across all migrators; a repeat claim faults there.
 func Claim(account interop.Hash160, amount int, proof [][]byte) {
 	if len(account) != 20 {
 		panic("claim: bad account")
@@ -109,10 +125,6 @@ func Claim(account interop.Hash160, amount int, proof [][]byte) {
 		panic("claim: no witness for account")
 	}
 	ctx := storage.GetContext()
-	doneKey := append(prefixDone, account...)
-	if storage.Get(ctx, doneKey) != nil {
-		panic("claim: already claimed")
-	}
 
 	// leaf = sha256( 0x00 ++ account ++ ":" ++ itoa(amount) ); domain-separated (FTB-11)
 	leafInput := []byte{0x00}
@@ -139,7 +151,6 @@ func Claim(account interop.Hash160, amount int, proof [][]byte) {
 		panic("claim: bad proof")
 	}
 
-	storage.Put(ctx, doneKey, 1)
 	mint := Quote(amount)
 	if mint <= 0 {
 		panic("claim: entitlement converts to zero FTB")

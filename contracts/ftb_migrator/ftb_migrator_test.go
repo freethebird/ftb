@@ -109,3 +109,50 @@ func TestConfigureIsWriteOnce(t *testing.T) {
 	mig.Invoke(t, stackitem.Null{}, "configure", tokC.Hash.BytesBE(), root)
 	mig.InvokeFail(t, "already configured", "configure", tokC.Hash.BytesBE(), root)
 }
+
+// The R2 + R3 live exploit, replayed: a wallet claimed on migrator A, the owner pointed
+// the token at freshly-deployed migrator B, and the same wallet claimed AGAIN because the
+// ledger lived in (and died with) each migrator. In R4 the ledger is in the token, so
+// the second claim faults no matter which migrator carries it.
+func TestSecondMigratorCannotReopenClaims(t *testing.T) {
+	bc, validator := chain.NewSingle(t)
+	e := neotest.NewExecutor(t, bc, validator, validator)
+	owner := e.NewAccount(t)
+
+	tokC := neotest.CompileFile(t, e.Validator.ScriptHash(), "../ftb_token/ftb_token.go", "../ftb_token/ftb_token.yml")
+	e.DeployContract(t, tokC, owner.ScriptHash().BytesBE())
+	tok := e.NewInvoker(tokC.Hash, owner)
+
+	// two migrator deployments, same code, distinct manifest names -> distinct hashes
+	migAC := neotest.CompileFile(t, e.Validator.ScriptHash(), "ftb_migrator.go", "ftb_migrator.yml")
+	e.DeployContract(t, migAC, owner.ScriptHash().BytesBE())
+	migBC := neotest.CompileFile(t, e.Validator.ScriptHash(), "ftb_migrator.go", "ftb_migrator_r4.yml")
+	e.DeployContract(t, migBC, owner.ScriptHash().BytesBE())
+	if migAC.Hash == migBC.Hash {
+		t.Fatal("test setup broken: the two migrators must have distinct hashes")
+	}
+
+	a1 := e.NewAccount(t)
+	leaves := [][]byte{merkle.Leaf(a1.ScriptHash(), big.NewInt(1000))}
+	root, proofs := merkle.Build(leaves)
+	pArg := make([]any, len(proofs[0]))
+	for i, s := range proofs[0] {
+		pArg[i] = s
+	}
+
+	// migrator A live: a1 claims, both migrators read the SAME canonical ledger
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", migAC.Hash.BytesBE())
+	e.NewInvoker(migAC.Hash, owner).Invoke(t, stackitem.Null{}, "configure", tokC.Hash.BytesBE(), root)
+	e.NewInvoker(migAC.Hash, a1).Invoke(t, stackitem.Null{}, "claim", a1.ScriptHash(), 1000, pArg)
+	tok.Invoke(t, stackitem.Make(true), "claimed", a1.ScriptHash().BytesBE())
+
+	// the owner swaps in migrator B (same snapshot root) — the R2 -> R3 move
+	e.NewInvoker(migBC.Hash, owner).Invoke(t, stackitem.Null{}, "configure", tokC.Hash.BytesBE(), root)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", migBC.Hash.BytesBE())
+
+	// B's passthrough already sees a1 as claimed (the ledger is the token's, not A's)
+	e.NewInvoker(migBC.Hash, owner).Invoke(t, stackitem.Make(true), "claimed", a1.ScriptHash())
+	// and the replayed claim faults at the token, not at any migrator state
+	e.NewInvoker(migBC.Hash, a1).InvokeFail(t, "already claimed", "claim", a1.ScriptHash(), 1000, pArg)
+	tok.Invoke(t, stackitem.Make(189), "totalSupply")
+}

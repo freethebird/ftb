@@ -8,6 +8,8 @@ safemethods:
   - balanceOf
   - migrationOpen
   - getMigrator
+  - claimed
+  - claimedAmount
 events:
   - name: Transfer
     parameters:

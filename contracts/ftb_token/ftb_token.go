@@ -5,6 +5,10 @@
 //   - Supply never exceeds maxSupply.
 //   - The ONLY way FTB is created is MintForMigration, callable ONLY by the Migrator,
 //     ONLY while migration is open. After CloseMigration, supply can never grow again.
+//   - The claimed ledger lives HERE, not in the migrator (v2, after the R2+R3 live
+//     double-claim): MintForMigration records every claimant and panics on a repeat,
+//     so replacing or re-pointing the migrator can NEVER reopen a claim. The migrator
+//     is a stateless proof-checker; the token alone decides who has claimed, forever.
 //   - No reward or staking logic lives here. Rewards come from PROVIDING liquidity in
 //     other modules (swap LPs, lend suppliers). Idle FTB earns nothing. It never prints.
 //
@@ -42,6 +46,7 @@ var (
 	keyOwner      = []byte{0x11} // admin (multisig); renounceable
 	keyMigrator   = []byte{0x12} // the only minter
 	keyOpen       = []byte{0x13} // 1 while migration open, 0 once sealed forever
+	prefixClaimed = []byte{0x14} // prefixClaimed + account -> FTB amount claimed (once, ever)
 )
 
 // _deploy sets the owner explicitly from deploy data (MO: visible, no hidden constant).
@@ -119,7 +124,9 @@ func Transfer(from, to interop.Hash160, amount int, data any) bool {
 // ---- the only mint path ----
 
 // MintForMigration is callable ONLY by the registered Migrator, ONLY while open, ONLY
-// under the cap. There is no other way to create FTB.
+// under the cap, and ONLY ONCE per recipient — ever. The claimed ledger is written
+// here, in the token, so no migrator replacement (R2 -> R3 taught us why) can ever
+// mint twice to the same account. There is no other way to create FTB.
 func MintForMigration(to interop.Hash160, amount int) {
 	if len(to) != 20 {
 		panic("mint: bad recipient")
@@ -138,16 +145,39 @@ func MintForMigration(to interop.Hash160, amount int) {
 	if getIntCtx(ctx, keyOpen) == 0 {
 		panic("mint: migration closed")
 	}
+	claimedKey := append(prefixClaimed, to...)
+	if storage.Get(ctx, claimedKey) != nil {
+		panic("mint: already claimed") // once per account, across all migrators, forever
+	}
 	supply := getIntCtx(ctx, keySupply)
 	if supply+amount > maxSupply {
 		panic("mint: exceeds cap") // the hard cap, enforced
 	}
+	storage.Put(ctx, claimedKey, amount)
 	storage.Put(ctx, keySupply, supply+amount)
 	toKey := balanceKey(to)
 	storage.Put(ctx, toKey, getIntCtx(ctx, toKey)+amount)
 	// from == null signals a mint. The Hash160 conversion keeps the compiler's event
 	// inference aligned with the manifest; at runtime a nil slice still emits as null.
 	runtime.Notify("Transfer", interop.Hash160(nil), to, amount)
+}
+
+// Claimed reports whether an account has ever received a migration mint, from ANY
+// migrator. This is the canonical claim status — the migrator's view is a passthrough.
+func Claimed(account interop.Hash160) bool {
+	if len(account) != 20 {
+		panic("claimed: bad account")
+	}
+	return storage.Get(storage.GetContext(), append(prefixClaimed, account...)) != nil
+}
+
+// ClaimedAmount returns how much FTB an account's migration claim minted (0 if none),
+// so the claim ledger is auditable on-chain, not just a flag.
+func ClaimedAmount(account interop.Hash160) int {
+	if len(account) != 20 {
+		panic("claimedAmount: bad account")
+	}
+	return getInt(append(prefixClaimed, account...))
 }
 
 // CloseMigration permanently ends minting. One-way door. After this, no FTB can ever be

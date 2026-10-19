@@ -15,7 +15,6 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/core/state"
 	"github.com/nspcc-dev/neo-go/pkg/encoding/address"
 	"github.com/nspcc-dev/neo-go/pkg/smartcontract/nef"
-	
 )
 
 func main() {
@@ -26,6 +25,8 @@ func main() {
 	sender, err := address.StringToUint160(os.Args[1])
 	check(err)
 	for _, path := range os.Args[2:] {
+		// #nosec G703 G304 -- CLI tool: reading operator-supplied NEF paths from argv
+		// is the entire function of this command; there is no other input source.
 		raw, err := os.ReadFile(path)
 		check(err)
 		n, err := nef.FileFromBytes(raw)
