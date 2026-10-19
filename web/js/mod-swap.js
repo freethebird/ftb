@@ -60,6 +60,9 @@
       var v = BigInt(FtbDapi.util.toBaseUnits(str)); return v > 0n ? v : null;
     } catch (e) { return null; }
   }
+  // max-fill string for an input: raw decimal, NO thousands separators (grp output
+  // would fail parseT). Round-trips exactly through parseT.
+  function fillStr(raw, sym) { return decOf(sym) === 0 ? raw.toString() : FtbDapi.util.fromBaseUnits(raw.toString()); }
   // 0.5% slippage floor. For 0-decimal tokens (NEO) floor() would zero small
   // amounts - no protection at all - so round UP: the min equals the intended
   // whole unit and any drift faults the transaction instead of slipping it.
@@ -78,7 +81,20 @@
   }
   function setFrom(s) { if (s === swTo) swTo = swFrom; swFrom = s; paintSels(); quote(); }
   function setTo(s) { if (s === swFrom) swFrom = swTo; swTo = s; paintSels(); quote(); }
-  function paintSels() { paintSel('swFromSel', swFrom, setFrom); paintSel('swToSel', swTo, setTo); }
+  // wallet balance chip under the pay row: live balance of the selected pay
+  // asset, click fills the input with the full balance (max). Rebuilt on every
+  // token switch; detached chips unregister themselves (ftb-state balChip).
+  var swChipBox = el('div', 'balchip-row');
+  var swAmtEl = $('swAmt');
+  if (swAmtEl && swAmtEl.parentNode) swAmtEl.parentNode.parentNode.insertBefore(swChipBox, swAmtEl.parentNode.nextSibling);
+  function paintPayChip() {
+    swChipBox.innerHTML = '';
+    swChipBox.appendChild(FtbUtil.balChip(TOKENS[swFrom](), swFrom, decOf(swFrom), function (raw) {
+      swAmtEl.value = fillStr(raw, swFrom);
+      quote();
+    }));
+  }
+  function paintSels() { paintSel('swFromSel', swFrom, setFrom); paintSel('swToSel', swTo, setTo); paintPayChip(); }
   function quote() {
     swQuote = null; $('swOut').value = '';
     if (!routerReady()) { $('swMeta').textContent = 'loads when the router hash is configured for this network'; return; }
@@ -137,7 +153,6 @@
   paintSels();
 
   // ---------- pool ratios (asset vs asset; no fiat, no oracle) ----------
-  var SPARK = '▁▂▃▄▅▆▇█';
   var tick = {}, tickBlock = null;
   function paintTicker() {
     var t = $('ticker'); if (!t) return;
@@ -147,10 +162,34 @@
     t.innerHTML = parts.length ? '// market&nbsp; ' + parts.join('<span class="sep">·</span>') : '// market: waiting for the pools';
   }
   function resolveTok(t) { return t === 'FTB' ? C.ftb : (t === 'GAS' ? ((CFG.assets || {}).gas) : (t === 'NEO' ? ((CFG.assets || {}).neo) : t)); }
-  function sparkLine(vals) {
-    if (!vals.length) return '';
+  // inline SVG sparkline: the old block-element glyphs (U+2581-2588) are missing
+  // from some system font fallbacks and rendered as empty squares - vector marks
+  // render identically everywhere, font or no font.
+  function sparkEl(vals) {
+    var NS = 'http://www.w3.org/2000/svg';
+    var w = 96, h = 16, n = vals.length;
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.setAttribute('class', 'sparkline');
+    svg.setAttribute('aria-hidden', 'true');
+    if (!n) return svg;
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), span = (hi - lo) || 1;
-    return vals.map(function (v) { return SPARK[Math.min(7, Math.floor((v - lo) / span * 8))]; }).join('');
+    var y = function (v) { return (h - 2 - ((v - lo) / span) * (h - 4)).toFixed(1); };
+    var d;
+    if (n === 1) d = 'M0 ' + y(vals[0]) + ' L' + w + ' ' + y(vals[0]);
+    else {
+      d = '';
+      vals.forEach(function (v, i) {
+        d += (i ? 'L' : 'M') + ((i / (n - 1)) * w).toFixed(1) + ' ' + y(v);
+      });
+    }
+    var p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('fill', 'none');
+    p.setAttribute('stroke', 'currentColor');
+    p.setAttribute('stroke-width', '1.5');
+    svg.appendChild(p);
+    return svg;
   }
   // ---------- fiat reference rates (Decision 12: display only, never protocol input) ----------
   // Prices come from a public market API (CoinGecko) in the browser and are crossed
@@ -225,7 +264,7 @@
         var cls = chg > 0.005 ? 'up' : (chg < -0.005 ? 'dn' : 'flat');
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
         paintTicker();
-        foot.appendChild(el('span', null, sparkLine(h) || '·'));
+        foot.appendChild(sparkEl(h));
         foot.appendChild(el('span', 'rchg ' + cls, (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% · ' + h.length + ' samples'));
       }).catch(function (e) {
         num.textContent = '-';
@@ -276,11 +315,13 @@
       var r1 = el('div', 'trow');
       r1.appendChild(el('label', null, st.symA + ' in')); r1.firstChild.htmlFor = 'lpAddA';
       st.inAddA = el('input'); st.inAddA.inputMode = 'decimal'; st.inAddA.autocomplete = 'off'; st.inAddA.placeholder = '0.0'; r1.appendChild(st.inAddA);
-      r1.appendChild(el('span', null, '')); card.appendChild(r1);
+      r1.appendChild(FtbUtil.balChip(st.a, st.symA, decOf(st.symA), function (raw) { st.inAddA.value = fillStr(raw, st.symA); quoteAdd(st, 'A'); }));
+      card.appendChild(r1);
       var r2 = el('div', 'trow');
       r2.appendChild(el('label', null, st.symB + ' in')); r2.firstChild.htmlFor = 'lpAddB';
       st.inAddB = el('input'); st.inAddB.inputMode = 'decimal'; st.inAddB.autocomplete = 'off'; st.inAddB.placeholder = '0.0'; r2.appendChild(st.inAddB);
-      r2.appendChild(el('span', null, '')); card.appendChild(r2);
+      r2.appendChild(FtbUtil.balChip(st.b, st.symB, decOf(st.symB), function (raw) { st.inAddB.value = fillStr(raw, st.symB); quoteAdd(st, 'B'); }));
+      card.appendChild(r2);
       st.addMeta = el('div', 'tmeta', 'amounts quote each other from live reserves · mins at 0.5% slippage'); card.appendChild(st.addMeta);
       st.addGo = el('button', 'go', 'add liquidity -&gt;'); st.addGo.textContent = 'add liquidity ->'; card.appendChild(st.addGo);
 
@@ -288,9 +329,10 @@
       var r3 = el('div', 'trow');
       r3.appendChild(el('label', null, 'lp to burn'));
       st.inRm = el('input'); st.inRm.inputMode = 'decimal'; st.inRm.autocomplete = 'off'; st.inRm.placeholder = '0.0'; r3.appendChild(st.inRm);
-      var maxB = el('button', 'linkish', 'max');
-      maxB.addEventListener('click', function () { st.inRm.value = st.lpBal > 0n ? fmt(st.lpBal) : ''; quoteRm(st); });
-      r3.appendChild(maxB); card.appendChild(r3);
+      // the LP token IS the pair contract - its hash resolves asynchronously, so
+      // the chip takes a getter and starts drawing once the pair is known.
+      r3.appendChild(FtbUtil.balChip(function () { return st.pair; }, 'LP', 8, function (raw) { st.inRm.value = FtbDapi.util.fromBaseUnits(raw.toString()); quoteRm(st); }));
+      card.appendChild(r3);
       st.rmMeta = el('div', 'tmeta', 'burns lp tokens, returns both pool assets · mins at 0.5% slippage'); card.appendChild(st.rmMeta);
       st.rmGo = el('button', 'go', 'remove liquidity -&gt;'); st.rmGo.textContent = 'remove liquidity ->'; card.appendChild(st.rmGo);
 
@@ -391,7 +433,7 @@
         st.pair = pair;
         return Promise.all([
           FtbRpc.readInt(pair, 'totalSupply', []),
-          FtbState.account ? FtbRpc.readInt(pair, 'balanceOf', [h160(FtbState.account)]) : Promise.resolve(0n)
+          FtbState.account ? FtbRpc.readInt(pair, 'balanceOf', [h160(FtbState.acctHash160())]) : Promise.resolve(0n)
         ]);
       }).then(function (rr) {
         st.ts = rr[0]; st.lpBal = rr[1];

@@ -268,6 +268,9 @@
     var s = stepBox('1', 'repay how much ftb?');
     var acct = FtbState.acctHash160();
     var input = mkInput('0.0');
+    // wallet balance chip: click fills your full FTB balance - overpaying is
+    // safe, the contract refunds whatever exceeds the debt (repayIn).
+    var chip = FtbUtil.balChip(C.ftb, 'FTB', 8, function (raw) { input.value = fromBase(raw.toString()); });
     FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)]).then(function (d) {
       // interest accrues per block, so the exact debt at read-time is already
       // stale when the tx lands - prefill +0.001 FTB; repayIn refunds the excess.
@@ -283,7 +286,7 @@
         [['amount', a + ' FTB'], ['what you sign', 'ftb.transfer(you -> lend, ' + a + ', "repay")']],
         FtbState.dapi.repay(FtbState.account, toBase(a)));
     }));
-    s.row.appendChild(input); s.row.appendChild(keys);
+    s.row.appendChild(input); s.row.appendChild(chip); s.row.appendChild(keys);
     wiz.appendChild(s.box);
     input.focus();
   }
@@ -294,6 +297,8 @@
     clearWiz();
     var s = stepBox('1', 'how many ftb do you lend to the pool?');
     var input = mkInput('0.0');
+    // wallet balance chip: click lends your full FTB balance.
+    var chip = FtbUtil.balChip(C.ftb, 'FTB', 8, function (raw) { input.value = fromBase(raw.toString()); });
     var note = wizNote(s.box, 'reading the rate…');
     FtbRpc.readInt(C.lend, 'supplyApyBps', []).then(function (v) {
       note.textContent = 'approximate apy right now: ' + (Number(v) / 100).toFixed(2) + '% - it floats with how much of the pool is loaned out (borrow rate × % loaned × 2/3).';
@@ -306,7 +311,7 @@
         [['amount', a + ' FTB'], ['what you sign', 'ftb.transfer(you -> lend, ' + a + ', "supply")']],
         FtbState.dapi.supply(FtbState.account, toBase(a)));
     }));
-    s.row.appendChild(input); s.row.appendChild(keys);
+    s.row.appendChild(input); s.row.appendChild(chip); s.row.appendChild(keys);
     wiz.appendChild(s.box);
     input.focus();
   }

@@ -81,6 +81,48 @@
     (listeners[ev] || []).slice().forEach(function (f) { try { f(a); } catch (e) {} });
   }
 
+  // ---------- balance chips ----------
+  // A clickable "you have X SYM · max" chip beside an amount input: shows the
+  // connected wallet's live balance of one token and, on click, hands the raw
+  // BigInt to onFill (the module formats for its own input - NEO is whole
+  // units). Chips re-read on rpc/account/refresh, so a confirmed transaction
+  // visibly moves the numbers without opening the wallet. Detached chips
+  // unregister themselves via isConnected - wizards rebuild DOM constantly and
+  // must not leak listeners.
+  // tokenish: a Hash160 string, or a zero-arg function returning one (or null)
+  // for handles resolved later (e.g. an LP pair hash loaded asynchronously).
+  var chips = [];
+  function chipSweep() { chips = chips.filter(function (draw) { return draw(); }); }
+  function balChip(tokenish, sym, decimals, onFill) {
+    var chip = el('button', 'balchip', sym + ' …');
+    chip.type = 'button';
+    var raw = null;
+    function draw() {
+      if (!chip.isConnected) return false; // removed from the DOM - drop me
+      var acct = FtbState.acctHash160();
+      var tok = typeof tokenish === 'function' ? tokenish() : tokenish;
+      if (!acct || !tok || !window.FtbRpc || !FtbRpc.current()) {
+        raw = null;
+        chip.textContent = acct ? (sym + ' …') : 'connect to see your ' + sym;
+        return true;
+      }
+      FtbRpc.readInt(tok, 'balanceOf', [{ type: 'Hash160', value: acct }]).then(function (v) {
+        if (!chip.isConnected) return;
+        raw = v;
+        chip.textContent = 'you have ' + (decimals === 0 ? grp(v.toString()) : fmt(v)) + ' ' + sym + ' · max';
+        chip.title = 'click to fill the input with your full ' + sym + ' balance';
+      }).catch(function () { if (chip.isConnected) chip.textContent = sym + ' unreadable'; });
+      return true;
+    }
+    chip.addEventListener('click', function () {
+      if (!FtbState.account) { if (window.FtbWallet) FtbWallet.needConnect(); return; }
+      if (raw !== null && raw > 0n) onFill(raw);
+    });
+    chips.push(draw);
+    draw();
+    return chip;
+  }
+
   // ---------- proofs (lazy, fetched once, indexed once) ----------
   var proofsCache = null, proofsIdx = null;
   function proofs() {
@@ -111,7 +153,7 @@
     return Promise.resolve(BigInt(FtbDapi.util.ftbOf(flmBase)));
   }
 
-  window.FtbUtil = { $: $, el: el, short: short, grp: grp, fmt: fmt, tileNum: tileNum, errText: errText, coalesce: coalesce };
+  window.FtbUtil = { $: $, el: el, short: short, grp: grp, fmt: fmt, tileNum: tileNum, errText: errText, coalesce: coalesce, balChip: balChip };
   window.FtbState = {
     CFG: CFG,
     C: C,
@@ -128,4 +170,10 @@
       return this.account ? '0x' + FtbDapi.util.addressToScriptHashHex(this.account, { le: true }) : null;
     }
   };
+  // refresh events arrive in bursts around every signed tx - one coalesced
+  // sweep for all chips, same discipline as the module boards.
+  var chipSweepC = coalesce(chipSweep, 3000);
+  on('rpc', chipSweepC);
+  on('account', chipSweepC);
+  on('refresh', chipSweepC);
 })();
