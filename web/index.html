@@ -41,6 +41,7 @@
   --faint:#6f6f6f;   /* meta / tertiary */
   --hair:#2b2b2b;    /* hairlines */
   --panel:#151515;   /* subtle fill */
+  --ok:#57d98a;      /* phosphor green - ratios and reference prices */
   --sel:#ededed;     /* hover/selection ground */
   --sel-ink:#0a0a0a; /* hover/selection mark */
   --mono:'Space Mono',"Courier New",Courier,"DejaVu Sans Mono","Liberation Mono",monospace;
@@ -190,15 +191,25 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .mkt-h{display:flex; justify-content:space-between; align-items:baseline; gap:.6rem;
   border-bottom:1px solid var(--ink); padding-bottom:4px; margin-bottom:12px;
   font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
-.rgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px}
-.rcard{border:1px solid var(--ink); padding:12px 13px}
+.rgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:10px}
+.rcard{border:1px solid var(--ink); padding:14px 15px}
 .rcard .rp{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
-.rcard .rnum{font-family:var(--disp); font-size:38px; line-height:1.05; margin:7px 0 3px;
-  word-break:break-all}
-.rcard .rinv{font-size:13px; color:var(--ink-2); line-height:1.6}
-.rcard .rfiat{font-size:11.5px; color:var(--faint); line-height:1.7; margin-top:2px}
+.rcols{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px}
+.rcolh{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint);
+  margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px}
+/* ratio column: two equal green boxes, main over inverse */
+.rbox{border:1px solid var(--ok); color:var(--ok); padding:10px 12px;
+  font-size:16.5px; line-height:1.4; word-break:break-word}
+.rbox + .rbox{margin-top:8px}
+.rbox .rb-u{color:var(--ink-2)}
+/* price reference column: one organized, readable grid */
+.rref{border:1px solid var(--hair); padding:10px 12px; height:calc(100% - 26px)}
+.rrefrow{display:grid; grid-template-columns:5.5em 1fr 1fr; gap:.4em .8em;
+  font-size:14px; line-height:2.0; color:var(--ok)}
+.rrefrow > span:first-child{color:var(--ink-2)}
+.rrefnote{font-size:11px; color:var(--faint); line-height:1.6; margin-top:7px}
 .rcard .rspark{display:flex; justify-content:space-between; align-items:baseline; gap:.6rem;
-  margin-top:9px; padding-top:7px; border-top:1px solid var(--hair);
+  margin-top:11px; padding-top:8px; border-top:1px solid var(--hair);
   font-size:13px; letter-spacing:.05em; color:var(--ink-2)}
 .rcard .rchg.up::before{content:"▲ "}
 .rcard .rchg.dn::before{content:"▼ "}
@@ -428,11 +439,7 @@ body{font-size:15px}
 .toktab .rcard::before{content:counter(row,decimal-leading-zero); color:var(--faint);
   font-size:11px}
 .toktab .rcard .rp{font-size:12px; letter-spacing:.08em; color:var(--ink)}
-.toktab .rcard .rnum{font-size:21px; margin:0}
-.toktab .rcard .rinv{font-size:11.5px}
-.tokhead{display:grid; grid-template-columns:4ch 1.2fr 1fr 1fr auto; gap:10px;
-  padding:0 2px 6px; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--faint); border-bottom:3px double var(--ink)}
+.toktab .rcard .rinv{font-size:12px; color:var(--ink-2); line-height:1.6; margin-top:6px}
 
 /* ---- earn over lend: same single column as every other module ---- */
 .earngrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
@@ -566,6 +573,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">-</div></div>
     <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">-</div></div>
     <div class="tile"><div class="tl">tvl locked</div><div class="tn" id="tTvl">-</div><div class="tl" id="tTvlSub"></div></div>
+    <div class="tile"><div class="tl">ftb price</div><div class="tn" id="tFtbPx">-</div><div class="tl" id="tFtbPxSub"></div></div>
   </div>
 
   <div class="ticker" id="ticker" style="margin-top:12px">// market: waiting for the pools</div>
@@ -612,11 +620,9 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         <button class="linkish" id="ratioBtn">refresh -&gt;</button>
       </div>
       <div class="card-b">
-        <div class="tokhead"><span>#</span><span>pair</span><span>ratio</span><span>inverse</span><span>drift</span></div>
         <div class="rgrid" id="ratioBody">
           <div class="rcard">
             <div class="rp">standby</div>
-            <div class="rnum">-</div>
             <div class="rinv" id="ratioHint">loads when the router and pairs are configured for this network</div>
           </div>
         </div>

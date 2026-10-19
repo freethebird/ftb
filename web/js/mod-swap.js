@@ -223,6 +223,34 @@
     return cur + (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(3) : v.toPrecision(3));
   }
 
+  // ---------- the one canonical FTB price (stat-band tile, next to TVL) ----------
+  // Each FTB pair derives an FTB fiat figure from its other leg; when pools
+  // disagree the tile must not pick whichever card resolved last. The GAS leg
+  // wins - GAS is the unit of account on Neo N3 - and the tooltip says which
+  // pool derived the number. Reference only; never a protocol input.
+  var ftbPx = { gas: null, other: null };
+  function paintFtbPx() {
+    var e = $('tFtbPx'); if (!e) return;
+    var v = ftbPx.gas || ftbPx.other;
+    if (!v) return;
+    e.textContent = fiatFmt(v.usd, '$');
+    var sub = $('tFtbPxSub'); if (sub) sub.textContent = fiatFmt(v.cny, '¥');
+    e.title = '1 FTB - derived from the ' + (ftbPx.gas ? 'GAS/FTB' : 'FTB/NEO') +
+      ' pool ratio x the coingecko reference rate. display only, never a protocol input.';
+  }
+  function noteFtbPx(symA, fiatOfFtb) {
+    if (!fiatOfFtb) return;
+    if (symA === 'GAS') ftbPx.gas = fiatOfFtb; else ftbPx.other = fiatOfFtb;
+    paintFtbPx();
+  }
+  function refRow(sym, f) {
+    var r = el('div', 'rrefrow');
+    r.appendChild(el('span', null, '1 ' + sym));
+    r.appendChild(el('span', null, f ? fiatFmt(f.usd, '$') : '-'));
+    r.appendChild(el('span', null, f ? fiatFmt(f.cny, '¥') : '-'));
+    return r;
+  }
+
   function refreshRatios() {
     var body = $('ratioBody'); if (!body) return;
     var pairs = CFG.pairs || [];
@@ -235,10 +263,18 @@
     pairs.forEach(function (p) {
       var sym = p.label.split('/'), a = resolveTok(p.a), b = resolveTok(p.b);
       var card = el('div', 'rcard');
-      card.appendChild(el('div', 'rp', '1 ' + sym[0] + ' ='));
-      var num = el('div', 'rnum', 'reading…'); card.appendChild(num);
-      var inv = el('div', 'rinv', ''); card.appendChild(inv);
-      var fiatEl = el('div', 'rfiat', ''); card.appendChild(fiatEl);
+      card.appendChild(el('div', 'rp', sym[0] + ' / ' + sym[1] + ' pool'));
+      var cols = el('div', 'rcols');
+      var colR = el('div', 'rcol');
+      colR.appendChild(el('div', 'rcolh', 'ratio'));
+      var num = el('div', 'rbox', 'reading…'); colR.appendChild(num);
+      var inv = el('div', 'rbox', ''); colR.appendChild(inv);
+      cols.appendChild(colR);
+      var colP = el('div', 'rcol');
+      colP.appendChild(el('div', 'rcolh', 'price reference · usd / cny'));
+      var ref = el('div', 'rref'); colP.appendChild(ref);
+      cols.appendChild(colP);
+      card.appendChild(cols);
       var foot = el('div', 'rspark'); card.appendChild(foot);
       body.appendChild(card);
       FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
@@ -249,17 +285,20 @@
         var h = hist[p.label] || []; h.push(ratio); if (h.length > 40) h = h.slice(h.length - 40);
         hist[p.label] = h;
         try { localStorage.setItem('ftb_ratios', JSON.stringify(hist)); } catch (e) {}
-        num.textContent = ratio.toPrecision(6) + ' ' + sym[1];
+        num.textContent = '1 ' + sym[0] + ' = ' + ratio.toPrecision(6) + ' ' + sym[1];
         inv.textContent = '1 ' + sym[1] + ' = ' + (1 / ratio).toPrecision(6) + ' ' + sym[0];
         // fiat reference: the leg with a public market rate prices the other leg
         // through the on-chain ratio (FTB has no market rate of its own - derived)
         var ra = fiatRates && fiatRates[sym[0]], rb = fiatRates && fiatRates[sym[1]];
         if (!rb && ra) rb = { usd: ra.usd / ratio, cny: ra.cny / ratio };
         if (!ra && rb) ra = { usd: rb.usd * ratio, cny: rb.cny * ratio };
-        var fp = [];
-        if (ra) fp.push('1 ' + sym[0] + ' ≈ ' + fiatFmt(ra.usd, '$') + ' · ' + fiatFmt(ra.cny, '¥'));
-        if (rb) fp.push('1 ' + sym[1] + ' ≈ ' + fiatFmt(rb.usd, '$') + ' · ' + fiatFmt(rb.cny, '¥'));
-        fiatEl.textContent = fp.length ? fp.join('  ·  ') + ' - reference' : '';
+        ref.innerHTML = '';
+        ref.appendChild(refRow(sym[0], ra));
+        ref.appendChild(refRow(sym[1], rb));
+        ref.appendChild(el('div', 'rrefnote', 'reference only - coingecko rate x the live pool ratio. the ratio is the truth.'));
+        // the canonical FTB price tile: FTB leg of this pair feeds it
+        if (sym[1] === 'FTB') noteFtbPx(sym[0], rb);
+        if (sym[0] === 'FTB') noteFtbPx(sym[1], ra);
         var chg = h.length > 1 ? (ratio / h[0] - 1) * 100 : 0;
         var cls = chg > 0.005 ? 'up' : (chg < -0.005 ? 'dn' : 'flat');
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
