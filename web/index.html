@@ -41,7 +41,8 @@
   --faint:#6f6f6f;   /* meta / tertiary */
   --hair:#2b2b2b;    /* hairlines */
   --panel:#151515;   /* subtle fill */
-  --ok:#57d98a;      /* phosphor green - ratios and reference prices */
+  --ok:#57d98a;      /* phosphor green - ratios, reference prices, wallet boxes */
+  --dn:#e0655c;      /* negative drift */
   --sel:#ededed;     /* hover/selection ground */
   --sel-ink:#0a0a0a; /* hover/selection mark */
   --mono:'Space Mono',"Courier New",Courier,"DejaVu Sans Mono","Liberation Mono",monospace;
@@ -191,27 +192,28 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .mkt-h{display:flex; justify-content:space-between; align-items:baseline; gap:.6rem;
   border-bottom:1px solid var(--ink); padding-bottom:4px; margin-bottom:12px;
   font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
-.rgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:10px}
+.rgrid{display:grid; grid-template-columns:1fr; gap:10px}
 .rcard{border:1px solid var(--ink); padding:14px 15px}
 .rcard .rp{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
 .rcols{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px}
 .rcolh{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint);
   margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px}
-/* ratio column: two equal green boxes, main over inverse */
-.rbox{border:1px solid var(--ok); color:var(--ok); padding:10px 12px;
-  font-size:16.5px; line-height:1.4; word-break:break-word}
+/* ratio column: two green boxes, one horizontal line each - never wrapped digits */
+.rbox{border:1px solid var(--ok); color:var(--ok); padding:8px 12px;
+  font-size:13px; line-height:1.5; white-space:nowrap; overflow:visible}
 .rbox + .rbox{margin-top:8px}
-.rbox .rb-u{color:var(--ink-2)}
-/* price reference column: one organized, readable grid */
-.rref{border:1px solid var(--hair); padding:10px 12px; height:calc(100% - 26px)}
+/* price reference column: one organized, readable grid; values share one size */
+.rref{border:1px solid var(--hair); padding:8px 12px; height:calc(100% - 26px)}
 .rrefrow{display:grid; grid-template-columns:5.5em 1fr 1fr; gap:.4em .8em;
-  font-size:14px; line-height:2.0; color:var(--ok)}
+  font-size:13px; line-height:2.0; color:var(--ok); white-space:nowrap}
 .rrefrow > span:first-child{color:var(--ink-2)}
 .rrefnote{font-size:11px; color:var(--faint); line-height:1.6; margin-top:7px}
 .rcard .rspark{display:flex; justify-content:space-between; align-items:baseline; gap:.6rem;
   margin-top:11px; padding-top:8px; border-top:1px solid var(--hair);
   font-size:13px; letter-spacing:.05em; color:var(--ink-2)}
+.rcard .rchg.up{color:var(--ok)}
 .rcard .rchg.up::before{content:"▲ "}
+.rcard .rchg.dn{color:var(--dn)}
 .rcard .rchg.dn::before{content:"▼ "}
 .rcard .rchg.flat::before{content:"= "}
 
@@ -239,10 +241,18 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .ticker b{color:var(--ink); font-weight:400}
 .ticker .sep{color:var(--faint); margin:0 .8em}
 
-/* ---- balances strip (funds panel, one line, no ceremony) ---- */
-.bal{display:flex; flex-wrap:wrap; gap:.4rem 1.4rem; margin-top:12px; padding:8px 0;
-  border-bottom:1px solid var(--hair); font-size:12.5px; color:var(--ink-2); letter-spacing:.04em}
-.bal b{color:var(--ink); font-weight:400}
+/* ---- balances strip: one green box per asset, click fills the swap ticket ---- */
+.bal{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:12px; padding:8px 0;
+  border-bottom:1px solid var(--hair); font-size:13px; color:var(--ink-2); letter-spacing:.04em;
+  align-items:center}
+.bal .wbox{border:1px solid var(--ok); color:var(--ok); padding:3px 12px; cursor:pointer;
+  white-space:nowrap; background:none}
+.bal .wbox b{color:var(--ok); font-weight:400}
+.bal .wbox:hover{background:var(--ok); color:var(--paper)}
+.bal .wbox:hover b{color:var(--paper)}
+.maxbox{border:1px solid var(--ok); background:none; color:var(--ok); font-family:inherit;
+  font-size:11.5px; padding:.25em .8em; cursor:pointer; letter-spacing:.14em; text-transform:uppercase}
+.maxbox:hover{background:var(--ok); color:var(--paper)}
 
 /* ---- swap ticket (THORSwap/Hyperliquid order panel, typewriter skin) ---- */
 .ticket{border:2px solid var(--ink); padding:16px; margin-top:14px}
@@ -262,7 +272,6 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .ticket .go{width:100%; margin-top:6px; font-size:15px; padding:.55em; letter-spacing:.06em}
 
 /* wallet balance chip: live balance beside an input, click = fill max */
-.balchip-row{padding:2px 0 0}
 .balchip{background:none; border:0; border-bottom:1px dashed var(--ink-2); padding:0 0 1px;
   font-family:inherit; font-size:11.5px; letter-spacing:.06em; color:var(--ink-2);
   cursor:pointer; white-space:nowrap}
@@ -409,6 +418,7 @@ body{font-size:15px}
 .tile{border:1px solid var(--ink); padding:10px 10px}
 .tile .tl{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
 .tile .tn{font-family:var(--disp); font-size:15px; line-height:1.3; white-space:nowrap}
+.tile .tnline{font-family:var(--disp); font-size:15px; line-height:1.5; white-space:nowrap}
 
 /* ---- cards (the Flamingo panel: titled card, content inside) ---- */
 .card{border:1px solid var(--ink); margin-top:26px; background:var(--paper)}
@@ -572,8 +582,8 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <div class="tile"><div class="tl">weight voted</div><div class="tn" id="tVoted">-</div></div>
     <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">-</div></div>
     <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">-</div></div>
-    <div class="tile"><div class="tl">tvl locked</div><div class="tn" id="tTvl">-</div><div class="tl" id="tTvlSub"></div></div>
-    <div class="tile"><div class="tl">ftb price</div><div class="tn" id="tFtbPx">-</div><div class="tl" id="tFtbPxSub"></div></div>
+    <div class="tile"><div class="tl">tvl locked</div><div class="tnstack" id="tTvl"><div class="tnline">-</div></div></div>
+    <div class="tile"><div class="tl">ftb price</div><div class="tn" id="tFtbPx">-</div></div>
   </div>
 
   <div class="ticker" id="ticker" style="margin-top:12px">// market: waiting for the pools</div>
@@ -587,10 +597,9 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       <div class="card-b">
         <div class="bal" id="balStrip" hidden>
           <span>wallet:</span>
-          <span>FTB <b id="balFtb">-</b></span>
-          <span>NEO <b id="balNeo">-</b></span>
-          <span>GAS <b id="balGas">-</b></span>
-          <span>claimable <b id="balClaim">-</b></span>
+          <span class="wbox" data-sym="FTB" title="click to swap FTB ->">FTB <b id="balFtb">-</b></span>
+          <span class="wbox" data-sym="NEO" title="click to swap NEO ->">NEO <b id="balNeo">-</b></span>
+          <span class="wbox" data-sym="GAS" title="click to swap GAS ->">GAS <b id="balGas">-</b></span>
         </div>
         <div id="swap">
           <div class="ticket" style="border:0; padding:0">

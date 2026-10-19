@@ -2,7 +2,7 @@
 // Stat tiles for the token itself plus the connected wallet's balance strip.
 //
 // Owns (writes only these): tiles #tSupply, #tCap, #tBlock, and the balance
-// strip #balStrip (#balFtb, #balNeo, #balGas, #balClaim). Reads overlap freely
+// strip #balStrip (#balFtb, #balNeo, #balGas). Reads overlap freely
 // (totalSupply / maxSupply are also read by mod-claim and mod-verify - each
 // module answers to its own corner of the page).
 (function () {
@@ -23,6 +23,9 @@
   }
 
   // ---------- your wallet strip (once connected) ----------
+  // Three green boxes: FTB / NEO / GAS. Claimable state is deliberately NOT
+  // here - claiming is a one-time event, the claim module owns it. Clicking a
+  // box is wired by mod-swap (it owns the ticket the click fills).
   function refreshBalances() {
     var account = FtbState.account;
     if (!account || !FtbState.configured || !FtbRpc.current()) return;
@@ -33,15 +36,6 @@
     if (neo) FtbRpc.readInt(neo, 'balanceOf', h).then(function (v) { $('balNeo').textContent = FtbUtil.grp(v.toString()); }).catch(function () {}); // NEO: whole units, no scaling
     var gas = (CFG.assets || {}).gas;
     if (gas) FtbRpc.readInt(gas, 'balanceOf', h).then(function (v) { $('balGas').textContent = fmt(v); }).catch(function () {});
-    FtbState.proofs().then(function () {
-      var en = FtbState.entryFor(account);
-      if (!en) { $('balClaim').textContent = 'not in snapshot'; return; }
-      FtbRpc.read(C.migrator, 'claimed', h).then(function (st) {
-        var it = st && st[0], c = it && (it.type === 'Boolean' ? it.value : (it.type === 'Integer' ? parseInt(it.value || '0', 10) > 0 : (it.value && it.value !== '')));
-        if (c) { $('balClaim').textContent = 'claimed ✓'; return; }
-        FtbState.quoteFtb(en.amount).then(function (q) { $('balClaim').textContent = fmt(q) + ' FTB'; });
-      }).catch(function () {});
-    }).catch(function () {});
   }
 
   FtbState.on('rpc', refreshTiles);

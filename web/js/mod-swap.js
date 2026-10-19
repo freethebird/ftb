@@ -4,7 +4,7 @@
 //
 // Owns (writes only these): #swap (#swAmt, #swFromSel, #swToSel, #swOut,
 // #swMeta, #swGo), #market (#ratioBody, #ratioHint, #ratioBtn), #ticker, and the
-// TVL tile (#tTvl + its subline #tTvlSub). TVL is protocol-wide: lend pool assets
+// TVL tile (#tTvl, three stacked lines: FTB / NEO / GAS). TVL is protocol-wide: lend pool assets
 // headline, NEO/GAS collateral subline, pool reserves add when a router is live.
 (function () {
   'use strict';
@@ -81,20 +81,36 @@
   }
   function setFrom(s) { if (s === swTo) swTo = swFrom; swFrom = s; paintSels(); quote(); }
   function setTo(s) { if (s === swFrom) swFrom = swTo; swTo = s; paintSels(); quote(); }
-  // wallet balance chip under the pay row: live balance of the selected pay
-  // asset, click fills the input with the full balance (max). Rebuilt on every
-  // token switch; detached chips unregister themselves (ftb-state balChip).
-  var swChipBox = el('div', 'balchip-row');
-  var swAmtEl = $('swAmt');
-  if (swAmtEl && swAmtEl.parentNode) swAmtEl.parentNode.parentNode.insertBefore(swChipBox, swAmtEl.parentNode.nextSibling);
-  function paintPayChip() {
-    swChipBox.innerHTML = '';
-    swChipBox.appendChild(FtbUtil.balChip(TOKENS[swFrom](), swFrom, decOf(swFrom), function (raw) {
-      swAmtEl.value = fillStr(raw, swFrom);
+  function paintSels() { paintSel('swFromSel', swFrom, setFrom); paintSel('swToSel', swTo, setTo); }
+  // MAX box on the pay row: reads the wallet's live balance of the selected pay
+  // asset and fills the input with all of it. Balances already show in the
+  // wallet strip above - no duplicate number under the input.
+  function fillMax(sym) {
+    if (!FtbState.account) { FtbWallet.needConnect(); return; }
+    if (!FtbRpc.current()) return;
+    FtbRpc.readInt(TOKENS[sym](), 'balanceOf', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (v) {
+      if (v <= 0n) { $('swMeta').textContent = 'no ' + sym + ' in the connected wallet'; return; }
+      $('swAmt').value = fillStr(v, sym);
       quote();
-    }));
+    }).catch(function () {});
   }
-  function paintSels() { paintSel('swFromSel', swFrom, setFrom); paintSel('swToSel', swTo, setTo); paintPayChip(); }
+  var swAmtEl = $('swAmt');
+  var maxBox = el('button', 'maxbox', 'max');
+  maxBox.type = 'button';
+  maxBox.title = 'fill the whole wallet balance of the selected pay asset';
+  maxBox.addEventListener('click', function () { fillMax(swFrom); });
+  if (swAmtEl && swAmtEl.parentNode) swAmtEl.parentNode.insertBefore(maxBox, swAmtEl.nextSibling);
+  // wallet strip boxes (owned by mod-token): a click selects that asset as the
+  // pay token and fills the ticket with the full balance - one gesture from
+  // "I see my balance" to "ticket ready to quote".
+  document.querySelectorAll('#balStrip .wbox').forEach(function (box) {
+    box.addEventListener('click', function () {
+      var sym = box.getAttribute('data-sym');
+      if (!TOKENS[sym]) return;
+      if (sym !== swFrom) setFrom(sym);
+      fillMax(sym);
+    });
+  });
   function quote() {
     swQuote = null; $('swOut').value = '';
     if (!routerReady()) { $('swMeta').textContent = 'loads when the router hash is configured for this network'; return; }
@@ -233,8 +249,7 @@
     var e = $('tFtbPx'); if (!e) return;
     var v = ftbPx.gas || ftbPx.other;
     if (!v) return;
-    e.textContent = fiatFmt(v.usd, '$');
-    var sub = $('tFtbPxSub'); if (sub) sub.textContent = fiatFmt(v.cny, '¥');
+    e.textContent = fiatFmt(v.usd, '$') + ' · ' + fiatFmt(v.cny, '¥');
     e.title = '1 FTB - derived from the ' + (ftbPx.gas ? 'GAS/FTB' : 'FTB/NEO') +
       ' pool ratio x the coingecko reference rate. display only, never a protocol input.';
   }
@@ -292,10 +307,11 @@
         var ra = fiatRates && fiatRates[sym[0]], rb = fiatRates && fiatRates[sym[1]];
         if (!rb && ra) rb = { usd: ra.usd / ratio, cny: ra.cny / ratio };
         if (!ra && rb) ra = { usd: rb.usd * ratio, cny: rb.cny * ratio };
+        // the card shows the NON-FTB leg only: FTB's price lives exactly once,
+        // in the stat-band tile - never per card, never two different figures.
         ref.innerHTML = '';
-        ref.appendChild(refRow(sym[0], ra));
-        ref.appendChild(refRow(sym[1], rb));
-        ref.appendChild(el('div', 'rrefnote', 'reference only - coingecko rate x the live pool ratio. the ratio is the truth.'));
+        ref.appendChild(refRow(sym[0] === 'FTB' ? sym[1] : sym[0], sym[0] === 'FTB' ? rb : ra));
+        ref.appendChild(el('div', 'rrefnote', 'reference only - coingecko rate. ftb price is in the top band; the ratio is the truth.'));
         // the canonical FTB price tile: FTB leg of this pair feeds it
         if (sym[1] === 'FTB') noteFtbPx(sym[0], rb);
         if (sym[0] === 'FTB') noteFtbPx(sym[1], ra);
@@ -304,7 +320,7 @@
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
         paintTicker();
         foot.appendChild(sparkEl(h));
-        foot.appendChild(el('span', 'rchg ' + cls, (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% · ' + h.length + ' samples'));
+        foot.appendChild(el('span', 'rchg ' + cls, 'drift ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% · ' + h.length + ' reads'));
       }).catch(function (e) {
         num.textContent = '-';
         inv.textContent = e.message || 'unavailable';
@@ -501,13 +517,11 @@
   // read each, no enumeration). No fiat conversion anywhere (the invariant stands).
   function refreshTvl() {
     var e = $('tTvl'); if (!e) return;
-    var sub = $('tTvlSub');
     if (!FtbRpc.current()) return;
     var lend = C.lend, hasLend = !!(lend && lend.indexOf('0x0000') !== 0);
     var router = C.router, hasRouter = !!(router && router.indexOf('0x0000') !== 0);
     if (!hasLend && !hasRouter) {
-      e.textContent = '0 FTB';
-      if (sub) sub.textContent = '';
+      e.innerHTML = '<div class="tnline">0 FTB</div>';
       e.title = 'no lend module or router on this network yet - TVL reads live the moment value is locked.';
       return;
     }
@@ -542,13 +556,20 @@
         else if (tags[i] === 'neo') neo = r;
         else gas = r;
       });
-      FtbUtil.tileNum(e, ftb, ' FTB');
-      if (sub) sub.textContent = hasLend ? '+ ' + FtbUtil.grp(neo.toString()) + ' NEO · ' + fmt(gas) + ' GAS collateral' : '';
-      e.title = 'exact: ' + fmt(ftb) + ' FTB. total value locked, per asset: FTB in the lend pool (cash + outstanding borrows)' +
+      // three stacked lines, one size, one color: FTB headline, then the NEO
+      // and GAS locked as loan collateral. exact figures in the tooltip.
+      function short2(base) { var f = fmt(base).split('.'); return f.length > 1 && f[1].length > 2 ? f[0] + '.' + f[1].slice(0, 2) : f.join('.'); }
+      e.innerHTML = '';
+      e.appendChild(el('div', 'tnline', short2(ftb) + ' FTB'));
+      if (hasLend) {
+        e.appendChild(el('div', 'tnline', FtbUtil.grp(neo.toString()) + ' NEO'));
+        e.appendChild(el('div', 'tnline', short2(gas) + ' GAS'));
+      }
+      e.title = 'total value locked, per asset: FTB in the lend pool (cash + outstanding borrows)' +
         (hasRouter ? ' + FTB-side pool reserves' : '') +
         (hasLend ? '; NEO and GAS locked as loan collateral' : '') +
         '. ratios only, no fiat.' + (failed ? ' (one leg unreadable right now)' : '');
-    }).catch(function () { e.textContent = '-'; e.title = 'TVL unreadable'; });
+    }).catch(function () { e.innerHTML = '<div class="tnline">-</div>'; e.title = 'TVL unreadable'; });
   }
 
   FtbState.on('rpc', function () {
