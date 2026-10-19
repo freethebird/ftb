@@ -27,6 +27,14 @@
     }).catch(function (e) { delete pairCache[key]; throw e; });
   }
 
+  // getReserves returns ONE stack item — a VM Array of two Integers — not two
+  // separate items. Unwrap it once here; every reader (quote, ratios, LP) uses this.
+  function reservesOf(st) {
+    var v = (st && st[0] && st[0].value) || [];
+    if (!Array.isArray(v) || v.length < 2 || v[0].value == null) throw new Error('bad reserves shape');
+    return [BigInt(v[0].value), BigInt(v[1].value)];
+  }
+
   // ---------- swap ticket (enabled only when the router is configured) ----------
   // NEO is 0 decimals (whole, indivisible units) — every parse/format goes through
   // fmtT/parseT with the token's own decimals; quote math stays in raw base units.
@@ -64,7 +72,7 @@
     var a = TOKENS[swFrom](), b = TOKENS[swTo]();
     $('swMeta').textContent = 'quoting…';
     FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
-      var rA = BigInt(st[0].value), rB = BigInt(st[1].value); // verify order against the deployed pair
+      var rr = reservesOf(st), rA = rr[0], rB = rr[1]; // order matches the queried tokens
       if (rA === 0n || rB === 0n) throw new Error('pool empty');
       var out = (amtIn * 997n * rB) / (rA * 1000n + amtIn * 997n);
       var minOut = out * 995n / 1000n;
@@ -178,7 +186,8 @@
       var foot = el('div', 'rspark'); card.appendChild(foot);
       body.appendChild(card);
       FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
-        var rA = whole(BigInt(st[0].value), sym[0]), rB = whole(BigInt(st[1].value), sym[1]);
+        var rr = reservesOf(st);
+        var rA = whole(rr[0], sym[0]), rB = whole(rr[1], sym[1]);
         if (!(rA > 0 && rB > 0)) throw new Error('pool empty');
         var ratio = rB / rA; // display-only: whole units of B per 1 A
         var h = hist[p.label] || []; h.push(ratio); if (h.length > 40) h = h.slice(h.length - 40);
@@ -358,7 +367,8 @@
     lpStates.forEach(function (st) {
       var h160 = function (h) { return { type: 'Hash160', value: h }; };
       FtbRpc.read(C.router, 'getReserves', [h160(st.a), h160(st.b)]).then(function (rs) {
-        st.rA = BigInt(rs[0].value); st.rB = BigInt(rs[1].value);
+        var rr = reservesOf(rs);
+        st.rA = rr[0]; st.rB = rr[1];
         return pairOf(st.a, st.b);
       }).then(function (pair) {
         st.pair = pair;
