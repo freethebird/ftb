@@ -195,18 +195,28 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .rgrid{display:grid; grid-template-columns:1fr; gap:10px}
 .rcard{border:1px solid var(--ink); padding:14px 15px}
 .rcard .rp{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
-.rwrap{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px}
+/* pooled reserves: two boxes under the pool title, same height as the change boxes */
+.lpoolrow{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px}
+.lpoolbox{border:1px solid var(--ok); color:var(--ok); padding:10px 12px; min-height:82px;
+  display:flex; flex-direction:column; justify-content:center; font-size:13px; line-height:1.5}
+.lpoolbox .lpl{font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--faint); margin-bottom:4px}
+.lpoolbox .lpv{white-space:nowrap; overflow:visible}
+.rwrap{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:9px; align-items:stretch}
+.rcol{display:flex; flex-direction:column}
 .rcolh{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint);
   margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px}
-/* ratio + reference: green boxes, one horizontal line each - never wrapped digits */
+/* ratio + price: green boxes, one horizontal line each - never wrapped digits */
 .rbox{border:1px solid var(--ok); color:var(--ok); padding:8px 12px;
   font-size:13px; line-height:1.5; white-space:nowrap; overflow:visible}
 .rbox + .rbox{margin-top:8px}
-/* change column: two boxes, each as tall as two ratio boxes - % on top, arrow below */
-.rchgbox{border:1px solid var(--ok); color:var(--ok); font-size:13px;
-  display:flex; align-items:center; justify-content:flex-start; padding:0 12px;
-  letter-spacing:.08em; height:82px}
+/* change column: boxes flex to exactly the ratio column's height - % on top,
+   arrow below, so both columns always share their top and bottom edges */
+.rchgbox{border:1px solid var(--ok); color:var(--ok); font-size:13px; flex:1;
+  display:flex; align-items:center; justify-content:flex-start; padding:6px 12px;
+  letter-spacing:.08em}
 .rchgbox + .rchgbox{margin-top:8px}
+.rchgbox.arr{justify-content:center; font-size:42px; letter-spacing:0; line-height:1}
 .rchgbox.dn{border-color:var(--dn); color:var(--dn)}
 
 /* ---- governance: option bars ---- */

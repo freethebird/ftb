@@ -248,18 +248,26 @@
       var other = sym[0] === 'FTB' ? sym[1] : sym[0]; // the non-FTB leg
       var card = el('div', 'rcard');
       card.appendChild(el('div', 'rp', sym[0] + ' / ' + sym[1] + ' pool'));
+      // pooled reserves: two boxes under the pool title, one per leg, painted
+      // from the same getReserves read that feeds the ratio boxes below.
+      var prow = el('div', 'lpoolrow');
+      var poolA = el('div', 'lpoolbox'); poolA.appendChild(el('div', 'lpl', 'pooled ' + sym[0]));
+      var poolAv = el('div', 'lpv', '-'); poolA.appendChild(poolAv); prow.appendChild(poolA);
+      var poolB = el('div', 'lpoolbox'); poolB.appendChild(el('div', 'lpl', 'pooled ' + sym[1]));
+      var poolBv = el('div', 'lpv', '-'); poolB.appendChild(poolBv); prow.appendChild(poolB);
+      card.appendChild(prow);
       var wrap = el('div', 'rwrap');
-      var left = el('div');
-      left.appendChild(el('div', 'rcolh', 'ratio · price reference'));
+      var left = el('div', 'rcol');
+      left.appendChild(el('div', 'rcolh', 'ratio · price'));
       var num = el('div', 'rbox', 'reading…'); left.appendChild(num);
       var inv = el('div', 'rbox', ''); left.appendChild(inv);
       var usd = el('div', 'rbox', ''); left.appendChild(usd);
       var cny = el('div', 'rbox', ''); left.appendChild(cny);
       wrap.appendChild(left);
-      var right = el('div');
+      var right = el('div', 'rcol');
       right.appendChild(el('div', 'rcolh', 'change'));
       var pctBox = el('div', 'rchgbox', '-'); right.appendChild(pctBox);
-      var arrBox = el('div', 'rchgbox', ''); right.appendChild(arrBox);
+      var arrBox = el('div', 'rchgbox arr', ''); right.appendChild(arrBox);
       wrap.appendChild(right);
       card.appendChild(wrap);
       body.appendChild(card);
@@ -267,6 +275,8 @@
         var rr = reservesOf(st);
         var rA = whole(rr[0], sym[0]), rB = whole(rr[1], sym[1]);
         if (!(rA > 0 && rB > 0)) throw new Error('pool empty');
+        poolAv.textContent = fmtT(rr[0], sym[0]);
+        poolBv.textContent = fmtT(rr[1], sym[1]);
         var ratio = rB / rA; // display-only: whole units of B per 1 A
         var h = hist[p.label] || []; h.push(ratio); if (h.length > 40) h = h.slice(h.length - 40);
         hist[p.label] = h;
@@ -292,7 +302,7 @@
         pctBox.className = 'rchgbox' + dnCls;
         pctBox.textContent = (chg >= 0 ? '+' : '-') + Math.abs(chg).toFixed(2) + '%';
         pctBox.title = 'ratio change across ' + h.length + ' reads in this browser';
-        arrBox.className = 'rchgbox' + dnCls;
+        arrBox.className = 'rchgbox arr' + dnCls;
         arrBox.textContent = cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=';
         arrBox.title = pctBox.title;
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
@@ -337,8 +347,8 @@
       var stats = el('div', 'lpstats');
       st.vBal = stat('lp balance'); stats.appendChild(st.vBal.parentNode);
       st.vShare = stat('pool share'); stats.appendChild(st.vShare.parentNode);
-      st.vPA = stat('pooled ' + st.symA); stats.appendChild(st.vPA.parentNode);
-      st.vPB = stat('pooled ' + st.symB); stats.appendChild(st.vPB.parentNode);
+      // pooled reserves moved to the tokens-on-FTB card (the getReserves read
+      // there already lands both legs); the LP card keeps balance and share.
       card.appendChild(stats);
       st.vYours = el('div', 'lpsub', 'your share: -'); card.appendChild(st.vYours);
 
@@ -468,8 +478,6 @@
         ]);
       }).then(function (rr) {
         st.ts = rr[0]; st.lpBal = rr[1];
-        st.vPA.textContent = fmtT(st.rA, st.symA);
-        st.vPB.textContent = fmtT(st.rB, st.symB);
         if (FtbState.account) {
           st.vBal.textContent = fmt(st.lpBal);
           var share = st.ts > 0n ? Number(st.lpBal * 10000n / st.ts) / 100 : 0;
