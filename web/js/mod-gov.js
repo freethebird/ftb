@@ -201,5 +201,10 @@
 
   FtbState.on('rpc', function () { refreshGov(); refreshVotedTile(); });
   FtbState.on('account', refreshGov);
-  FtbState.on('refresh', function () { refreshGov(); refreshVotedTile(); });
+  FtbState.on('refresh', function () {
+    refreshGov(); refreshVotedTile();
+    // a confirmed write clears the proposal form — fresh state, nothing lingering
+    var pm = $('pMeta'), pr = $('pRef');
+    if (pm) pm.value = ''; if (pr) pr.value = '';
+  });
 })();

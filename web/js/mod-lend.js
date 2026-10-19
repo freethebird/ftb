@@ -581,6 +581,9 @@
   FtbState.on('rpc', loadLendC);
   FtbState.on('account', loadLendC);
   FtbState.on('refresh', loadLendC);
+  // a confirmed write means the wizard's job is done — tear it down so no stale
+  // amounts linger on screen looking like the transaction never happened.
+  FtbState.on('refresh', clearWiz);
   // keep the pool fresh while the page is open
   setInterval(function () { if (FtbRpc.current()) loadLendC(); }, 60000);
 })();

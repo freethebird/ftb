@@ -199,5 +199,9 @@
     refreshRatios();
     refreshTvl();
   });
-  FtbState.on('refresh', function () { refreshRatios(); refreshTvl(); });
+  FtbState.on('refresh', function () {
+    refreshRatios(); refreshTvl();
+    // a confirmed write clears the ticket — no stale amount suggesting nothing happened
+    $('swAmt').value = ''; $('swOut').value = '';
+  });
 })();
