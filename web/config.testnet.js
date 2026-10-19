@@ -8,7 +8,7 @@ window.FTB_CONFIG = {
 
   contracts: {
     ftb:      '0xdc82bb0c89085dfeb81a40cebce786cb1b73044c', // FTB token (TestNet, cap 100M committed 18 Oct via pre-launch update)
-    migrator: '0x6b79b687956b0f49474643ba7212f7b3b55adba9', // migration claim R2 — mints floor(FLM × 0.189832)
+    migrator: '0xe4f91c4957670ae295d55efc0e8ac6e3c5dcfc99', // migration claim R3 — v2 tree (5,194 wallets incl. salvage + dev allocation), mints floor(FLM-equiv × 0.189832)
     registry: '0x0d59f3bb8018f5668ac4448249f21927fe961614', // seam board
     oracle:   '0x1c92a93d438b9468b45706cbc4b1ddcc345df875', // Launch 2
     lend:     '0xae55c7b4950f9da4486baafdfd6ba2ae5ebdf8f4', // Launch 2 — v2 18 Oct: divUp rounding fix (dust debts repayable), adds owner-guarded update
@@ -55,7 +55,7 @@ window.FTB_CONFIG = {
 
   // the published migration proofs (also on IPFS; keep the CID in the repo)
   proofsUrl: './proofs.json',
-  merkleRoot: '0x9b4be5c9052570deccd7ce4fb90d1edb439d5f7f31c5c692e41a638904630cc8',
+  merkleRoot: '0x9a36b6a0faf6adddf727788e5a35ba9db48db14958043637fad67fb468243003',
 
   // set these only while a vote is live (the two published addresses)
   vote: { ftb: '', wait: '' },
