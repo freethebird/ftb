@@ -15,7 +15,11 @@
   $('vToken').textContent = C.ftb || '—';
   $('vMigrator').textContent = C.migrator || '—';
   $('vRegistry').textContent = C.registry || '—';
-  $('vBallot').textContent = C.ballot || '—';
+  // one ballot contract per proposal — list them all, newest config shape first
+  var BL = (CFG.ballots && CFG.ballots.length)
+    ? CFG.ballots.map(function (b) { return b.hash; })
+    : (C.ballot ? [C.ballot] : []);
+  $('vBallot').textContent = BL.length ? BL.join('  ·  ') : '—';
   $('vRoot').textContent = CFG.merkleRoot || '—';
 
   // ---------- chain reads: hard cap and the seal ----------

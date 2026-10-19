@@ -400,9 +400,12 @@
   // array of hex node hashes from proofs.json for `account`; amountBase is its snapshot balance
   // in FLM-equivalent base units — the genesis vote weighs exactly 1 FLM = 1 vote (DECISIONS.md
   // 18 Oct). The ballot contract is deployed per proposal; its hash IS the proposal id.
-  FtbDapi.prototype.ballotVote = function (account, amountBase, option, proofHexArray) {
+  FtbDapi.prototype.ballotVote = function (account, amountBase, option, proofHexArray, hashOverride) {
     var proof = A.arr((proofHexArray || []).map(function (h) { return A.bytesHex(h); }));
-    return this._w(this._need('ballot'), 'vote',
+    // one contract per proposal: the hash rides with the ballot config entry;
+    // contracts.ballot remains the default (genesis ballot #1).
+    var hash = hashOverride || this._need('ballot');
+    return this._w(hash, 'vote',
       [A.h160(account), A.int(amountBase), A.int(option), proof],
       'Vote option #' + option + ' with weight ' + fromBaseUnits(amountBase) + ' FLM (1 FLM = 1 vote) for ' + account);
   };

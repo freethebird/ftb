@@ -33,4 +33,13 @@ for v in ftb_migrator_r3 ballot_r3 ballot_r4; do
 		-o "build/$v.nef" \
 		-m "build/$v.manifest.json"
 done
+# Per-proposal ballots (genesis votes 2 and 3; one deployment per question).
+for v in ballot_launchdate ballot_claimwindow; do
+	echo "compiling $v"
+	neo-go contract compile \
+		-i contracts/ballot/ballot.go \
+		-c "contracts/ballot/$v.yml" \
+		-o "build/$v.nef" \
+		-m "build/$v.manifest.json"
+done
 echo "contracts compiled to build/"

@@ -70,12 +70,21 @@ window.FTB_CONFIG = {
   // future votes weigh 1 FTB = 1 vote.
   governance: { ratio: 0.189832, electorate: 526782179.10 },
 
-  // the live ballot: question + option labels matching the on-chain order (option 1 first).
-  // endsAt: the voting window closes 31 Oct 2026 end of day UTC (DECISIONS.md, Decision 14 —
-  // MainNet launches 1 Nov). UI enforces the window; the contract itself has no expiry —
-  // late votes still land on-chain.
-  ballot: { question: '1 FLM/FLOCKS = 0.189832 FTB — adopt?', options: ['adopt', 'wait'],
-            endsAt: '2026-10-31T23:59:59Z' },
+  // the live ballots (genesis votes — DECISIONS.md, Decisions 13-15): one contract per
+  // proposal, the hash IS the proposal id. All three share the v2 electorate
+  // (5,194 wallets) and the 31 Oct deadline. UI enforces the window; the contracts
+  // themselves have no expiry — late votes still land on-chain.
+  ballots: [
+    { hash: '0x2f76d354c1345946b0dc22d189724b71c7539690', // FtbBallotR4 — ratio vote (reset)
+      question: '1 FLM/FLOCKS = 0.189832 FTB — adopt?', options: ['adopt', 'wait'],
+      endsAt: '2026-10-31T23:59:59Z' },
+    { hash: '0xd9b19731ca159f956ab71e6d42dec7fef28a72e9', // FtbBallotLaunchDate
+      question: 'MainNet launch date?', options: ['1 November', '7 November'],
+      endsAt: '2026-10-31T23:59:59Z' },
+    { hash: '0xc62269897f6747d52c90ca8fe6b9c9eb02d7f9ad', // FtbBallotClaimWindow
+      question: 'FTB claim window — how long can holders claim?', options: ['6 months', '1 year'],
+      endsAt: '2026-10-31T23:59:59Z' },
+  ],
 
   // AMM pairs for ratio tracking (Section II): label + token hashes for router.getReserves.
   pairs: [

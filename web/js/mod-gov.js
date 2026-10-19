@@ -1,7 +1,7 @@
 // mod-gov.js — module 5: governance (MODULES.md).
-// The live ballot: snapshot-weighted, counted on-chain. Weight is your snapshot
-// balance in FLM — 1 FLM = 1 vote — proven with the same merkle proof as the
-// claim. Also owns the "weight voted" stat tile.
+// The live ballots: snapshot-weighted, counted on-chain, one contract per proposal —
+// the hash IS the proposal id. Weight is your snapshot balance in FLM (1 FLM = 1 vote),
+// proven with the same merkle proof as the claim. Also owns the "weight voted" stat tile.
 //
 // Owns (writes only these): #vote card (#govQ, #govHint, #govBody, #govDonut,
 // #govClock, #govLegend, #govRefresh) and the tile #tVoted.
@@ -11,31 +11,45 @@
 
   var $ = FtbUtil.$, el = FtbUtil.el, fmt = FtbUtil.fmt, errText = FtbUtil.errText;
   var CFG = FtbState.CFG, C = FtbState.C;
-  var ballotConfigured = !!(C.ballot && C.ballot.indexOf('0x0000') !== 0 && CFG.ballot && CFG.ballot.question);
 
-  // the 7-day voting window (DECISIONS.md 18 Oct), from config — UI-enforced only;
-  // the contract has no expiry, so late votes still land but the page won't offer them.
-  var endsMs = ballotConfigured && CFG.ballot.endsAt ? Date.parse(CFG.ballot.endsAt) : NaN;
-  function votingOpen() { return !(endsMs > 0) || Date.now() < endsMs; }
+  // ---------- the ballot set: CFG.ballots[], with the legacy single-ballot fallback ----------
+  function ballots() {
+    if (CFG.ballots && CFG.ballots.length) return CFG.ballots.filter(function (b) { return b.hash && b.question; });
+    if (C.ballot && C.ballot.indexOf('0x0000') !== 0 && CFG.ballot && CFG.ballot.question) {
+      return [{ hash: C.ballot, question: CFG.ballot.question, options: CFG.ballot.options, endsAt: CFG.ballot.endsAt }];
+    }
+    return [];
+  }
+  var BL = ballots();
+  var ballotConfigured = BL.length > 0;
+
+  // the voting window (DECISIONS.md, Decision 14: genesis ballots close 31 Oct), from
+  // config — UI-enforced only; the contracts have no expiry, so late votes still land
+  // on-chain but the page won't offer them.
+  function endsMsOf(b) { return b.endsAt ? Date.parse(b.endsAt) : NaN; }
+  function ballotOpen(b) { var ms = endsMsOf(b); return !(ms > 0) || Date.now() < ms; }
+  var clockEndsMs = ballotConfigured ? Math.max.apply(null, BL.map(function (b) { return endsMsOf(b) || 0; })) : NaN;
 
   function decodeVoted(st) {
     var it = st && st[0];
     return it && (it.type === 'Boolean' ? it.value : (it.type === 'Integer' ? parseInt(it.value || '0', 10) > 0 : (it.value && it.value !== '')));
   }
 
-  // ---------- pie: option weights vs the snapshot supply (the electorate) ----------
-  // One donut, three segments: option 1, option 2, and the unvoted remainder —
-  // every slice denominated in the 526,782,179.10 FLM snapshot supply.
-  var SEG_COLS = ['var(--ink)', 'var(--ink-2)'];
-  function renderDonut(vals) {
-    var host = $('govDonut'); if (!host) return;
+  function electBase() {
     var elect = (CFG.governance && CFG.governance.electorate) || 0;
-    if (!(elect > 0)) { host.innerHTML = ''; return; }
-    var electBase = elect * 1e8; // tallies are base units (8 decimals)
+    return elect > 0 ? elect * 1e8 : 0; // tallies are base units (8 decimals)
+  }
+
+  // ---------- one donut per ballot: option weights vs the snapshot supply ----------
+  // Segments are the options; the ring background is the unvoted remainder — every
+  // slice denominated in the 526,782,179.10 FLM snapshot supply.
+  var SEG_COLS = ['var(--ink)', 'var(--ink-2)'];
+  function donutSvg(vals, label) {
+    var eb = electBase();
     var total = vals.reduce(function (s, v) { return s + v; }, 0n);
     var segs = [], off = 0;
     vals.forEach(function (v, i) {
-      var pct = Number(v) / electBase * 100;
+      var pct = eb ? Number(v) / eb * 100 : 0;
       if (pct > 0) {
         segs.push('<circle cx="21" cy="21" r="15.9155" fill="none" stroke="' + SEG_COLS[i % SEG_COLS.length] +
           '" stroke-width="7" stroke-dasharray="' + pct.toFixed(3) + ' ' + (100 - pct).toFixed(3) +
@@ -43,45 +57,45 @@
       }
       off += pct;
     });
-    var turn = Number(total) / electBase * 100;
-    host.innerHTML =
-      '<svg viewBox="0 0 42 42" role="img" aria-label="vote split">' +
+    var turn = eb ? Number(total) / eb * 100 : 0;
+    return '<div style="margin-bottom:6px">' +
+      '<svg viewBox="0 0 42 42" role="img" aria-label="vote split — ' + label + '" style="max-width:120px">' +
       '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--hair)" stroke-width="7"/>' +
       segs.join('') +
       '<text x="21" y="20.5" text-anchor="middle" fill="var(--ink)" style="font-family:var(--disp); font-size:5px">' + turn.toFixed(1) + '%</text>' +
       '<text x="21" y="26" text-anchor="middle" fill="var(--faint)" style="font-size:2.2px; letter-spacing:.02em">of supply</text>' +
-      '</svg>';
+      '</svg>' +
+      '<div class="small muted" style="font-size:11px; letter-spacing:.08em; text-transform:uppercase">' + label + '</div>' +
+      '</div>';
+  }
+
+  function renderDonuts(allVals) {
+    var host = $('govDonut'); if (!host) return;
+    if (!electBase()) { host.innerHTML = ''; return; }
+    host.innerHTML = BL.map(function (b, i) {
+      return donutSvg(allVals[i] || [], '#' + (i + 1));
+    }).join('');
     var leg = $('govLegend'); if (!leg) return;
+    var opts = (BL[0] && BL[0].options) || [];
     leg.innerHTML = '';
-    var opts = CFG.ballot.options || [];
-    vals.forEach(function (v, i) {
-      var pct = Number(v) / electBase * 100;
+    opts.forEach(function (o, i) {
       var row = el('div', 'govleg-row');
       var left = el('span');
       var sw = el('span', 'sw'); sw.style.background = SEG_COLS[i % SEG_COLS.length];
       left.appendChild(sw);
-      left.appendChild(document.createTextNode(opts[i] || ('option ' + (i + 1))));
+      left.appendChild(document.createTextNode('option ' + (i + 1) + ' (dark share of supply)'));
       row.appendChild(left);
-      row.appendChild(el('span', null, pct.toFixed(2) + '%'));
       leg.appendChild(row);
     });
-    var un = el('div', 'govleg-row');
-    var ul = el('span');
-    var usw = el('span', 'sw'); usw.style.background = 'var(--hair)';
-    ul.appendChild(usw);
-    ul.appendChild(document.createTextNode('not yet voted'));
-    un.appendChild(ul);
-    un.appendChild(el('span', null, (100 - turn).toFixed(2) + '%'));
-    leg.appendChild(un);
-    leg.appendChild(el('div', null, 'denominator: ' + elect.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' FLM snapshot supply'));
+    leg.appendChild(el('div', null, 'denominator: ' + ((CFG.governance && CFG.governance.electorate) || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' FLM snapshot supply · same electorate for every ballot'));
   }
 
-  // ---------- countdown to the end of the 7-day window ----------
+  // ---------- countdown to the end of the window (shared deadline across ballots) ----------
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   function tickClock() {
     var t = $('govClock'); if (!t) return;
-    if (!ballotConfigured || !(endsMs > 0)) { t.textContent = '—'; return; }
-    var ms = endsMs - Date.now();
+    if (!ballotConfigured || !(clockEndsMs > 0)) { t.textContent = '—'; return; }
+    var ms = clockEndsMs - Date.now();
     if (ms <= 0) {
       t.textContent = 'CLOSED';
       Array.prototype.forEach.call(document.querySelectorAll('#govBody .govote'), function (b) { b.disabled = true; });
@@ -103,55 +117,67 @@
       return;
     }
     if (!FtbRpc.current()) return;
-    $('govQ').textContent = CFG.ballot.question;
-    var opts = CFG.ballot.options || [];
-    Promise.all(opts.map(function (_, i) {
-      // on-chain options are 1-based (tally keys are byte-wide; 0 faults, FTB-31)
-      return FtbRpc.readInt(C.ballot, 'tally', [{ type: 'Integer', value: String(i + 1) }]);
-    })).then(function (vals) {
-      var total = vals.reduce(function (s, v) { return s + v; }, 0n);
-      renderDonut(vals);
-      var open = votingOpen();
+    $('govQ').textContent = BL.length === 1 ? BL[0].question : BL.length + ' live ballots';
+    // tally reads: every option of every ballot (on-chain options are 1-based —
+    // tally keys are byte-wide; 0 faults, FTB-31)
+    Promise.all(BL.map(function (b) {
+      return Promise.all((b.options || []).map(function (_, i) {
+        return FtbRpc.readInt(b.hash, 'tally', [{ type: 'Integer', value: String(i + 1) }]);
+      }));
+    })).then(function (allVals) {
+      renderDonuts(allVals);
       body.innerHTML = '';
-      vals.forEach(function (v, i) {
-        var pct = total > 0n ? (Number(v * 10000n / total) / 100) : 0;
-        var opt = el('div', 'gopt');
-        var row = el('div', 'grow');
-        row.appendChild(el('span', 'gname', '#' + (i + 1) + ' ' + opts[i]));
-        row.appendChild(el('span', 'gnum', fmt(v) + ' FLM'));
-        var btn = el('button', 'govote', 'vote ->');
-        btn.disabled = !open;
-        btn.addEventListener('click', function () { voteGov(i + 1, opts[i]); });
-        row.appendChild(btn);
-        opt.appendChild(row);
-        var bar = el('div', 'gbar'); var fill = el('i'); fill.style.width = pct + '%'; bar.appendChild(fill);
-        opt.appendChild(bar);
-        var meta = el('div', 'gmeta');
-        meta.appendChild(el('span', null, pct.toFixed(2) + '% of weight voted'));
-        meta.appendChild(el('span', null, 'option ' + (i + 1) + ' on-chain'));
-        opt.appendChild(meta);
-        body.appendChild(opt);
+      BL.forEach(function (b, bi) {
+        var vals = allVals[bi];
+        var total = vals.reduce(function (s, v) { return s + v; }, 0n);
+        var open = ballotOpen(b);
+        var sec = el('div');
+        sec.style.cssText = bi > 0 ? 'margin-top:18px; border-top:1px solid var(--hair); padding-top:12px' : '';
+        sec.appendChild(el('h3', 'disp', '#' + (bi + 1) + ' ' + b.question)).style.cssText = 'font-size:19px; margin:.1em 0 .1em';
+        var hint = el('p', 'small muted');
+        var eb = electBase();
+        var turn = eb ? (Number(total) / eb * 100).toFixed(2) : '0.00';
+        hint.textContent = 'weight voted: ' + fmt(total) + ' FLM · turnout ' + turn + '%' + (open ? '' : ' · window closed');
+        sec.appendChild(hint);
+        vals.forEach(function (v, i) {
+          var pct = total > 0n ? (Number(v * 10000n / total) / 100) : 0;
+          var opt = el('div', 'gopt');
+          var row = el('div', 'grow');
+          row.appendChild(el('span', 'gname', '#' + (i + 1) + ' ' + b.options[i]));
+          row.appendChild(el('span', 'gnum', fmt(v) + ' FLM'));
+          var btn = el('button', 'govote', 'vote ->');
+          btn.disabled = !open;
+          btn.addEventListener('click', function () { voteGov(b, i + 1, b.options[i]); });
+          row.appendChild(btn);
+          opt.appendChild(row);
+          var bar = el('div', 'gbar'); var fill = el('i'); fill.style.width = pct + '%'; bar.appendChild(fill);
+          opt.appendChild(bar);
+          var meta = el('div', 'gmeta');
+          meta.appendChild(el('span', null, pct.toFixed(2) + '% of weight voted'));
+          meta.appendChild(el('span', null, 'option ' + (i + 1) + ' on-chain'));
+          opt.appendChild(meta);
+          sec.appendChild(opt);
+        });
+        body.appendChild(sec);
       });
-      // turnout is measured against the snapshot electorate (FLM-equiv, from config —
-      // DECISIONS.md 18 Oct), NOT the FTB cap: vote weight is denominated in FLM.
+      // turnout is measured against the snapshot electorate (FLM-equiv, from config),
+      // NOT the FTB cap: vote weight is denominated in FLM.
       var elect = (CFG.governance && CFG.governance.electorate) || 0;
-      if (elect > 0) {
-        var turn = (Number(total) / 1e8 / elect * 100).toFixed(2);
-        $('govHint').textContent = 'total weight voted: ' + fmt(total) + ' FLM · turnout ' + turn + '% of the ' + elect.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' FLM snapshot electorate · tallies are chain state — every node counts the same result.';
-      } else {
-        $('govHint').textContent = 'total weight voted: ' + fmt(total) + ' FLM · tallies are chain state — every node counts the same result.';
-      }
+      $('govHint').textContent = BL.length + ' ballots · electorate ' + elect.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' FLM snapshot weight · tallies are chain state — every node counts the same result.';
       if (FtbState.account) {
-        FtbRpc.read(C.ballot, 'voted', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (st) {
-          if (decodeVoted(st)) $('govHint').textContent = 'this address has voted · total weight voted: ' + fmt(total) + ' FLM.';
-        }).catch(function () {});
+        Promise.all(BL.map(function (b) {
+          return FtbRpc.read(b.hash, 'voted', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (st) { return decodeVoted(st); }).catch(function () { return false; });
+        })).then(function (votedFlags) {
+          var n = votedFlags.filter(Boolean).length;
+          if (n > 0) $('govHint').textContent = 'this address has voted in ' + n + ' of ' + BL.length + ' ballots · ' + $('govHint').textContent;
+        });
       }
     }).catch(function (e) { body.appendChild(el('div', 'small', 'tally unavailable: ' + errText(e))); });
   }
 
-  function voteGov(idx, label) {
-    if (!votingOpen()) {
-      FtbShell.showPlan('voting closed', 'the 7-day window for this ballot has ended. the tally stands as counted on-chain.', [['question', CFG.ballot.question]], null);
+  function voteGov(b, idx, label) {
+    if (!ballotOpen(b)) {
+      FtbShell.showPlan('voting closed', 'the window for this ballot has ended. the tally stands as counted on-chain.', [['question', b.question]], null);
       return;
     }
     if (!FtbState.account) { FtbWallet.needConnect(); return; }
@@ -161,17 +187,18 @@
         FtbShell.showPlan('no vote weight', 'this address is not in the published snapshot, so it carries no vote weight. only pre-exploit holders vote.', [['address', FtbState.account]], null);
         return;
       }
-      FtbRpc.read(C.ballot, 'voted', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (st) {
+      FtbRpc.read(b.hash, 'voted', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (st) {
         if (decodeVoted(st)) {
-          FtbShell.showPlan('already voted', 'one vote per snapshot address — the chain has recorded this address.', [['address', FtbState.account]], null);
+          FtbShell.showPlan('already voted', 'one vote per snapshot address per ballot — the chain has recorded this address.', [['address', FtbState.account], ['question', b.question]], null);
           return;
         }
-        var plan = FtbState.dapi.ballotVote(FtbState.account, en.amount, idx, en.proof);
+        var plan = FtbState.dapi.ballotVote(FtbState.account, en.amount, idx, en.proof, b.hash);
         FtbShell.showPlan('vote: ' + label,
-          'your weight is your snapshot balance in FLM — 1 FLM = 1 vote — proven with the same merkle proof as your claim. one vote per address, counted on-chain.',
-          [['question', CFG.ballot.question],
+          'your weight is your snapshot balance in FLM — 1 FLM = 1 vote — proven with the same merkle proof as your claim. one vote per address per ballot, counted on-chain.',
+          [['question', b.question],
            ['option', '#' + idx + ' ' + label],
            ['weight', fmt(en.amount) + ' FLM'],
+           ['ballot contract', b.hash],
            ['what you sign', plan.summary]],
           plan);
       });
@@ -187,12 +214,12 @@
   }
   var gb = $('govRefresh'); gb.addEventListener('click', function () { flash(gb); refreshGov(); });
 
-  // ---------- the "weight voted" tile (same tallies, summed) ----------
+  // ---------- the "weight voted" tile (ballot #1's tallies, summed) ----------
   function refreshVotedTile() {
     if (!FtbRpc.current()) return;
-    if (!(C.ballot && C.ballot.indexOf('0x0000') !== 0 && CFG.ballot && CFG.ballot.options && CFG.ballot.options.length)) return;
-    Promise.all(CFG.ballot.options.map(function (_, i) {
-      return FtbRpc.readInt(C.ballot, 'tally', [{ type: 'Integer', value: String(i + 1) }]);
+    if (!ballotConfigured || !(BL[0].options && BL[0].options.length)) return;
+    Promise.all(BL[0].options.map(function (_, i) {
+      return FtbRpc.readInt(BL[0].hash, 'tally', [{ type: 'Integer', value: String(i + 1) }]);
     })).then(function (vals) {
       var t = vals.reduce(function (s, v) { return s + v; }, 0n);
       FtbUtil.tileNum($('tVoted'), t, ' FLM');
