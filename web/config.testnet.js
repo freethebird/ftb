@@ -22,7 +22,7 @@ window.FTB_CONFIG = {
     // bNEO (NeoBurger) — ratio-board listing only; lend collateral is native NEO + GAS.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
     // router is the external Flamingo swap; no AMM on TestNet (neo#3285) — placeholder.
-    router:   '0x0000000000000000000000000000000000000000'
+    router:   '0x7e3fa9356e3294acf709c51062ca051f1df6cb5c'
   },
 
   // native NEO and GAS, same on every Neo N3 network (NEO is 0 decimals, whole units)
@@ -76,8 +76,6 @@ window.FTB_CONFIG = {
 
   // AMM pairs for ratio tracking (Section II): label + token hashes for router.getReserves.
   pairs: [
-    { label: 'bNEO/FTB', a: '0x48c40d4666f93408be1bef038b6722404d9a4c2a', b: 'FTB' },
-    { label: 'GAS/FTB',  a: 'GAS', b: 'FTB' },
-    { label: 'bNEO/GAS', a: '0x48c40d4666f93408be1bef038b6722404d9a4c2a', b: 'GAS' }
+    { label: 'GAS/FTB',  a: 'GAS', b: 'FTB' }
   ]
 };
