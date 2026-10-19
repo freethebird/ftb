@@ -195,7 +195,7 @@
       return FtbRpc.readInt(C.ballot, 'tally', [{ type: 'Integer', value: String(i + 1) }]);
     })).then(function (vals) {
       var t = vals.reduce(function (s, v) { return s + v; }, 0n);
-      $('tVoted').textContent = fmt(t) + ' FLM';
+      FtbUtil.tileNum($('tVoted'), t, ' FLM');
     }).catch(function () {});
   }
 

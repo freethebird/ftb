@@ -30,6 +30,15 @@
     return p.join('.');
   }
   function fmt(base) { return grp(FtbDapi.util.fromBaseUnits(base.toString())); }
+  // tile headline: two decimals max so the number always fits one line; the FULL
+  // precision value goes in the element's tooltip — trim the display, never the data.
+  function tileNum(elm, base, suffix) {
+    var full = fmt(base);
+    var p = full.split('.');
+    var short2 = p.length > 1 && p[1].length > 2 ? p[0] + '.' + p[1].slice(0, 2) : full;
+    elm.textContent = short2 + (suffix || '');
+    elm.title = full + (suffix || '');
+  }
   // Refresh coalescing, shared by every module that loads on 'refresh' bursts:
   // one read pass in flight, at most one trailing run queued, a minimum interval
   // between passes. Without it, rapid events start overlapping reads and a slower
@@ -102,7 +111,7 @@
     return Promise.resolve(BigInt(FtbDapi.util.ftbOf(flmBase)));
   }
 
-  window.FtbUtil = { $: $, el: el, short: short, grp: grp, fmt: fmt, errText: errText, coalesce: coalesce };
+  window.FtbUtil = { $: $, el: el, short: short, grp: grp, fmt: fmt, tileNum: tileNum, errText: errText, coalesce: coalesce };
   window.FtbState = {
     CFG: CFG,
     C: C,

@@ -18,8 +18,8 @@
       $('tBlock').textContent = Number(h).toLocaleString('en-US');
     }).catch(function () {});
     if (!FtbState.configured) return;
-    FtbRpc.readInt(C.ftb, 'totalSupply').then(function (v) { $('tSupply').textContent = fmt(v); }).catch(function () {});
-    FtbRpc.readInt(C.ftb, 'maxSupply').then(function (v) { $('tCap').textContent = fmt(v); }).catch(function () {});
+    FtbRpc.readInt(C.ftb, 'totalSupply').then(function (v) { FtbUtil.tileNum($('tSupply'), v); }).catch(function () {});
+    FtbRpc.readInt(C.ftb, 'maxSupply').then(function (v) { FtbUtil.tileNum($('tCap'), v); }).catch(function () {});
   }
 
   // ---------- your wallet strip (once connected) ----------

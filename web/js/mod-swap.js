@@ -185,9 +185,9 @@
         else if (tags[i] === 'neo') neo = r;
         else gas = r;
       });
-      e.textContent = fmt(ftb) + ' FTB';
+      FtbUtil.tileNum(e, ftb, ' FTB');
       if (sub) sub.textContent = hasLend ? '+ ' + FtbUtil.grp(neo.toString()) + ' NEO · ' + fmt(gas) + ' GAS collateral' : '';
-      e.title = 'total value locked, per asset: FTB in the lend pool (cash + outstanding borrows)' +
+      e.title = 'exact: ' + fmt(ftb) + ' FTB. total value locked, per asset: FTB in the lend pool (cash + outstanding borrows)' +
         (hasRouter ? ' + FTB-side pool reserves' : '') +
         (hasLend ? '; NEO and GAS locked as loan collateral' : '') +
         '. ratios only, no fiat.' + (failed ? ' (one leg unreadable right now)' : '');
