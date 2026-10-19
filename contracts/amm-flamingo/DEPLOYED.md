@@ -63,3 +63,20 @@ against `getcontractstate` for all four live hashes.
   same self-check discipline as cmd/deploy.
 - `cmd/contracthash` — prints the canonical 0x hash a NEF will have when
   deployed by a given address (sender + checksum + name).
+
+## FTB/NEO pair (19 October 2026, second pool)
+
+Same source, constants-only variant `FlamingoSwapPairFtbNeo/` (TokenA = FTB — the
+smaller hash, token0 by router convention — TokenB = NEO, Symbol `FLP-FTB-NEO`;
+superAdmin and WhiteListContract unchanged). Tool: `cmd/neopair`.
+
+| Contract | Hash | Deploy tx |
+| --- | --- | --- |
+| FlamingoSwapPairFtbNeo (FTB/NEO) | `0x0c81a5c6202c6ddb2a007da9d21fa6fe44a70742` | `0x314420ba…f8fc13` |
+
+Wiring: `factory.registerExchangePair(pair)` tx `0x13cb94e4…50d361`.
+Seed: `router.addLiquidity(40 FTB, 1 NEO)` tx `0x4d9a4848…95ec28` — ratio
+1 NEO = 40 FTB, matching the GAS pool's placeholder. NEO is 0 decimals; the
+front-end parses/formats it in whole units (web/js/mod-swap.js fmtT/parseT).
+Verified after seeding: `router.getReserves(NEO, FTB)` = (1, 4,000,000,000) and
+`getExchangePairWithAssert(NEO, FTB)` resolves to the pair above.

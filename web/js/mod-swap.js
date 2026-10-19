@@ -28,8 +28,20 @@
   }
 
   // ---------- swap ticket (enabled only when the router is configured) ----------
-  var TOKENS = { 'bNEO': function () { return C.bneo; }, 'GAS': function () { return (CFG.assets || {}).gas; }, 'FTB': function () { return C.ftb; } };
-  var swFrom = 'bNEO', swTo = 'FTB', swQuote = null;
+  // NEO is 0 decimals (whole, indivisible units) — every parse/format goes through
+  // fmtT/parseT with the token's own decimals; quote math stays in raw base units.
+  var TOKENS = { 'NEO': function () { return (CFG.assets || {}).neo; }, 'GAS': function () { return (CFG.assets || {}).gas; }, 'FTB': function () { return C.ftb; } };
+  var DEC = { NEO: 0, GAS: 8, FTB: 8 };
+  function decOf(sym) { return DEC[sym] != null ? DEC[sym] : 8; }
+  function whole(raw, sym) { return Number(raw) / Math.pow(10, decOf(sym)); }
+  function fmtT(raw, sym) { return decOf(sym) === 0 ? FtbUtil.grp(raw.toString()) : fmt(raw); }
+  function parseT(str, sym) {
+    try {
+      if (decOf(sym) === 0) { if (!/^\d+$/.test(str)) return null; var n = BigInt(str); return n > 0n ? n : null; }
+      var v = BigInt(FtbDapi.util.toBaseUnits(str)); return v > 0n ? v : null;
+    } catch (e) { return null; }
+  }
+  var swFrom = 'GAS', swTo = 'FTB', swQuote = null;
   function routerReady() { return !!(FtbState.configured && C.router && C.router.indexOf('0x0000') !== 0); }
   function paintSel(id, cur, setter) {
     var box = $(id); box.innerHTML = '';
@@ -47,9 +59,8 @@
     if (!routerReady()) { $('swMeta').textContent = 'loads when the router hash is configured for this network'; return; }
     var raw = $('swAmt').value.trim();
     if (!raw) { $('swMeta').textContent = 'quote from live pool reserves · 0.3% pool fee · min received at 0.5% slippage'; return; }
-    var amtIn;
-    try { amtIn = BigInt(FtbDapi.util.toBaseUnits(raw)); } catch (e) { $('swMeta').textContent = 'bad amount'; return; }
-    if (amtIn <= 0n) { $('swMeta').textContent = 'enter an amount above zero'; return; }
+    var amtIn = parseT(raw, swFrom);
+    if (amtIn === null) { $('swMeta').textContent = decOf(swFrom) === 0 ? 'bad amount — NEO moves in whole units' : 'bad amount'; return; }
     var a = TOKENS[swFrom](), b = TOKENS[swTo]();
     $('swMeta').textContent = 'quoting…';
     FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
@@ -57,12 +68,12 @@
       if (rA === 0n || rB === 0n) throw new Error('pool empty');
       var out = (amtIn * 997n * rB) / (rA * 1000n + amtIn * 997n);
       var minOut = out * 995n / 1000n;
-      var spot = Number(fmt(rB)) / Number(fmt(rA));
-      var impact = (1 - (Number(fmt(out)) / Number(fmt(amtIn))) / spot) * 100;
+      var spot = whole(rB, swTo) / whole(rA, swFrom);
+      var impact = (1 - (whole(out, swTo) / whole(amtIn, swFrom)) / spot) * 100;
       swQuote = { amtIn: amtIn, out: out, minOut: minOut, rA: rA, rB: rB };
-      $('swOut').value = fmt(out);
+      $('swOut').value = fmtT(out, swTo);
       var m = $('swMeta'); m.innerHTML = '';
-      m.appendChild(el('span', null, 'rate 1 ' + swFrom + ' = ' + spot.toPrecision(6) + ' ' + swTo + ' · min received ' + fmt(minOut) + ' ' + swTo + ' · '));
+      m.appendChild(el('span', null, 'rate 1 ' + swFrom + ' = ' + spot.toPrecision(6) + ' ' + swTo + ' · min received ' + fmtT(minOut, swTo) + ' ' + swTo + ' · '));
       m.appendChild(el('span', impact > 5 ? 'impact-warn' : null, 'price impact ' + impact.toFixed(2) + '%'));
     }).catch(function (e) { $('swMeta').textContent = 'quote failed: ' + errText(e); });
   }
@@ -86,12 +97,13 @@
       var allowed = [C.router, a, b]; if (pair) allowed.push(pair);
       var signer = FtbState.dapi.signerFor(FtbState.account, allowed);
       var plan = FtbState.dapi.swap(FtbState.account, swQuote.amtIn.toString(), swQuote.minOut.toString(), [a, b], deadline, signer);
+      plan.summary = 'Swap ' + fmtT(swQuote.amtIn, swFrom) + ' ' + swFrom + ' for at least ' + fmtT(swQuote.minOut, swTo) + ' ' + swTo;
       quote(); // repaint the meta line under the modal
-      FtbShell.showPlan('swap ' + fmt(swQuote.amtIn) + ' ' + swFrom,
+      FtbShell.showPlan('swap ' + fmtT(swQuote.amtIn, swFrom) + ' ' + swFrom,
         'external flamingo router. quote from live reserves; min received is 0.5% under the quote. verify the router hash in section IV first.',
-        [['you pay', fmt(swQuote.amtIn) + ' ' + swFrom],
-         ['you receive (est.)', fmt(swQuote.out) + ' ' + swTo],
-         ['min received', fmt(swQuote.minOut) + ' ' + swTo],
+        [['you pay', fmtT(swQuote.amtIn, swFrom) + ' ' + swFrom],
+         ['you receive (est.)', fmtT(swQuote.out, swTo) + ' ' + swTo],
+         ['min received', fmtT(swQuote.minOut, swTo) + ' ' + swTo],
          ['route', swFrom + ' → ' + swTo],
          ['what you sign', plan.summary]],
         plan);
@@ -109,7 +121,7 @@
     if (tickBlock) parts.push('<b>block</b> ' + Number(tickBlock).toLocaleString('en-US'));
     t.innerHTML = parts.length ? '// market&nbsp; ' + parts.join('<span class="sep">·</span>') : '// market: waiting for the pools';
   }
-  function resolveTok(t) { return t === 'FTB' ? C.ftb : (t === 'GAS' ? ((CFG.assets || {}).gas) : t); }
+  function resolveTok(t) { return t === 'FTB' ? C.ftb : (t === 'GAS' ? ((CFG.assets || {}).gas) : (t === 'NEO' ? ((CFG.assets || {}).neo) : t)); }
   function sparkLine(vals) {
     if (!vals.length) return '';
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), span = (hi - lo) || 1;
@@ -166,7 +178,7 @@
       var foot = el('div', 'rspark'); card.appendChild(foot);
       body.appendChild(card);
       FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
-        var rA = Number(fmt(BigInt(st[0].value))), rB = Number(fmt(BigInt(st[1].value)));
+        var rA = whole(BigInt(st[0].value), sym[0]), rB = whole(BigInt(st[1].value), sym[1]);
         if (!(rA > 0 && rB > 0)) throw new Error('pool empty');
         var ratio = rB / rA; // display-only: whole units of B per 1 A
         var h = hist[p.label] || []; h.push(ratio); if (h.length > 40) h = h.slice(h.length - 40);
@@ -276,18 +288,18 @@
     if (st.rA === 0n || st.rB === 0n) { st.addMeta.textContent = 'pool is empty — the first deposit sets the ratio; add via the seeded pool only'; return; }
     var amtA, amtB;
     if (side === 'A') {
-      amtA = parseAmt(rawA); if (amtA === null) { st.addMeta.textContent = rawA ? 'bad ' + st.symA + ' amount' : 'enter a ' + st.symA + ' amount'; return; }
-      amtB = amtA * st.rB / st.rA; st.inAddB.value = fmt(amtB);
+      amtA = parseT(rawA, st.symA); if (amtA === null) { st.addMeta.textContent = rawA ? 'bad ' + st.symA + ' amount' + (decOf(st.symA) === 0 ? ' — whole units only' : '') : 'enter a ' + st.symA + ' amount'; return; }
+      amtB = amtA * st.rB / st.rA; st.inAddB.value = fmtT(amtB, st.symB);
     } else {
-      amtB = parseAmt(rawB); if (amtB === null) { st.addMeta.textContent = rawB ? 'bad ' + st.symB + ' amount' : 'enter a ' + st.symB + ' amount'; return; }
-      amtA = amtB * st.rA / st.rB; st.inAddA.value = fmt(amtA);
+      amtB = parseT(rawB, st.symB); if (amtB === null) { st.addMeta.textContent = rawB ? 'bad ' + st.symB + ' amount' + (decOf(st.symB) === 0 ? ' — whole units only' : '') : 'enter a ' + st.symB + ' amount'; return; }
+      amtA = amtB * st.rA / st.rB; st.inAddA.value = fmtT(amtA, st.symA);
     }
     if (amtA <= 0n || amtB <= 0n) { st.addMeta.textContent = 'amount too small for the current ratio'; return; }
     var minA = amtA * 995n / 1000n, minB = amtB * 995n / 1000n;
     var lpEst = st.ts > 0n ? (amtA * st.ts / st.rA < amtB * st.ts / st.rB ? amtA * st.ts / st.rA : amtB * st.ts / st.rB) : 0n;
     st.addQ = { amtA: amtA, amtB: amtB, minA: minA, minB: minB, lpEst: lpEst };
-    st.addMeta.textContent = 'rate 1 ' + st.symA + ' = ' + (Number(fmt(st.rB)) / Number(fmt(st.rA))).toPrecision(6) + ' ' + st.symB +
-      ' · you receive ≈ ' + fmt(lpEst) + ' LP · mins ' + fmt(minA) + ' ' + st.symA + ' / ' + fmt(minB) + ' ' + st.symB;
+    st.addMeta.textContent = 'rate 1 ' + st.symA + ' = ' + (whole(st.rB, st.symB) / whole(st.rA, st.symA)).toPrecision(6) + ' ' + st.symB +
+      ' · you receive ≈ ' + fmt(lpEst) + ' LP · mins ' + fmtT(minA, st.symA) + ' ' + st.symA + ' / ' + fmtT(minB, st.symB) + ' ' + st.symB;
   }
   function quoteRm(st) {
     st.rmQ = null;
@@ -298,8 +310,8 @@
     var outA = lp * st.rA / st.ts, outB = lp * st.rB / st.ts;
     var minA = outA * 995n / 1000n, minB = outB * 995n / 1000n;
     st.rmQ = { lp: lp, outA: outA, outB: outB, minA: minA, minB: minB };
-    st.rmMeta.textContent = 'you receive ≈ ' + fmt(outA) + ' ' + st.symA + ' + ' + fmt(outB) + ' ' + st.symB +
-      ' · mins ' + fmt(minA) + ' / ' + fmt(minB);
+    st.rmMeta.textContent = 'you receive ≈ ' + fmtT(outA, st.symA) + ' ' + st.symA + ' + ' + fmtT(outB, st.symB) + ' ' + st.symB +
+      ' · mins ' + fmtT(minA, st.symA) + ' / ' + fmtT(minB, st.symB);
   }
   function goAdd(st) {
     if (!FtbState.account) { FtbWallet.needConnect(); return; }
@@ -308,12 +320,13 @@
     var signer = FtbState.dapi.signerFor(FtbState.account, [C.router, st.a, st.b]);
     var plan = FtbState.dapi.addLiquidity(FtbState.account, st.a, st.b,
       st.addQ.amtA.toString(), st.addQ.amtB.toString(), st.addQ.minA.toString(), st.addQ.minB.toString(), deadline, signer);
+    plan.summary = 'Add liquidity: ' + fmtT(st.addQ.amtA, st.symA) + ' ' + st.symA + ' + ' + fmtT(st.addQ.amtB, st.symB) + ' ' + st.symB;
     FtbShell.showPlan('add liquidity ' + st.p.label,
       'external flamingo router. both assets move into the pair contract in one transaction; lp tokens mint to your wallet. mins guard 0.5% of drift before confirmation.',
-      [[st.symA + ' in', fmt(st.addQ.amtA)],
-       [st.symB + ' in', fmt(st.addQ.amtB)],
+      [[st.symA + ' in', fmtT(st.addQ.amtA, st.symA)],
+       [st.symB + ' in', fmtT(st.addQ.amtB, st.symB)],
        ['you receive (est.)', '≈ ' + fmt(st.addQ.lpEst) + ' LP'],
-       ['mins', fmt(st.addQ.minA) + ' ' + st.symA + ' / ' + fmt(st.addQ.minB) + ' ' + st.symB],
+       ['mins', fmtT(st.addQ.minA, st.symA) + ' ' + st.symA + ' / ' + fmtT(st.addQ.minB, st.symB) + ' ' + st.symB],
        ['what you sign', plan.summary]],
       plan);
   }
@@ -327,12 +340,14 @@
       var signer = FtbState.dapi.signerFor(FtbState.account, [C.router, pair]);
       var plan = FtbState.dapi.removeLiquidity(FtbState.account, st.a, st.b,
         st.rmQ.lp.toString(), st.rmQ.minA.toString(), st.rmQ.minB.toString(), deadline, signer);
+      plan.summary = 'Remove liquidity: burn ' + fmt(st.rmQ.lp) + ' LP for at least ' +
+        fmtT(st.rmQ.minA, st.symA) + ' ' + st.symA + ' + ' + fmtT(st.rmQ.minB, st.symB) + ' ' + st.symB;
       quoteRm(st);
       FtbShell.showPlan('remove liquidity ' + st.p.label,
         'external flamingo router. your lp tokens burn and both pool assets return to your wallet in one transaction. mins guard 0.5% of drift before confirmation.',
         [['lp to burn', fmt(st.rmQ.lp)],
-         ['you receive (est.)', '≈ ' + fmt(st.rmQ.outA) + ' ' + st.symA + ' + ' + fmt(st.rmQ.outB) + ' ' + st.symB],
-         ['mins', fmt(st.rmQ.minA) + ' ' + st.symA + ' / ' + fmt(st.rmQ.minB) + ' ' + st.symB],
+         ['you receive (est.)', '≈ ' + fmtT(st.rmQ.outA, st.symA) + ' ' + st.symA + ' + ' + fmtT(st.rmQ.outB, st.symB) + ' ' + st.symB],
+         ['mins', fmtT(st.rmQ.minA, st.symA) + ' ' + st.symA + ' / ' + fmtT(st.rmQ.minB, st.symB) + ' ' + st.symB],
          ['what you sign', plan.summary]],
         plan);
     }).catch(function (e) { st.rmMeta.textContent = 'pair lookup failed: ' + errText(e); });
@@ -353,14 +368,14 @@
         ]);
       }).then(function (rr) {
         st.ts = rr[0]; st.lpBal = rr[1];
-        st.vPA.textContent = fmt(st.rA);
-        st.vPB.textContent = fmt(st.rB);
+        st.vPA.textContent = fmtT(st.rA, st.symA);
+        st.vPB.textContent = fmtT(st.rB, st.symB);
         if (FtbState.account) {
           st.vBal.textContent = fmt(st.lpBal);
           var share = st.ts > 0n ? Number(st.lpBal * 10000n / st.ts) / 100 : 0;
           st.vShare.textContent = share.toFixed(2) + '%';
           var yA = st.ts > 0n ? st.lpBal * st.rA / st.ts : 0n, yB = st.ts > 0n ? st.lpBal * st.rB / st.ts : 0n;
-          st.vYours.textContent = 'your share: ' + fmt(yA) + ' ' + st.symA + ' · ' + fmt(yB) + ' ' + st.symB;
+          st.vYours.textContent = 'your share: ' + fmtT(yA, st.symA) + ' ' + st.symA + ' · ' + fmtT(yB, st.symB) + ' ' + st.symB;
         } else {
           st.vBal.textContent = '—'; st.vShare.textContent = '—'; st.vYours.textContent = 'connect a wallet to see your share';
         }

@@ -55,8 +55,8 @@ window.FTB_CONFIG = {
   vote: { ftb: '', wait: '' },
 
   // committed economics (DECISIONS.md 18 Oct): identical on MainNet — hard cap
-  // 100,000,000 FTB, r = 0.189832, electorate 300,359,297.9466036 FLM-equiv.
-  governance: { ratio: 0.189832, electorate: 300359297.9466036 },
+  // 100,000,000 FTB, r = 0.189832, electorate 526,782,179.10 FLM-equiv.
+  governance: { ratio: 0.189832, electorate: 526782179.10 },
 
   // no live ballot at MainNet launch
   ballot: { question: '', options: [] },

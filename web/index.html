@@ -96,6 +96,9 @@ textarea,input{
 .barright{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; justify-content:flex-end}
 .idstate{letter-spacing:.04em; color:var(--ink-2); white-space:nowrap}
 
+/* menu jumps: land each module just below the fixed bar, fully visible */
+[id]{scroll-margin-top:calc(66px + env(safe-area-inset-top,0px))}
+
 main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   padding-top:calc(54px + env(safe-area-inset-top,0px))}
 
