@@ -13,9 +13,9 @@ window.FTB_CONFIG = {
     oracle:   '0x1c92a93d438b9468b45706cbc4b1ddcc345df875', // Launch 2
     lend:     '0xae55c7b4950f9da4486baafdfd6ba2ae5ebdf8f4', // Launch 2 — v2 18 Oct: divUp rounding fix (dust debts repayable), adds owner-guarded update
     // ballot is deployed per proposal; the hash IS the proposal id
-    // R3 19 Oct: electorate moved to the v2 claim tree (5,194 wallets incl. dev + salvage)
-    // so the dev team can vote in the TestNet dry-run — DECISIONS.md, Decision 12.
-    ballot:   '0xf15bd85402854f305d47b30132c91316da51e081',
+    // R4 19 Oct: fresh tally (vote reset), electorate = v2 claim tree (5,194 wallets
+    // incl. dev + salvage); voting window runs to 31 Oct — DECISIONS.md, Decision 14.
+    ballot:   '0x2f76d354c1345946b0dc22d189724b71c7539690',
     // bond vault holds listing bonds (50/50 liquidity/rug-pull split)
     bondvault: '0x029785b1a2b395a295ebf96f7d68a3cee9afb967',
     // treasury escrows proposal budgets; dividends pays the holders' 2/9 to stakers
@@ -65,17 +65,17 @@ window.FTB_CONFIG = {
   // committed economics (DECISIONS.md 18 Oct): hard cap 100,000,000 FTB.
   // r = 100,000,000 ÷ 526,782,179.10 = 0.189832 FTB per FLM/FLOCKS — the migrator
   // mints floor(entitlement × r), verifiable on-chain via migrator.quote().
-  // the genesis vote weighs 1 FLM = 1 vote over the v2 claim tree (R3 ballot, 19 Oct —
+  // the genesis vote weighs 1 FLM = 1 vote over the v2 claim tree (R4 ballot, 19 Oct —
   // 5,194 wallets, 526,782,179.10 FLM-equiv electorate, incl. dev + salvage wallets);
   // future votes weigh 1 FTB = 1 vote.
   governance: { ratio: 0.189832, electorate: 526782179.10 },
 
   // the live ballot: question + option labels matching the on-chain order (option 1 first).
-  // endsAt: the 7-day voting window (DECISIONS.md 18 Oct — every vote lasts 7 days),
-  // measured from the R3 ballot's TestNet deployment (19 Oct 2026 ~09:48 UTC). UI enforces
-  // the window; the contract itself has no expiry — late votes still land on-chain.
+  // endsAt: the voting window closes 31 Oct 2026 end of day UTC (DECISIONS.md, Decision 14 —
+  // MainNet launches 1 Nov). UI enforces the window; the contract itself has no expiry —
+  // late votes still land on-chain.
   ballot: { question: '1 FLM/FLOCKS = 0.189832 FTB — adopt?', options: ['adopt', 'wait'],
-            endsAt: '2026-10-26T09:48:00Z' },
+            endsAt: '2026-10-31T23:59:59Z' },
 
   // AMM pairs for ratio tracking (Section II): label + token hashes for router.getReserves.
   pairs: [

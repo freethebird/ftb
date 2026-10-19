@@ -25,7 +25,7 @@
 
   // ---------- pie: option weights vs the snapshot supply (the electorate) ----------
   // One donut, three segments: option 1, option 2, and the unvoted remainder —
-  // every slice denominated in the 300,359,297.9466036 FLM snapshot supply.
+  // every slice denominated in the 526,782,179.10 FLM snapshot supply.
   var SEG_COLS = ['var(--ink)', 'var(--ink-2)'];
   function renderDonut(vals) {
     var host = $('govDonut'); if (!host) return;

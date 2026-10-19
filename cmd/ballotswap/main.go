@@ -35,6 +35,7 @@ type config struct {
 	Wallet        string `json:"wallet"`
 	PasswordEnv   string `json:"password_env"`
 	ContractsDir  string `json:"contracts_dir"`
+	Artifact      string `json:"artifact"` // build artifact basename, e.g. "ballot_r4"
 	MerkleRootHex string `json:"merkle_root_hex"` // the v2 root (0x9a36b6a0…)
 	NumOptions    int    `json:"num_options"`     // same question as R2: the ratio vote, 2 options
 }
@@ -86,11 +87,11 @@ func main() {
 	check(err)
 	mgmt := management.New(act)
 
-	nb, err := os.ReadFile(filepath.Join(cfg.ContractsDir, "ballot_r3.nef")) // #nosec G304 -- operator tool
+	nb, err := os.ReadFile(filepath.Join(cfg.ContractsDir, cfg.Artifact+".nef")) // #nosec G304 -- operator tool
 	check(err)
 	ne, err := nef.FileFromBytes(nb)
 	check(err)
-	mb, err := os.ReadFile(filepath.Join(cfg.ContractsDir, "ballot_r3.manifest.json")) // #nosec G304
+	mb, err := os.ReadFile(filepath.Join(cfg.ContractsDir, cfg.Artifact+".manifest.json")) // #nosec G304
 	check(err)
 	m := &manifest.Manifest{}
 	check(json.Unmarshal(mb, m))
@@ -100,7 +101,7 @@ func main() {
 	check(err)
 	_, err = act.WaitSuccess(context.Background(), txh, vub, err)
 	check(err)
-	fmt.Printf("deployed ballot_r3 -> 0x%s  tx 0x%s\n", h.StringLE(), txh.StringLE())
+	fmt.Printf("deployed %s -> 0x%s  tx 0x%s\n", cfg.Artifact, h.StringLE(), txh.StringLE())
 
 	txh, vub, err = act.SendCall(h, "configure", root, cfg.NumOptions)
 	check(err)
@@ -108,7 +109,7 @@ func main() {
 	check(err)
 	fmt.Printf("  wired %-22s tx 0x%s\n", "configure", txh.StringLE())
 
-	fmt.Printf("\nBALLOT R3 LIVE. new ballot 0x%s (root 0x%s, %d options)\n",
-		h.StringLE(), hex.EncodeToString(root), cfg.NumOptions)
+	fmt.Printf("\n%s LIVE. new ballot 0x%s (root 0x%s, %d options)\n",
+		cfg.Artifact, h.StringLE(), hex.EncodeToString(root), cfg.NumOptions)
 	fmt.Printf("update web/config.testnet.js + web/config.js (ballot) and redeploy the front end.\n")
 }

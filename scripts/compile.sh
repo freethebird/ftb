@@ -23,9 +23,9 @@ for v in ftb_migrator_r2 ballot_r2; do
 		-o "build/$v.nef" \
 		-m "build/$v.manifest.json"
 done
-# R3 variants (same rename pattern: ftb_migrator_r3, ballot_r3).
-for v in ftb_migrator_r3 ballot_r3; do
-	src="${v%_r3}"
+# R3/R4 variants (same rename pattern).
+for v in ftb_migrator_r3 ballot_r3 ballot_r4; do
+	src="${v%_r?}"
 	echo "compiling $v"
 	neo-go contract compile \
 		-i "contracts/$src/$src.go" \
