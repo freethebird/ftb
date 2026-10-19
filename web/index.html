@@ -207,7 +207,8 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .rwrap{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:9px; align-items:stretch}
 .rcol{display:flex; flex-direction:column; min-width:0}
 .rcolh{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint);
-  margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px}
+  margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 /* ratio + price: green boxes, one horizontal line each - never wrapped digits */
 .rbox{border:1px solid var(--ok); color:var(--ok); padding:8px 12px;
   font-size:13px; line-height:1.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
