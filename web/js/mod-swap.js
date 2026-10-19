@@ -115,6 +115,38 @@
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), span = (hi - lo) || 1;
     return vals.map(function (v) { return SPARK[Math.min(7, Math.floor((v - lo) / span * 8))]; }).join('');
   }
+  // ---------- fiat reference rates (Decision 12: display only, never protocol input) ----------
+  // Prices come from a public market API (CoinGecko) in the browser and are crossed
+  // with the on-chain pool ratio to derive the FTB leg. The contracts never see a
+  // fiat figure — ratios remain the only protocol truth. 5-minute cache; if the
+  // rate source is unreachable the fiat line simply stays empty.
+  var fiatRates = null, fiatAt = 0;
+  function refreshFiat() {
+    var now = Date.now();
+    if (fiatRates && now - fiatAt < 300000) return Promise.resolve(fiatRates);
+    try {
+      var c = JSON.parse(localStorage.getItem('ftb_fiat') || 'null');
+      if (c && c.rates && now - c.at < 300000) { fiatRates = c.rates; fiatAt = c.at; return Promise.resolve(fiatRates); }
+    } catch (e) {}
+    return fetch('https://api.coingecko.com/api/v3/simple/price?ids=neo,gas,flamingo-finance&vs_currencies=usd,cny')
+      .then(function (r) { if (!r.ok) throw new Error('rate source ' + r.status); return r.json(); })
+      .then(function (j) {
+        fiatRates = {
+          GAS: { usd: j.gas.usd, cny: j.gas.cny },
+          NEO: { usd: j.neo.usd, cny: j.neo.cny },
+          bNEO: { usd: j.neo.usd, cny: j.neo.cny }, // bNEO tracks NEO 1:1
+          FLM: { usd: j['flamingo-finance'].usd, cny: j['flamingo-finance'].cny }
+        };
+        fiatAt = Date.now();
+        try { localStorage.setItem('ftb_fiat', JSON.stringify({ at: fiatAt, rates: fiatRates })); } catch (e) {}
+        return fiatRates;
+      }).catch(function () { return null; }); // ratios still render; fiat stays blank
+  }
+  function fiatFmt(v, cur) {
+    if (!(v > 0)) return '—';
+    return cur + (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(3) : v.toPrecision(3));
+  }
+
   function refreshRatios() {
     var body = $('ratioBody'); if (!body) return;
     var pairs = CFG.pairs || [];
@@ -130,6 +162,7 @@
       card.appendChild(el('div', 'rp', '1 ' + sym[0] + ' ='));
       var num = el('div', 'rnum', 'reading…'); card.appendChild(num);
       var inv = el('div', 'rinv', ''); card.appendChild(inv);
+      var fiatEl = el('div', 'rfiat', ''); card.appendChild(fiatEl);
       var foot = el('div', 'rspark'); card.appendChild(foot);
       body.appendChild(card);
       FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
@@ -141,6 +174,15 @@
         try { localStorage.setItem('ftb_ratios', JSON.stringify(hist)); } catch (e) {}
         num.textContent = ratio.toPrecision(6) + ' ' + sym[1];
         inv.textContent = '1 ' + sym[1] + ' = ' + (1 / ratio).toPrecision(6) + ' ' + sym[0];
+        // fiat reference: the leg with a public market rate prices the other leg
+        // through the on-chain ratio (FTB has no market rate of its own — derived)
+        var ra = fiatRates && fiatRates[sym[0]], rb = fiatRates && fiatRates[sym[1]];
+        if (!rb && ra) rb = { usd: ra.usd / ratio, cny: ra.cny / ratio };
+        if (!ra && rb) ra = { usd: rb.usd * ratio, cny: rb.cny * ratio };
+        var fp = [];
+        if (ra) fp.push('1 ' + sym[0] + ' ≈ ' + fiatFmt(ra.usd, '$') + ' · ' + fiatFmt(ra.cny, '¥'));
+        if (rb) fp.push('1 ' + sym[1] + ' ≈ ' + fiatFmt(rb.usd, '$') + ' · ' + fiatFmt(rb.cny, '¥'));
+        fiatEl.textContent = fp.length ? fp.join('  ·  ') + ' — reference' : '';
         var chg = h.length > 1 ? (ratio / h[0] - 1) * 100 : 0;
         var cls = chg > 0.005 ? 'up' : (chg < -0.005 ? 'dn' : 'flat');
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
@@ -388,13 +430,14 @@
 
   FtbState.on('rpc', function () {
     FtbRpc.call('getblockcount').then(function (h) { tickBlock = h; paintTicker(); }).catch(function () {});
-    refreshRatios();
+    refreshFiat().then(function () { refreshRatios(); });
     refreshTvl();
     refreshLp();
   });
   FtbState.on('account', function () { refreshLp(); });
   FtbState.on('refresh', function () {
-    refreshRatios(); refreshTvl(); refreshLp();
+    refreshFiat().then(function () { refreshRatios(); });
+    refreshTvl(); refreshLp();
     // a confirmed write clears the ticket — no stale amount suggesting nothing happened
     $('swAmt').value = ''; $('swOut').value = '';
     lpStates.forEach(function (st) {
