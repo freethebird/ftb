@@ -137,6 +137,13 @@
     var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
     setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
   }
+  // a successful write bursts 'refresh' — clear the amount boxes with it, so the
+  // panel reads as a fresh state instead of looking like nothing happened.
+  FtbState.on('refresh', function () {
+    var s = $('dvStakeAmt'), u = $('dvUnstakeAmt');
+    if (s) s.value = '';
+    if (u) u.value = '';
+  });
   // every load goes through the shared coalescer — a signed stake bursts 'refresh'
   // events, and without this a slower stale pass can paint over the fresh one.
   var loadEarnC = FtbUtil.coalesce(loadEarn, 3000);
