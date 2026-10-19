@@ -23,4 +23,14 @@ for v in ftb_migrator_r2 ballot_r2; do
 		-o "build/$v.nef" \
 		-m "build/$v.manifest.json"
 done
+# R3 variants (same rename pattern: ftb_migrator_r3, ballot_r3).
+for v in ftb_migrator_r3 ballot_r3; do
+	src="${v%_r3}"
+	echo "compiling $v"
+	neo-go contract compile \
+		-i "contracts/$src/$src.go" \
+		-c "contracts/$src/$v.yml" \
+		-o "build/$v.nef" \
+		-m "build/$v.manifest.json"
+done
 echo "contracts compiled to build/"
