@@ -15,6 +15,7 @@ safemethods:
   - supplyApyBps
   - reserveAccrued
   - liquidationsOf
+  - pendingUpgradeEta
 events:
   - name: Configured
     parameters:
@@ -64,6 +65,12 @@ events:
         type: Integer
       - name: seizedGas
         type: Integer
+  - name: UpgradeProposed
+    parameters:
+      - name: eta
+        type: Integer
+  - name: UpgradeCancelled
+    parameters: []
 permissions:
   - contract: '*'
     methods:
@@ -72,7 +79,6 @@ permissions:
       - price
       - get
       - onNEP17Payment
-      # native ContractManagement.update, for the pre-launch-only Update (same posture
-      # as ftb_token: never ship a module without it — the v1 lend lacked it and a
-      # rounding fix forced a full redeploy). On the wildcard entry, as in ftb_token.yml.
+      # native ContractManagement.update, invoked only by ApplyUpgrade after the on-chain
+      # self-timelock (C2 remediation): no bare one-call Update remains.
       - update

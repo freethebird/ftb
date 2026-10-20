@@ -502,6 +502,32 @@ func TestReserveSplitAndSweep(t *testing.T) {
 	lo.Invoke(t, stackitem.Make(0), "reserveAccrued")
 }
 
+// C2 remediation: the bytecode upgrade is two-step and self-timelocked. This exercises the
+// gating (owner-only, nothing-pending, timelock-not-elapsed, cancel) without landing a real
+// NEF — a bogus NEF would fault inside management.update, which is not what we assert here.
+func TestUpgradeTimelock(t *testing.T) {
+	s := setup(t)
+	lo := s.e.NewInvoker(s.lend, s.owner)
+	other := s.e.NewAccount(t)
+	nef, man := []byte{0x01}, []byte{0x02}
+
+	// non-owner cannot propose
+	s.e.NewInvoker(s.lend, other).InvokeFail(t, "only owner", "proposeUpgrade", nef, man)
+	// nothing pending yet
+	lo.InvokeFail(t, "nothing pending", "applyUpgrade")
+	// propose; an ETA upgradeDelay blocks out is stamped
+	lo.Invoke(t, stackitem.Null{}, "proposeUpgrade", nef, man)
+	lo.InvokeAndCheck(t, func(t testing.TB, stack []stackitem.Item) {
+		requirePositive(t, "pendingUpgradeEta", stack[0].Value().(*big.Int))
+	}, "pendingUpgradeEta")
+	// cannot apply before the timelock elapses
+	lo.InvokeFail(t, "timelock not elapsed", "applyUpgrade")
+	// owner cancels; nothing pending again
+	lo.Invoke(t, stackitem.Null{}, "cancelUpgrade")
+	lo.Invoke(t, stackitem.Make(0), "pendingUpgradeEta")
+	lo.InvokeFail(t, "nothing pending", "applyUpgrade")
+}
+
 // APY views: utilization and both APYs are pure functions of pool state.
 func TestApyViews(t *testing.T) {
 	s := setup(t)

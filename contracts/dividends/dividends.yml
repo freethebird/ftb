@@ -10,6 +10,7 @@ safemethods:
   - monthIndex
   - monthTotal
   - totalReceived
+  - pendingUpgradeEta
 events:
   - name: Configured
     parameters:
@@ -49,11 +50,17 @@ events:
         type: Hash160
       - name: amount
         type: Integer
+  - name: UpgradeProposed
+    parameters:
+      - name: eta
+        type: Integer
+  - name: UpgradeCancelled
+    parameters: []
 permissions:
   - contract: '*'
     methods:
       - transfer
       - balanceOf
-      # native ContractManagement.update, for the pre-launch-only Update (same
-      # posture as ftb_token / lend: never ship a module without it).
+      # native ContractManagement.update, invoked only by ApplyUpgrade after the on-chain
+      # self-timelock (C3/D-1 remediation): no bare one-call Update remains.
       - update

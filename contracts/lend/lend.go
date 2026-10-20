@@ -47,6 +47,12 @@ const (
 	// distribution on demand at the instant their stake peaks. The primary anti-JIT fix is
 	// the dividends module's own unstake lock; this bounds the sweep's timing as well.
 	sweepCooldown = 240 // ~1 hour @ 15s
+	// upgradeDelay is the self-timelock on a bytecode upgrade (C2 remediation): a proposed NEF
+	// must sit in the open for ~1 day before ApplyUpgrade can land it over all deposits and
+	// collateral. A bare one-call owner Update is the retained-key Flamingo failure mode; the
+	// delay makes any upgrade visible and contestable. (Renouncing/moving the owner to
+	// governance is the Tier-3 step; this closes the no-delay hole in code now.)
+	upgradeDelay = 5760 // ~1 day @ 15s
 )
 
 var (
@@ -68,6 +74,10 @@ var (
 	keyBIdx      = []byte{0x22}
 	keyLastBlk   = []byte{0x23}
 	keySweepBlk  = []byte{0x24} // height of the last successful dividend sweep (D-2 cooldown)
+
+	keyUpgNef = []byte{0x25} // pending upgrade NEF (C2 self-timelock)
+	keyUpgMan = []byte{0x26} // pending upgrade manifest
+	keyUpgEta = []byte{0x27} // earliest height ApplyUpgrade may land
 
 	prefixShares = []byte{0x30}
 	prefixBNorm  = []byte{0x31}
@@ -152,13 +162,59 @@ func SetRates(base, slope1, slope2, kink, reserveBps int) {
 	runtime.Notify("RatesSet", base, slope1, slope2, kink, reserveBps)
 }
 
-// Update exists for pre-launch fixes only, same posture as ftb_token: the v1 lend
-// shipped WITHOUT this method, and a rounding bug (see divUp) could only be fixed by
-// a full redeploy behind the registry timelock. Never ship a module without it.
-func Update(nef []byte, manifest []byte, data any) {
+// ---- self-timelocked upgrade (C2 remediation) ----
+//
+// The bytecode upgrade is a two-step, timelocked, evented act over the contract that custodies
+// all supplier FTB and all NEO/GAS collateral. ProposeUpgrade records the new NEF+manifest and
+// stamps an ETA upgradeDelay blocks out; the delay elapses in the open; ApplyUpgrade then lands
+// it. CancelUpgrade drops a pending proposal. This replaces the former one-call owner Update —
+// the retained-key Flamingo failure mode — so no upgrade can land without a visible delay.
+
+// ProposeUpgrade stages a bytecode upgrade behind the timelock. Owner only.
+func ProposeUpgrade(nef []byte, manifest []byte) {
 	requireOwner()
-	management.UpdateWithData(nef, manifest, data)
+	if len(nef) == 0 || len(manifest) == 0 {
+		panic("upgrade: empty nef or manifest")
+	}
+	ctx := storage.GetContext()
+	eta := ledger.CurrentIndex() + upgradeDelay
+	storage.Put(ctx, keyUpgNef, nef)
+	storage.Put(ctx, keyUpgMan, manifest)
+	storage.Put(ctx, keyUpgEta, eta)
+	runtime.Notify("UpgradeProposed", eta)
 }
+
+// CancelUpgrade discards a pending upgrade. Owner only.
+func CancelUpgrade() {
+	requireOwner()
+	ctx := storage.GetContext()
+	storage.Delete(ctx, keyUpgNef)
+	storage.Delete(ctx, keyUpgMan)
+	storage.Delete(ctx, keyUpgEta)
+	runtime.Notify("UpgradeCancelled")
+}
+
+// ApplyUpgrade performs a staged upgrade once its timelock has elapsed. Owner only.
+func ApplyUpgrade() {
+	requireOwner()
+	ctx := storage.GetContext()
+	eta := getIntCtx(ctx, keyUpgEta)
+	if eta == 0 {
+		panic("upgrade: nothing pending")
+	}
+	if ledger.CurrentIndex() < eta {
+		panic("upgrade: timelock not elapsed")
+	}
+	nef := storage.Get(ctx, keyUpgNef).([]byte)
+	manifest := storage.Get(ctx, keyUpgMan).([]byte)
+	storage.Delete(ctx, keyUpgNef)
+	storage.Delete(ctx, keyUpgMan)
+	storage.Delete(ctx, keyUpgEta)
+	management.UpdateWithData(nef, manifest, nil) // replaces this contract; no code runs after
+}
+
+// PendingUpgradeEta is the height at which a staged upgrade becomes applicable, or 0 if none.
+func PendingUpgradeEta() int { return getInt(keyUpgEta) }
 
 // ---- receive tokens ----
 

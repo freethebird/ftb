@@ -195,3 +195,19 @@ func TestConfigureWriteOnce(t *testing.T) {
 	s.e.NewInvoker(s.div, s.other).InvokeFail(t, "only owner", "configure", s.ftb.BytesBE())
 	s.e.NewInvoker(s.div, s.owner).InvokeFail(t, "write-once", "configure", s.ftb.BytesBE())
 }
+
+// C3/D-1 remediation: the bytecode upgrade over all staked FTB is two-step and self-timelocked.
+// Exercises the gating without landing a real NEF (a bogus NEF would fault inside management.update).
+func TestUpgradeTimelock(t *testing.T) {
+	s := setup(t)
+	dv := s.e.NewInvoker(s.div, s.owner)
+	nef, man := []byte{0x01}, []byte{0x02}
+
+	s.e.NewInvoker(s.div, s.other).InvokeFail(t, "only owner", "proposeUpgrade", nef, man)
+	dv.InvokeFail(t, "nothing pending", "applyUpgrade")
+	dv.Invoke(t, stackitem.Null{}, "proposeUpgrade", nef, man)
+	dv.InvokeFail(t, "timelock not elapsed", "applyUpgrade")
+	dv.Invoke(t, stackitem.Null{}, "cancelUpgrade")
+	dv.Invoke(t, stackitem.Make(0), "pendingUpgradeEta")
+	dv.InvokeFail(t, "nothing pending", "applyUpgrade")
+}
