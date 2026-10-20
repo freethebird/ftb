@@ -392,11 +392,33 @@
     });
   }
   function parseAmt(v) { try { var n = BigInt(FtbDapi.util.toBaseUnits(v)); return n > 0n ? n : null; } catch (e) { return null; } }
+  // integer sqrt (Babylonian) - LP mint estimate for a first deposit:
+  // sqrt(amtA*amtB), minus the pair's permanently locked minimum liquidity.
+  function isqrt(n) {
+    if (n < 0n) throw new Error('isqrt negative');
+    if (n < 2n) return n;
+    var x = n, y = (x + 1n) / 2n;
+    while (y < x) { x = y; y = (x + n / x) / 2n; }
+    return x;
+  }
   function quoteAdd(st, side) {
     st.addQ = null;
     var rawA = st.inAddA.value.trim(), rawB = st.inAddB.value.trim();
     if (!rawA && !rawB) { st.addMeta.textContent = 'amounts quote each other from live reserves · mins at 0.5% slippage'; return; }
-    if (st.rA === 0n || st.rB === 0n) { st.addMeta.textContent = 'pool is empty - the first deposit sets the ratio; add via the seeded pool only'; return; }
+    if (st.rA === 0n || st.rB === 0n) {
+      // first deposit: no live ratio to quote against - the depositor sets the
+      // price. both amounts are free entry, mins are the amounts themselves
+      // (nothing can drift an empty pool), lp estimate is sqrt(a*b) - 1000 wei.
+      var fA = parseT(rawA, st.symA), fB = parseT(rawB, st.symB);
+      if (fA === null) { st.addMeta.textContent = 'first deposit sets the ratio - enter a ' + st.symA + ' amount' + (decOf(st.symA) === 0 ? ' (whole units)' : ''); return; }
+      if (fB === null) { st.addMeta.textContent = 'first deposit sets the ratio - enter a ' + st.symB + ' amount'; return; }
+      var fLp = isqrt(fA * fB) - 1000n; if (fLp < 0n) fLp = 0n;
+      st.addQ = { amtA: fA, amtB: fB, minA: fA, minB: fB, lpEst: fLp };
+      st.addMeta.textContent = 'first deposit sets the ratio: 1 ' + st.symA + ' = ' +
+        (whole(fB, st.symB) / whole(fA, st.symA)).toPrecision(6) + ' ' + st.symB +
+        ' · you receive ≈ ' + fmt(fLp) + ' LP';
+      return;
+    }
     var amtA, amtB;
     if (side === 'A') {
       amtA = parseT(rawA, st.symA); if (amtA === null) { st.addMeta.textContent = rawA ? 'bad ' + st.symA + ' amount' + (decOf(st.symA) === 0 ? ' - whole units only' : '') : 'enter a ' + st.symA + ' amount'; return; }
