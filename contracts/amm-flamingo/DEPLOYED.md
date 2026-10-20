@@ -80,3 +80,28 @@ Seed: `router.addLiquidity(40 FTB, 1 NEO)` tx `0x4d9a4848…95ec28` - ratio
 front-end parses/formats it in whole units (web/js/mod-swap.js fmtT/parseT).
 Verified after seeding: `router.getReserves(NEO, FTB)` = (1, 4,000,000,000) and
 `getExchangePairWithAssert(NEO, FTB)` resolves to the pair above.
+
+## R4 reset pairs (20 October 2026)
+
+The R4 token reset made the two seeded pairs above dead ends: their reserves
+hold the old token and their `TokenB` constant names the old token hash
+(byte-immutable). Two fresh pairs were deployed from the same edited source,
+constants-only variants with `TokenB` = token v2
+(`0x1ff1f51e63179867367ae8982af583e01e7cbdbd`), and the factory was re-pointed
+(`RegisterExchangePair` overwrites the mapping - removal is commented out in
+the audited Flamingo source).
+
+| Contract | Hash | Notes |
+| --- | --- | --- |
+| FlamingoSwapPair (GAS/FTBv2) | `0x6f6ad35beb8d5e3cea756882753aecdca18982a0` | variant `FlamingoSwapPairGasFtbV2/` |
+| FlamingoSwapPairFtbNeo (FTBv2/NEO) | `0xe4a24038b8817101f21e269c1909dc8e68487f49` | variant `FlamingoSwapPairFtbNeoV2/` |
+
+Re-point verified via `router.getExchangePairWithAssert(GAS, FTBv2)` and
+`(FTBv2, NEO)` - both resolve to the hashes above. Factory, router, and
+whitelist unchanged. Reseeding is a separate step: `cmd/ammdeploy -phase seed`
+(20 GAS + 800 FTB) and `cmd/neopair -phase seed` (5 NEO + 360 FTB), both
+pointed at token v2.
+
+Dead-by-R4 contracts (immutable, harmless, documented for the IAR): pairs
+`0x90759870…` and `0x0c81a5c6…` hold the old token's residual reserves; the
+factory mapping no longer resolves to them.
