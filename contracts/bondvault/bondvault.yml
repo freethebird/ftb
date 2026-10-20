@@ -4,6 +4,7 @@ safemethods:
   - vaultOf
   - liquidityOf
   - project
+  - compensationOf
   - committee
   - token
 events:
@@ -12,6 +13,14 @@ events:
       - name: ftb
         type: Hash160
       - name: committee
+        type: Hash160
+  - name: ListingRegistered
+    parameters:
+      - name: token
+        type: Hash160
+      - name: project
+        type: Hash160
+      - name: compensation
         type: Hash160
   - name: Bonded
     parameters:

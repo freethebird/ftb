@@ -5,9 +5,11 @@ safemethods:
   - devOf
   - auditorOf
   - auditedHash
+  - expectedHash
   - attestedAt
   - escrowed
   - free
+  - auditorEnabled
   - committee
   - token
 events:
@@ -19,6 +21,12 @@ events:
         type: Hash160
       - name: registry
         type: Hash160
+  - name: AuditorSet
+    parameters:
+      - name: auditor
+        type: Hash160
+      - name: enabled
+        type: Boolean
   - name: Received
     parameters:
       - name: from

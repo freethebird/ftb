@@ -53,6 +53,8 @@ var (
 	prefixHeight = []byte{0x15} // + id -> attestation block height
 	prefixBps    = []byte{0x16} // + id -> tranche A share of the escrow, bps
 	prefixSoak   = []byte{0x17} // + id -> soak blocks between attestation and tranche B
+	prefixExpect = []byte{0x18} // + id -> the expected NEF hash the auditor must attest (T2)
+	prefixAudOK  = []byte{0x19} // + auditor -> 1 if on the committee-registered auditor set (T1)
 )
 
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
@@ -101,10 +103,45 @@ func OnNEP17Payment(from interop.Hash160, amount int, data any) {
 // emit non-deterministic NEFs (found by the NEF-hash gate, FTB-33).
 const maxEscrowID = 4294967296 // 2^32
 
-// CreateEscrow locks a proposal budget after its ballot passes. Committee only. The dev
-// team and the auditor must be different addresses — the one who writes the code is never
-// the one who approves it.
-func CreateEscrow(id int, dev, auditor interop.Hash160, amount, trancheABps, soakBlocks int) {
+// minSoak is the T1 floor on the testnet soak between attestation and tranche B. A soak of
+// zero let a committee self-Attest and claim both tranches in the same block; the floor
+// forces every escrow to sit on testnet for at least ~1 day (5760 blocks @ ~15s) before the
+// remainder is claimable. Governance sets the real per-proposal soak far higher; this is only
+// the hard lower bound, matched to the registry timelock floor.
+const minSoak = 5760
+
+// SetAuditor adds or removes an address from the registered auditor set (T1). Only an
+// enrolled auditor may be named on an escrow, and enrollment is a separate, evented,
+// in-the-open committee act — a puppet auditor cannot be conjured inside the same call that
+// funds the escrow. Committee only. (Binding this set to an on-chain ballot tally, so the
+// committee cannot self-enroll a confederate, is the Tier-3 governance-contract item.)
+func SetAuditor(auditor interop.Hash160, enabled bool) {
+	requireCommittee()
+	if len(auditor) != 20 {
+		panic("auditor: bad address")
+	}
+	ctx := storage.GetContext()
+	if enabled {
+		storage.Put(ctx, append(prefixAudOK, auditor...), 1)
+	} else {
+		storage.Delete(ctx, append(prefixAudOK, auditor...))
+	}
+	runtime.Notify("AuditorSet", auditor, enabled)
+}
+
+// AuditorEnabled reports whether an address is on the registered auditor set.
+func AuditorEnabled(auditor interop.Hash160) bool {
+	return storage.Get(storage.GetContext(), append(prefixAudOK, auditor...)) != nil
+}
+
+// CreateEscrow locks a proposal budget after its ballot passes. Committee only. The hardened
+// separation of duties (T1): the dev team and the auditor must differ from each other AND
+// neither may be the committee — the party that routes the money is never also the party that
+// writes or approves the code. The auditor must already be on the registered auditor set
+// (SetAuditor), the soak must meet the minSoak floor (no same-block drain), and the exact NEF
+// hash the auditor will later have to attest is bound here, up-front (T2) — payment is tied to
+// a specific set of bytes committed at creation, not to whatever 32 bytes get supplied later.
+func CreateEscrow(id int, dev, auditor interop.Hash160, amount, trancheABps, soakBlocks int, expectedHash []byte) {
 	requireCommittee()
 	if id < 0 || id >= maxEscrowID {
 		panic("escrow: bad id") // escKey packs the id into 4 bytes; the bound is proven, not hoped
@@ -112,10 +149,23 @@ func CreateEscrow(id int, dev, auditor interop.Hash160, amount, trancheABps, soa
 	if len(dev) != 20 || len(auditor) != 20 || eq(dev, auditor) {
 		panic("escrow: bad dev/auditor")
 	}
-	if amount <= 0 || trancheABps <= 0 || trancheABps >= 10000 || soakBlocks < 0 {
+	ctx := storage.GetContext()
+	committee := storage.Get(ctx, keyCommittee).(interop.Hash160)
+	if eq(dev, committee) || eq(auditor, committee) {
+		panic("escrow: dev/auditor must not be the committee") // T1: no committee self-deal
+	}
+	if storage.Get(ctx, append(prefixAudOK, auditor...)) == nil {
+		panic("escrow: auditor not on the registered set") // T1: vetted auditors only
+	}
+	if amount <= 0 || trancheABps <= 0 || trancheABps >= 10000 {
 		panic("escrow: bad terms")
 	}
-	ctx := storage.GetContext()
+	if soakBlocks < minSoak {
+		panic("escrow: soak below the minimum floor") // T1: no zero-soak same-block drain
+	}
+	if len(expectedHash) != 32 {
+		panic("escrow: expected NEF hash must be 32 bytes") // T2: bind the reviewed bytes
+	}
 	sk := escKey(prefixState, id)
 	if getIntCtx(ctx, sk) != stateNone {
 		panic("escrow: id already used")
@@ -129,12 +179,15 @@ func CreateEscrow(id int, dev, auditor interop.Hash160, amount, trancheABps, soa
 	storage.Put(ctx, escKey(prefixAud, id), auditor)
 	storage.Put(ctx, escKey(prefixBps, id), trancheABps)
 	storage.Put(ctx, escKey(prefixSoak, id), soakBlocks)
+	storage.Put(ctx, escKey(prefixExpect, id), expectedHash)
 	storage.Put(ctx, keyEscrowed, getIntCtx(ctx, keyEscrowed)+amount)
 	runtime.Notify("EscrowCreated", id, dev, auditor, amount, trancheABps, soakBlocks)
 }
 
-// Attest records a passed audit. Auditor only, and the attestation binds the exact audited
-// NEF hash — payment is tied to the bytes that were reviewed, not to a promise.
+// Attest records a passed audit. Auditor only, and the attestation must match the EXACT NEF
+// hash bound at CreateEscrow (T2) — payment is tied to the specific bytes that were committed
+// for review, not to any 32 bytes the auditor cares to supply. A mismatch reverts, so an
+// auditor cannot rubber-stamp a different build than the one governance funded.
 func Attest(id int, nefHash []byte) {
 	ctx := storage.GetContext()
 	aud := auditorOf(ctx, id)
@@ -147,6 +200,10 @@ func Attest(id int, nefHash []byte) {
 	sk := escKey(prefixState, id)
 	if getIntCtx(ctx, sk) != stateOpen {
 		panic("attest: not an open escrow")
+	}
+	expected := storage.Get(ctx, escKey(prefixExpect, id))
+	if expected == nil || string(nefHash) != string(expected.([]byte)) {
+		panic("attest: NEF hash does not match the escrow's bound hash") // T2
 	}
 	storage.Put(ctx, sk, stateAttested)
 	storage.Put(ctx, escKey(prefixHash, id), nefHash)
@@ -266,6 +323,16 @@ func AuditorOf(id int) interop.Hash160 { return auditorOf(storage.GetContext(), 
 // AuditedHash is the exact NEF hash the auditor attested; nil before attestation.
 func AuditedHash(id int) []byte {
 	v := storage.Get(storage.GetContext(), escKey(prefixHash, id))
+	if v == nil {
+		return nil
+	}
+	return v.([]byte)
+}
+
+// ExpectedHash is the NEF hash bound at CreateEscrow that the auditor must attest (T2);
+// nil if the id was never created. Public so anyone can check the funded build up-front.
+func ExpectedHash(id int) []byte {
+	v := storage.Get(storage.GetContext(), escKey(prefixExpect, id))
 	if v == nil {
 		return nil
 	}
