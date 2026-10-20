@@ -7,23 +7,25 @@ window.FTB_CONFIG = {
   network: 'TestNet',
 
   contracts: {
-    ftb:      '0xdc82bb0c89085dfeb81a40cebce786cb1b73044c', // FTB token (TestNet, cap 100M committed 18 Oct via pre-launch update)
-    migrator: '0xe4f91c4957670ae295d55efc0e8ac6e3c5dcfc99', // migration claim R3 - v2 tree (5,194 wallets incl. salvage + dev allocation), mints floor(FLM-equiv × 0.189832)
-    registry: '0x0d59f3bb8018f5668ac4448249f21927fe961614', // seam board
+    // R4 reset (20 Oct 2026): token v2 - the claimed ledger lives INSIDE the token, so
+    // no migrator swap can ever reopen a claim (the R2+R3 double-claim class is dead).
+    ftb:      '0x1ff1f51e63179867367ae8982af583e01e7cbdbd', // FTB token v2 (cap 100M, per-account claim ledger)
+    migrator: '0x4af54b861eafcff198892b38b8b60fd06f95dd2d', // migration claim R4 - stateless proof-checker, v2 tree (5,194 wallets), mints floor(FLM-equiv × 0.189832)
+    registry: '0x0d59f3bb8018f5668ac4448249f21927fe961614', // seam board (re-pointed via timelock 20 Oct)
     oracle:   '0x1c92a93d438b9468b45706cbc4b1ddcc345df875', // Launch 2
-    lend:     '0xae55c7b4950f9da4486baafdfd6ba2ae5ebdf8f4', // Launch 2 - v2 18 Oct: divUp rounding fix (dust debts repayable), adds owner-guarded update
+    lend:     '0x3b319667f54a4888d0d366d4923d93a833baf8c5', // R4 reset: fresh state (FtbLendR2), same audited code
     // ballot is deployed per proposal; the hash IS the proposal id
     // R4 19 Oct: fresh tally (vote reset), electorate = v2 claim tree (5,194 wallets
     // incl. dev + salvage); voting window runs to 31 Oct - DECISIONS.md, Decision 14.
     ballot:   '0x2f76d354c1345946b0dc22d189724b71c7539690',
     // bond vault holds listing bonds (50/50 liquidity/rug-pull split)
-    bondvault: '0x029785b1a2b395a295ebf96f7d68a3cee9afb967',
+    bondvault: '0x20663c31352c224da37cd136dab587f2da55d390', // R4 reset: fresh state (FtbBondVaultR2)
     // treasury escrows proposal budgets; dividends pays the holders' 2/9 to stakers
-    treasury:  '0xcac71ad3478491401ec72c35831521437d06aea6',
-    dividends: '0xb98cd5d04b20b84fcef0fc9d305dd5092c5a0df9', // v2 18 Oct: monthly revenue ledger + update method,
+    treasury:  '0xa0bcfb4de8898d12a5535151fd80050c46391033', // R4 reset: fresh state (FtbTreasuryR2)
+    dividends: '0xa1f8fcbdfee1446cd47d46d773d8b6a7f2542c63', // R4 reset: fresh state (FtbDividendsR2)
     // bNEO (NeoBurger) - ratio-board listing only; lend collateral is native NEO + GAS.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
-    // router is the external Flamingo swap; no AMM on TestNet (neo#3285) - placeholder.
+    // router is the community AMM (reused audited Flamingo); pairs recompiled vs token v2
     router:   '0x7e3fa9356e3294acf709c51062ca051f1df6cb5c'
   },
 

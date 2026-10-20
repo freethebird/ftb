@@ -42,4 +42,15 @@ for v in ballot_launchdate ballot_claimwindow; do
 		-o "build/$v.nef" \
 		-m "build/$v.manifest.json"
 done
+# R4 reset variants: same module code, renamed manifests -> fresh contract hashes,
+# so the reset deploys clean state instead of inheriting old-FTB accounting.
+for v in dividends_r2 lend_r2 bondvault_r2 treasury_r2; do
+	src="${v%_r2}"
+	echo "compiling $v"
+	neo-go contract compile \
+		-i "contracts/$src/$src.go" \
+		-c "contracts/$src/$v.yml" \
+		-o "build/$v.nef" \
+		-m "build/$v.manifest.json"
+done
 echo "contracts compiled to build/"

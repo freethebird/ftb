@@ -1,7 +1,7 @@
 // neopair adds the FTB/NEO pair to the community AMM on TestNet: deploys the
 // constants-only FlamingoSwapPairFtbNeo variant (TokenA=FTB — the smaller hash,
 // token0 by router convention — TokenB=NEO), registers it with the factory, and
-// seeds 40 FTB + 1 NEO (ratio 40, matching the GAS pool's placeholder).
+// seeds 360 FTB + 5 NEO (ratio 72, consistent with NEO ≈ 1.8 GAS).
 // Same self-check discipline as cmd/ammdeploy: the hash is recomputed from the
 // build artifacts and verified with getcontractstate before use; a re-run skips
 // what is already live.
@@ -35,18 +35,19 @@ import (
 const pairDir = "contracts/amm-flamingo/Swap/flamingo-contract-swap/FlamingoSwapPairFtbNeo/bin/sc"
 const pairName = "FlamingoSwapPairFtbNeo"
 
-// seed: ratio 1 NEO = 40 FTB, matching the GAS pool's placeholder (Decision: the
-// pool exists to exercise the swap path before the IAR; the community adds depth).
+// seed: ratio 1 NEO = 72 FTB (R4 reset deep seed: 5 NEO + 360 FTB), consistent with
+// NEO ≈ 1.8 GAS against the GAS pool's 1:40 - deep enough that the 0-decimal NEO
+// expresses the ratio exactly (the 1-NEO first pool could not).
 var (
-	seedFTB = big.NewInt(4000000000) // 40 FTB (8 decimals)
-	seedNEO = big.NewInt(1)          // 1 NEO (0 decimals, indivisible)
+	seedFTB = big.NewInt(36000000000) // 360 FTB (8 decimals)
+	seedNEO = big.NewInt(5)           // 5 NEO (0 decimals, indivisible)
 )
 
-// native NEO (same on every N3 network), the TestNet FTB token, and the live
-// AMM wiring from contracts/amm-flamingo/DEPLOYED.md.
+// native NEO (same on every N3 network), the TestNet FTB token (R4 reset: token v2),
+// and the live AMM wiring from contracts/amm-flamingo/DEPLOYED.md.
 var (
 	neoHash = mustHash("0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")
-	ftbHash = mustHash("0xdc82bb0c89085dfeb81a40cebce786cb1b73044c")
+	ftbHash = mustHash("0x1ff1f51e63179867367ae8982af583e01e7cbdbd")
 	factory = mustHash("0x2b582cdc325e0788a6732a79671687580d985dc4")
 	router  = mustHash("0x7e3fa9356e3294acf709c51062ca051f1df6cb5c")
 )

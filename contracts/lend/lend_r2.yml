@@ -1,0 +1,78 @@
+name: FtbLendR2
+safemethods:
+  - debtOf
+  - collateralValue
+  - collateralOf
+  - maxBorrow
+  - isUnhealthy
+  - sharesOf
+  - totalShares
+  - totalBorrows
+  - utilizationBps
+  - borrowRatePerBlock
+  - supplyRatePerBlock
+  - borrowApyBps
+  - supplyApyBps
+  - reserveAccrued
+  - liquidationsOf
+events:
+  - name: Configured
+    parameters:
+      - name: registry
+        type: Hash160
+      - name: ftb
+        type: Hash160
+  - name: RiskSet
+    parameters:
+      - name: ltv
+        type: Integer
+      - name: liq
+        type: Integer
+      - name: bonus
+        type: Integer
+  - name: RatesSet
+    parameters:
+      - name: base
+        type: Integer
+      - name: slope1
+        type: Integer
+      - name: slope2
+        type: Integer
+      - name: kink
+        type: Integer
+      - name: reserveBps
+        type: Integer
+  - name: DividendsSwept
+    parameters:
+      - name: to
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: TreasurySwept
+    parameters:
+      - name: to
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: Liquidated
+    parameters:
+      - name: borrower
+        type: Hash160
+      - name: repaid
+        type: Integer
+      - name: seizedNeo
+        type: Integer
+      - name: seizedGas
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - transfer
+      - balanceOf
+      - price
+      - get
+      - onNEP17Payment
+      # native ContractManagement.update, for the pre-launch-only Update (same posture
+      # as ftb_token: never ship a module without it — the v1 lend lacked it and a
+      # rounding fix forced a full redeploy). On the wildcard entry, as in ftb_token.yml.
+      - update

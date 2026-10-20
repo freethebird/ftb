@@ -37,7 +37,7 @@ namespace FlamingoSwapPair
         static readonly UInt160 TokenA = default;
         #endregion
 
-        [InitialValue("0xdc82bb0c89085dfeb81a40cebce786cb1b73044c", Neo.SmartContract.ContractParameterType.Hash160)]
+        [InitialValue("0x1ff1f51e63179867367ae8982af583e01e7cbdbd", Neo.SmartContract.ContractParameterType.Hash160)]
         static readonly UInt160 TokenB = default;
 
 

@@ -1,0 +1,58 @@
+name: FtbDividendsR2
+safemethods:
+  - pendingOf
+  - stakedOf
+  - totalStaked
+  - accPerShare
+  - queued
+  - token
+  - monthIndex
+  - monthTotal
+  - totalReceived
+events:
+  - name: Configured
+    parameters:
+      - name: ftb
+        type: Hash160
+  - name: Received
+    parameters:
+      - name: from
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: Distributed
+    parameters:
+      - name: amount
+        type: Integer
+      - name: totalStaked
+        type: Integer
+  - name: Queued
+    parameters:
+      - name: amount
+        type: Integer
+  - name: Staked
+    parameters:
+      - name: user
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: Unstaked
+    parameters:
+      - name: user
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: Claimed
+    parameters:
+      - name: user
+        type: Hash160
+      - name: amount
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - transfer
+      - balanceOf
+      # native ContractManagement.update, for the pre-launch-only Update (same
+      # posture as ftb_token / lend: never ship a module without it).
+      - update

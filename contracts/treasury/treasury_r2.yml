@@ -1,0 +1,81 @@
+name: FtbTreasuryR2
+safemethods:
+  - state
+  - amountOf
+  - devOf
+  - auditorOf
+  - auditedHash
+  - attestedAt
+  - escrowed
+  - free
+  - committee
+  - token
+events:
+  - name: Configured
+    parameters:
+      - name: ftb
+        type: Hash160
+      - name: committee
+        type: Hash160
+      - name: registry
+        type: Hash160
+  - name: Received
+    parameters:
+      - name: from
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: EscrowCreated
+    parameters:
+      - name: id
+        type: Integer
+      - name: dev
+        type: Hash160
+      - name: auditor
+        type: Hash160
+      - name: amount
+        type: Integer
+      - name: trancheABps
+        type: Integer
+      - name: soakBlocks
+        type: Integer
+  - name: Attested
+    parameters:
+      - name: id
+        type: Integer
+      - name: auditor
+        type: Hash160
+      - name: nefHash
+        type: ByteArray
+  - name: AuditFailed
+    parameters:
+      - name: id
+        type: Integer
+      - name: auditor
+        type: Hash160
+  - name: TranchePaid
+    parameters:
+      - name: id
+        type: Integer
+      - name: dev
+        type: Hash160
+      - name: tranche
+        type: Integer
+      - name: amount
+        type: Integer
+  - name: EscrowCancelled
+    parameters:
+      - name: id
+        type: Integer
+  - name: ExcessReturned
+    parameters:
+      - name: to
+        type: Hash160
+      - name: amount
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - transfer
+      - balanceOf
+      - get

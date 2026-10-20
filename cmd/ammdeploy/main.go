@@ -33,11 +33,11 @@ import (
 
 const ammRoot = "contracts/amm-flamingo/Swap/flamingo-contract-swap"
 
-// seed size for the first community pool — modest on purpose; the pool exists to
-// exercise the swap path before the IAR, and the community adds depth after.
+// seed size for the community pool - deep enough that test swaps don't slip
+// (R4 reset: 20 GAS + 800 FTB keeps the 1 GAS = 40 FTB placeholder ratio).
 var (
-	seedGAS = big.NewInt(125000000)  // 1.25 GAS (8 decimals)
-	seedFTB = big.NewInt(5000000000) // 50 FTB  (8 decimals) — 1 GAS = 40 FTB placeholder ratio
+	seedGAS = big.NewInt(2000000000)  // 20 GAS (8 decimals)
+	seedFTB = big.NewInt(80000000000) // 800 FTB (8 decimals) — 1 GAS = 40 FTB
 )
 
 var artifacts = map[string]string{ // contract name -> dir holding <name>.nef / <name>.manifest.json
@@ -50,10 +50,11 @@ var artifacts = map[string]string{ // contract name -> dir holding <name>.nef / 
 // deploy order matters for readability only; hashes are content-derived.
 var order = []string{"FlamingoSwapPairWhiteList", "FlamingoSwapFactory", "FlamingoSwapPair", "FlamingoSwapRouter"}
 
-// native GAS (same on every N3 network) and the TestNet FTB token.
+// native GAS (same on every N3 network) and the TestNet FTB token (R4 reset: token v2,
+// claimed ledger inside the token).
 var (
 	gasHash = mustHash("0xd2a4cff31913016155e38e474a2c06d08be276cf")
-	ftbHash = mustHash("0xdc82bb0c89085dfeb81a40cebce786cb1b73044c")
+	ftbHash = mustHash("0x1ff1f51e63179867367ae8982af583e01e7cbdbd")
 )
 
 func mustHash(s string) util.Uint160 {
