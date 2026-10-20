@@ -336,3 +336,8 @@ run against TestNet hashes; sections 3 and 4 above describe the live state, not 
 gate. The same-day lend refactor moved the last out-of-adapter codec into module 11
 (base58 encode + script-hash→address, KAT-pinned against live chain data) and put the
 lend module's refresh path under coalescing.
+
+## Versioning
+
+Modules carry visible version tags and locked backups under `web/js/backup/`.
+The protocol and version map live in `VERSIONS.md` and bind every module.

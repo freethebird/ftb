@@ -430,6 +430,10 @@ body{font-size:15px}
   border-bottom:1px solid var(--ink); flex-wrap:wrap}
 .card-h .no{font-family:var(--disp); font-size:20px; letter-spacing:.12em;
   text-transform:uppercase}
+/* module version tag: locked releases carry it next to the name (VERSIONS.md) */
+.ver{font-size:10px; letter-spacing:.14em; color:var(--faint); text-transform:none;
+  margin-left:.7em; white-space:nowrap; align-self:baseline}
+.lp-head .biglabel{text-transform:uppercase}
 .card-h .lede{font-size:12px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--faint)}
 .card-h .spacer{margin-left:auto}
@@ -586,7 +590,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <div class="tradegrid">
     <div class="card" id="trade">
       <div class="card-h">
-        <div class="ctabs"><span class="cur">swap</span><a href="#market">pools</a></div>
+        <div class="ctabs"><span class="cur">swap <span class="ver">v0.10</span></span><a href="#market">pools</a></div>
       </div>
       <div class="card-b">
         <div class="bal" id="balStrip" hidden>
@@ -617,7 +621,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
     <div class="card" id="market">
       <div class="card-h">
-        <span class="no">tokens on ftb</span>
+        <span class="no">tokens on ftb</span><span class="ver">v0.10</span>
         <span class="spacer"></span>
         <span class="lede">on-chain ratios are the truth · fiat is reference only</span>
         <button class="linkish" id="ratioBtn">refresh -&gt;</button>
@@ -631,7 +635,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
         </div>
         <div id="lp">
           <div class="lp-head">
-            <span class="biglabel">your liquidity</span>
+            <span class="biglabel">swap liquidity</span><span class="ver">v0.10</span>
             <span class="spacer"></span>
             <button class="linkish" id="lpRefresh">refresh -&gt;</button>
           </div>
@@ -647,7 +651,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <div class="earngrid">
     <div class="card" id="earn">
       <div class="card-h">
-        <span class="no">ftb dividends</span>
+        <span class="no">ftb dividends</span><span class="ver">v0.10</span>
         <span class="spacer"></span>
         <span class="lede">the holders' 2/9 of every fee</span>
         <button class="read linkish" id="earnRefresh">refresh -&gt;</button>
@@ -693,7 +697,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
     <div class="card" id="lend">
       <div class="card-h">
-        <span class="no">lend</span>
+        <span class="no">lend</span><span class="ver">v0.10</span>
         <span class="spacer"></span>
         <span class="lede">NEO+GAS collateral · FTB loans</span>
         <button class="read linkish" id="lendRefresh">refresh -&gt;</button>
@@ -741,7 +745,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <!-- ============ GOVERNANCE (full width, same size as CLAIM) ============ -->
   <div class="card act3" id="vote">
     <div class="card-h">
-      <span class="no">governance</span>
+      <span class="no">governance</span><span class="ver">v0.10</span>
       <span class="spacer"></span>
       <span class="lede">snapshot-weighted, counted on-chain · 3 ballots · close 31 Oct</span>
       <button class="linkish" id="govRefresh">tally -&gt;</button>
@@ -765,7 +769,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
   <div class="card act3" id="board">
     <div class="card-h">
-      <span class="no">proposals</span>
+      <span class="no">proposals</span><span class="ver">v0.10</span>
       <span class="spacer"></span>
       <span class="lede">bonded - spam pays</span>
       <button class="linkish" id="boardRefresh">refresh -&gt;</button>
@@ -797,7 +801,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <!-- ============ CLAIM ============ -->
   <div class="card act3" id="claim">
     <div class="card-h">
-      <span class="no">claim</span>
+      <span class="no">claim</span><span class="ver">v0.10</span>
       <span class="spacer"></span>
       <span class="lede">migration - claim your FTB</span>
     </div>
@@ -831,7 +835,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <!-- ============ VERIFY ============ -->
   <div class="card act3" id="verify">
     <div class="card-h">
-      <span class="no">verify</span>
+      <span class="no">verify</span><span class="ver">v0.10</span>
       <span class="spacer"></span>
       <span class="lede">verify everything - trust nothing</span>
     </div>
@@ -884,7 +888,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 <div id="ovRpc" class="overlay" hidden role="dialog" aria-modal="true" aria-label="use your own node">
   <div class="panel" tabindex="-1">
     <button class="x" data-close aria-label="close">[ close ]</button>
-    <h2 class="disp">your node</h2>
+    <h2 class="disp">your node <span class="ver">v0.10</span></h2>
     <p class="muted small" style="max-width:54ch">paste the URL of a Neo N3 RPC node you control. a user on their own node cannot be censored. stored only in this browser.</p>
     <section class="path">
       <h3>// endpoint</h3>

@@ -323,7 +323,7 @@
   }
   var rtb = $('ratioBtn'); rtb.addEventListener('click', function () { flash(rtb); refreshRatios(); });
 
-  // ---------- your liquidity: add / remove LP per configured pair ----------
+  // ---------- swap liquidity: add / remove LP per configured pair ----------
   // One .lpair card per CFG.pairs entry. Reads: router.getReserves + the pair's own
   // NEP-17 (totalSupply, balanceOf) - the LP token IS the pair contract. Writes go
   // through the router's sender-variant add/removeLiquidity with a CustomContracts
