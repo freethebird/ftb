@@ -77,7 +77,7 @@ func TestBondSplitsAndTopsUp(t *testing.T) {
 	s := setup(t)
 	s.register(t)
 
-	s.bond(t, 101) // odd amount: vault keeps the rounding dust
+	s.bond(t, 101)             // odd amount: vault keeps the rounding dust
 	s.checkView(t, "state", 2) // bonded
 	s.checkView(t, "vaultOf", 51)
 	s.checkView(t, "liquidityOf", 50)
@@ -156,7 +156,7 @@ func TestSlashThenDelist(t *testing.T) {
 	s.e.NewInvoker(s.vault, s.committee).Invoke(t, stackitem.Null{}, "slash", s.listed.BytesBE())
 	s.checkView(t, "state", 3)
 	s.checkView(t, "vaultOf", 0)
-	s.checkView(t, "liquidityOf", 50)      // liquidity half stays locked
+	s.checkView(t, "liquidityOf", 50)          // liquidity half stays locked
 	s.checkBalance(t, s.comp.ScriptHash(), 50) // paid to the registered sink, not an arbitrary addr
 
 	// no double slash
