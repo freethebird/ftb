@@ -54,4 +54,4 @@ published commit above).
 | Version | Date | Commit | Change |
 | --- | --- | --- | --- |
 | v0.10 | 2026-10-20 | 708b4f5 | First locked baseline: R4 stack live, first-deposit LP entry, claim/vote/lend/dividends tested on TestNet |
-| v0.11 | 2026-10-20 | (this commit) | Module audit pass (WEB_AUDIT.md addendum 20 Oct): RPC 10s timeout, swap/token read coalescing, claim pre-checks the token's claimed ledger, dead vote() builder removed. Locks after acceptance: GAS/FTB seed + first swap |
+| v0.11 | 2026-10-20 | (this commit) | Module audit pass (WEB_AUDIT.md addendum 20 Oct): RPC 10s timeout, swap/token read coalescing, claim pre-checks the token's claimed ledger, dead vote() builder removed. LOCKED 20 Oct - acceptance passed on-chain: GAS/FTB seeded, first swap landed (pool moved 40.00 -> 33.35 FTB/GAS, reserves and TVL painted live) |
