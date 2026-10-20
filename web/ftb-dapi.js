@@ -389,12 +389,6 @@
     return this._w(this._need('dividends'), 'unstake', [A.h160(user), A.int(amountBase)],
       'Unstake ' + fromBaseUnits(amountBase) + ' FTB (earned dividends stay claimable)');
   };
-  FtbDapi.prototype.vote = function (voter, choice) {
-    var to = this.cfg.vote[choice];
-    if (!to) throw new Error('vote address for "' + choice + '" is not set in config.vote');
-    return this._w(this.cfg.assets.gas, 'transfer', [A.h160(voter), A.h160(to), A.int('1'), A.any(null)],
-      'Vote ' + String(choice).toUpperCase() + ': dust 0.00000001 GAS to ' + to);
-  };
   // On-chain weighted vote (preferred over the dust-signal vote above): proves snapshot weight
   // with the SAME migration Merkle proof, one vote per snapshot address. proofHexArray is the
   // array of hex node hashes from proofs.json for `account`; amountBase is its snapshot balance

@@ -38,8 +38,11 @@
     if (gas) FtbRpc.readInt(gas, 'balanceOf', h).then(function (v) { $('balGas').textContent = fmt(v); }).catch(function () {});
   }
 
-  FtbState.on('rpc', refreshTiles);
-  FtbState.on('rpc', refreshBalances);
-  FtbState.on('account', refreshBalances);
-  FtbState.on('refresh', function () { refreshTiles(); refreshBalances(); });
+  // coalesced like every other module (canon II.4): the shell bursts 'refresh'
+  // around each landed tx; one pass in flight, one trailing run, 3 s apart.
+  var tilesC = FtbUtil.coalesce(refreshTiles, 3000), balsC = FtbUtil.coalesce(refreshBalances, 3000);
+  FtbState.on('rpc', tilesC);
+  FtbState.on('rpc', balsC);
+  FtbState.on('account', balsC);
+  FtbState.on('refresh', function () { tilesC(); balsC(); });
 })();

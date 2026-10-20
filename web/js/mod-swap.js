@@ -516,7 +516,17 @@
       });
     });
   }
-  var lpb = $('lpRefresh'); if (lpb) lpb.addEventListener('click', function () { flash(lpb); refreshLp(); });
+  var lpb = $('lpRefresh'); if (lpb) lpb.addEventListener('click', function () { flash(lpb); refreshLpC(); });
+
+  // refresh bursts (canon II.4): the shell emits up to ~17 'refresh' events per
+  // landed tx; every pass below goes through the shared coalescer so one read
+  // pass is in flight and a stale pass can never resolve over a fresh one.
+  var refreshLpC = FtbUtil.coalesce(refreshLp, 3000);
+  var refreshAllC = FtbUtil.coalesce(function () {
+    refreshFiat().then(function () { refreshRatios(); });
+    refreshTvl();
+    refreshLp();
+  }, 3000);
 
   // ---------- TVL: total value locked, per asset, read from the chain ----------
   // FTB headline: the lend pool's total assets (cash in the contract + outstanding
@@ -582,14 +592,11 @@
 
   FtbState.on('rpc', function () {
     FtbRpc.call('getblockcount').then(function (h) { tickBlock = h; paintTicker(); }).catch(function () {});
-    refreshFiat().then(function () { refreshRatios(); });
-    refreshTvl();
-    refreshLp();
+    refreshAllC();
   });
-  FtbState.on('account', function () { refreshLp(); });
+  FtbState.on('account', function () { refreshLpC(); });
   FtbState.on('refresh', function () {
-    refreshFiat().then(function () { refreshRatios(); });
-    refreshTvl(); refreshLp();
+    refreshAllC();
     // a confirmed write clears the ticket - no stale amount suggesting nothing happened
     $('swAmt').value = ''; $('swOut').value = '';
     lpStates.forEach(function (st) {

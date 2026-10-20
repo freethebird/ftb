@@ -30,21 +30,21 @@ has been tested and accepted is **locked**: it is never edited in place.
 
 | UI module | Tag location | File(s) | Version |
 | --- | --- | --- | --- |
-| header strip (supply / cap / voted / block / mirrors / tvl / price) | tiles (manifest only) | `js/mod-token.js` | v0.10 |
-| swap | swap ticket tab | `js/mod-swap.js` | v0.10 |
-| tokens on ftb | market card header | `js/mod-swap.js` | v0.10 |
-| swap liquidity | LP section header | `js/mod-swap.js` | v0.10 |
+| header strip (supply / cap / voted / block / mirrors / tvl / price) | tiles (manifest only) | `js/mod-token.js` | v0.11 |
+| swap | swap ticket tab | `js/mod-swap.js` | v0.11 |
+| tokens on ftb | market card header | `js/mod-swap.js` | v0.11 |
+| swap liquidity | LP section header | `js/mod-swap.js` | v0.11 |
 | ftb dividends | earn card header | `js/mod-earn.js` | v0.10 |
 | lend | lend card header | `js/mod-lend.js` | v0.10 |
 | governance | governance card header | `js/mod-gov.js` | v0.10 |
 | proposals | board card header | `js/mod-board.js` | v0.10 |
-| claim | claim card header | `js/mod-claim.js` | v0.10 |
+| claim | claim card header | `js/mod-claim.js` | v0.11 |
 | verify | verify card header | `js/mod-verify.js` | v0.10 |
 | wallet | menu (manifest only) | `js/mod-wallet.js` | v0.10 |
 | your node | node panel header | `js/shell.js` | v0.10 |
-| rpc seam | manifest only | `js/ftb-rpc.js` | v0.10 |
+| rpc seam | manifest only | `js/ftb-rpc.js` | v0.11 |
 | state seam | manifest only | `js/ftb-state.js` | v0.10 |
-| wallet adapter | manifest only | `ftb-dapi.js` | v0.10 |
+| wallet adapter | manifest only | `ftb-dapi.js` | v0.11 |
 
 Locked backups: `web/js/backup/v0.10/` (all 13 files, byte-identical to the
 published commit above).
@@ -54,3 +54,4 @@ published commit above).
 | Version | Date | Commit | Change |
 | --- | --- | --- | --- |
 | v0.10 | 2026-10-20 | 708b4f5 | First locked baseline: R4 stack live, first-deposit LP entry, claim/vote/lend/dividends tested on TestNet |
+| v0.11 | 2026-10-20 | (this commit) | Module audit pass (WEB_AUDIT.md addendum 20 Oct): RPC 10s timeout, swap/token read coalescing, claim pre-checks the token's claimed ledger, dead vote() builder removed. Locks after acceptance: GAS/FTB seed + first swap |

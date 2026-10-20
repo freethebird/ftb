@@ -45,16 +45,32 @@
           [['address', FtbState.account]], null);
         return;
       }
-      var plan = FtbState.dapi.claim(FtbState.account, en.amount, en.proof);
-      FtbState.quoteFtb(en.amount).then(function (q) {
-        FtbShell.showPlan('claim ' + fmt(q) + ' FTB',
-          'one claim per address, verified on-chain against the published merkle root. the migrator converts at the committed r = 0.189832 (1 FLM/FLOCKS = 0.189832 FTB). check the hashes in section IV before you sign.',
-          [['address', en.address],
-           ['entitlement', fmt(en.amount) + ' FLM-equiv'],
-           ['you receive', fmt(q) + ' FTB'],
-           ['proof', en.proof.length + ' nodes'],
-           ['what you sign', plan.summary]],
-          plan);
+      // pre-check the token's claimed ledger (R4: the ledger lives in the token,
+      // the migrator answers as a passthrough) - an already-claimed wallet gets
+      // the truth here, not a rejected transaction after signing.
+      FtbRpc.readBool(C.migrator, 'claimed', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (done) {
+        if (done) {
+          FtbShell.showPlan('already claimed', 'this address has already claimed its FTB - the ledger lives in the token contract itself, one claim per snapshot address, forever.',
+            [['address', FtbState.account], ['entitlement', fmt(en.amount) + ' FLM-equiv']], null);
+          return;
+        }
+        var plan = FtbState.dapi.claim(FtbState.account, en.amount, en.proof);
+        FtbState.quoteFtb(en.amount).then(function (q) {
+          FtbShell.showPlan('claim ' + fmt(q) + ' FTB',
+            'one claim per address, verified on-chain against the published merkle root. the migrator converts at the committed r = 0.189832 (1 FLM/FLOCKS = 0.189832 FTB). check the hashes in section IV before you sign.',
+            [['address', en.address],
+             ['entitlement', fmt(en.amount) + ' FLM-equiv'],
+             ['you receive', fmt(q) + ' FTB'],
+             ['proof', en.proof.length + ' nodes'],
+             ['what you sign', plan.summary]],
+            plan);
+        });
+      }).catch(function () {
+        // the pre-check read failed - offer the plan anyway; the chain enforces
+        // one-claim regardless (fail open to the authoritative layer, in words).
+        var plan = FtbState.dapi.claim(FtbState.account, en.amount, en.proof);
+        FtbShell.showPlan('claim', 'could not pre-read the claimed ledger - the chain enforces one claim per address regardless.',
+          [['address', en.address], ['what you sign', plan.summary]], plan);
       });
     }).catch(function (e) {
       FtbShell.showPlan('proofs unavailable', errText(e), [['proofs file', FtbState.PROOFS_URL]], null);

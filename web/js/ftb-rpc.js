@@ -25,10 +25,16 @@
   function $(id) { return document.getElementById(id); }
 
   function call(url, method, params) {
+    // a node that accepts the socket but never answers must not stall pick() or a
+    // read forever (canon II.4/5): 10 s and the call is a failure like any other.
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var to = ctl ? setTimeout(function () { ctl.abort(); }, 10000) : null;
     return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params || [] }) })
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params || [] }),
+      signal: ctl ? ctl.signal : undefined })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (j.error) throw new Error(j.error.message || 'rpc error'); return j.result; });
+      .then(function (j) { if (j.error) throw new Error(j.error.message || 'rpc error'); return j.result; })
+      .finally(function () { if (to) clearTimeout(to); });
   }
 
   // say WHICH source won and, for a public fallback, why that is - the community
