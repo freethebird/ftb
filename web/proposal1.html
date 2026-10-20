@@ -99,8 +99,10 @@ textarea,input{
 
 .idstate{letter-spacing:.04em; color:var(--ink-2); white-space:nowrap}
 
-/* menu jumps: land each module just below the fixed bar, fully visible */
-[id]{scroll-margin-top:calc(66px + env(safe-area-inset-top,0px))}
+/* menu jumps: land each module just below the sticky bar, fully visible.
+   the two-row bar is ~91px on desktop and taller as the nav wraps, so the
+   offset steps up at the same breakpoints the bar grows (see media queries) */
+[id]{scroll-margin-top:calc(98px + env(safe-area-inset-top,0px))}
 
 main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   padding-top:calc(54px + env(safe-area-inset-top,0px))}
@@ -289,8 +291,13 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 /* ---- top tab bar (Flamingo app chrome, flattened) ---- */
 .topbar{position:sticky; top:0; z-index:50; background:var(--paper);
-  border-bottom:1px solid var(--ink); display:flex; align-items:center;
-  gap:18px; padding:10px 20px; flex-wrap:wrap}
+  border-bottom:1px solid var(--ink); display:flex; flex-direction:column;
+  align-items:stretch; gap:9px; padding:10px 20px}
+/* top line: brand and controls bookend it; space-between keeps them pinned
+   to the edges, so neither moves when the network toggles or text changes */
+.topbar-main{display:flex; align-items:center; justify-content:space-between;
+  gap:12px 16px; flex-wrap:wrap}
+.brand{display:flex; align-items:center; gap:12px; flex-shrink:0}
 /* launch countdown strip: status, not a button - strict grayscale, one line */
 .launchbar{border-bottom:1px solid var(--ink); background:var(--paper); color:var(--ink);
   text-align:center; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
@@ -302,13 +309,22 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .topbar .wordmark{font-family:var(--disp); font-size:26px; letter-spacing:.08em;
   border:0}
 .topbar .wordmark:hover{background:transparent; color:var(--ink)}
-.tabs{display:flex; gap:2px; flex-wrap:wrap; margin-left:8px}
+.tabs{display:flex; align-items:center; gap:3px; flex-wrap:wrap}
+/* thin divider between the in-page sections and the external links (↗) */
+.tabs .tabsep{width:1px; align-self:center; height:1.5em; background:var(--hair); margin:0 6px}
 .tabs a{border:1px solid transparent; padding:5px 11px; font-size:12px;
   letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2)}
 .tabs a:hover{border-color:var(--ink); background:transparent; color:var(--ink)}
-.topright{margin-left:auto; display:flex; align-items:center; gap:10px;
-  font-size:12px; flex-wrap:wrap}
-.topright .idstate{font-size:11.5px}
+/* controls cluster: fixed on the right, never shrinks, no variable-width text inside it,
+   so connect / own-node keep their place when the network toggles or the rpc text changes */
+.topright{display:flex; align-items:center; gap:8px;
+  font-size:12px; flex-shrink:0}
+/* status strip directly under the bar: the long rpc note + wallet state, on their own row */
+.statusline{display:flex; align-items:center; gap:8px 18px; flex-wrap:wrap;
+  padding:6px 20px; background:var(--paper); border-bottom:1px solid var(--hair);
+  font-size:11.5px; color:var(--ink-2); letter-spacing:.04em}
+.statusline .idstate{color:var(--ink-2); flex-shrink:0}
+.statusline .rpc{color:var(--ink-2)}
 
 /* ---- hero (Flamingo landing: one sentence + one button) ---- */
 .hero3{max-width:1060px; margin:0 auto; padding:64px 22px 40px; text-align:center}
@@ -426,8 +442,12 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   .tradegrid, .earngrid, .govgrid, .govcols{grid-template-columns:1fr}
   .govside{border-left:0; padding-left:0; border-top:1px solid var(--hair); padding-top:16px}
   .tiles{grid-template-columns:1fr 1fr}
-  .topbar{gap:10px; padding:8px 12px}
-  .topright{margin-left:0}
+  .topbar{padding:8px 12px}
+  .statusline{padding:6px 12px}
+  [id]{scroll-margin-top:calc(126px + env(safe-area-inset-top,0px))}
+}
+@media (max-width:460px){
+  [id]{scroll-margin-top:calc(168px + env(safe-area-inset-top,0px))}
 }
 
 </style>
@@ -435,15 +455,29 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 <body>
 <div style="background:#1a1400;border-bottom:1px solid #d1a500;color:#f4c500;text-align:center;font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:5px 12px">proposal 1 — not live · v0.12 visual pass</div>
 <header class="topbar">
-  <a class="bird3" href="#top" aria-label="Free the Bird">
-    <svg viewBox="0 0 220 130" fill="none" stroke="currentColor" stroke-width="9"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      <path d="M14 84 C 46 30, 82 26, 110 62 C 138 26, 174 30, 206 84"/>
-      <circle cx="110" cy="66" r="7"/>
-      <line x1="110" y1="73" x2="110" y2="112"/>
-    </svg>
-  </a>
-  <a class="wordmark" href="#top">FTB</a>
+  <!-- top line: brand left, controls right - the two bookends never move -->
+  <div class="topbar-main">
+    <div class="brand">
+      <a class="bird3" href="#top" aria-label="Free the Bird">
+        <svg viewBox="0 0 220 130" fill="none" stroke="currentColor" stroke-width="9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M14 84 C 46 30, 82 26, 110 62 C 138 26, 174 30, 206 84"/>
+          <circle cx="110" cy="66" r="7"/>
+          <line x1="110" y1="73" x2="110" y2="112"/>
+        </svg>
+      </a>
+      <a class="wordmark" href="#top">FTB</a>
+    </div>
+    <div class="topright">
+      <span class="netswitch" role="group" aria-label="network">
+        <span class="cur">testnet</span><a href="mainnet.html">mainnet</a>
+      </span>
+      <button id="connectBtn">connect -&gt;</button>
+      <button id="disconnectBtn" hidden>disconnect</button>
+      <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
+    </div>
+  </div>
+  <!-- nav: its own full-width row, left-aligned, so the top line stays symmetric -->
   <nav class="tabs" aria-label="sections">
     <a href="#trade">trade</a>
     <a href="#earn">earn</a>
@@ -452,20 +486,19 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <a href="#board">board</a>
     <a href="#claim">claim</a>
     <a href="#verify">verify</a>
-    <a href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
-    <a href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
+    <span class="tabsep" aria-hidden="true"></span>
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
   </nav>
-  <div class="topright">
-    <span class="netswitch" role="group" aria-label="network">
-      <span class="cur">testnet</span><a href="mainnet.html">mainnet</a>
-    </span>
-    <span class="muted" id="rpcNote">rpc: connecting...</span>
-    <span class="idstate" id="idstate">[ no wallet ]</span>
-    <button id="connectBtn">connect -&gt;</button>
-    <button id="disconnectBtn" hidden>disconnect</button>
-    <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
-  </div>
 </header>
+
+<!-- status strip: the variable-length rpc note + wallet state live on their own row, so
+     their width can never push the controls around (proposal fix for the floating buttons) -->
+<div class="statusline">
+  <span class="idstate" id="idstate">[ no wallet ]</span>
+  <span class="rpc" id="rpcNote">rpc: connecting...</span>
+</div>
 
 <div class="launchbar" id="launchbar">TESTNET: LIVE &nbsp;·&nbsp; MAIN-NET NOV 7 &nbsp;·&nbsp; <span class="tminus" id="tminus">T-…</span></div>
 
