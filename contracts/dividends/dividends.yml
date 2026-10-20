@@ -3,6 +3,7 @@ safemethods:
   - pendingOf
   - stakedOf
   - totalStaked
+  - unlockHeightOf
   - accPerShare
   - queued
   - token

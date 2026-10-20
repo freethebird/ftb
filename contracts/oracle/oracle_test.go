@@ -75,9 +75,11 @@ func TestMinReportsFloorEnforced(t *testing.T) {
 	oracleOwner.Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 3) // 3 is allowed
 }
 
-// O2 remediation: once a quorum price exists, a single report outside the deviation band
-// is rejected (circuit-breaker); a report within the band is accepted.
-func TestCircuitBreakerBoundsReports(t *testing.T) {
+// O2 remediation: once a quorum price exists, a gross outlier (a decimal / fat-finger error,
+// here 100x and 1/100) is rejected at entry by the sanity band, while a report reflecting a
+// real market move (here a 2x move, well inside the order-of-magnitude band) is accepted —
+// the feed can still track genuine volatility.
+func TestSanityBandRejectsGrossOutliers(t *testing.T) {
 	e, oracleOwner, oracleHash := deployOracle(t)
 	asset := e.NewAccount(t).ScriptHash()
 	oracleOwner.Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 3)
@@ -86,8 +88,10 @@ func TestCircuitBreakerBoundsReports(t *testing.T) {
 		oracleOwner.Invoke(t, stackitem.Null{}, "setReporter", r.ScriptHash().BytesBE(), true)
 		e.NewInvoker(oracleHash, r).Invoke(t, stackitem.Null{}, "report", r.ScriptHash().BytesBE(), asset.BytesBE(), 1000)
 	}
-	// quorum established at median 1000; a re-report 2x over (beyond the 20% band) is rejected
-	e.NewInvoker(oracleHash, r1).InvokeFail(t, "circuit-breaker", "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 2000)
-	// a report within the band (+10%) is accepted
-	e.NewInvoker(oracleHash, r1).Invoke(t, stackitem.Null{}, "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 1100)
+	// quorum established at median 1000; a 100x spike (decimal mis-scale) is rejected
+	e.NewInvoker(oracleHash, r1).InvokeFail(t, "sanity band", "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 100_000)
+	// a 1/100 collapse (decimal mis-scale the other way) is rejected
+	e.NewInvoker(oracleHash, r1).InvokeFail(t, "sanity band", "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 10)
+	// a real 2x move is accepted — the median+quorum, not a tight band, is the manipulation defense
+	e.NewInvoker(oracleHash, r1).Invoke(t, stackitem.Null{}, "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 2000)
 }

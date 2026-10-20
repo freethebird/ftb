@@ -1,7 +1,8 @@
 // Package dividends is the FTB holders' share of the fee constitution (ECONOMICS.md):
 // the dividends module that lend's sweep and the treasury's excess returns pay into.
 // FTB is dividend-bearing through staking — the xSUSHI pattern: stake FTB, and every
-// distribution raises the per-share accumulator; unstake any time; claim any time.
+// distribution raises the per-share accumulator; claim any time; unstake after a short
+// minimum stake period (the D-2 anti-JIT commitment window).
 //
 // Why staking and not hold-and-earn: pro-rata dividends on a freely transferable token
 // need a balance-change hook inside the token contract — a permanent coupling of every
@@ -35,17 +36,29 @@ const scale = 1_000_000_000_000_000_000 // 1e18 fixed-point for the per-share ac
 // callable from the chain itself.
 const blocksPerMonth = 175_200
 
+// minStakeBlocks is the D-2 remediation. A staked position cannot be unstaked until it has
+// been committed for at least this many blocks (~1 day @ 15s) since its LAST stake-in. This
+// turns the "momentary capital" JIT exploit — stake a large amount, trigger a reserve sweep,
+// claim the pro-rata bulk of the distribution, unstake, all in one atomic script — into
+// genuinely committed capital: a same-block or flash staker can no longer capture a
+// distribution and exit, because the principal is time-locked. Dividends already earned stay
+// claimable at any time (Claim is NOT gated); only the exit of principal waits out the
+// window. A top-up re-arms the window on the whole position. Matched to the registry/treasury
+// safety floors; governance can tune it behind the registry timelock.
+const minStakeBlocks = 5760
+
 var (
-	keyOwner   = []byte{0x01} // deploy owner; may Configure once
-	keyFTB     = []byte{0x02} // the FTB token hash
-	keyAcc     = []byte{0x03} // cumulative dividends per staked FTB, 1e18-scaled
-	keyTotStk  = []byte{0x04} // total staked FTB
-	keyQueued  = []byte{0x05} // revenue received while nothing was staked
-	keyTotRecv = []byte{0x06} // lifetime revenue received (FTB base units)
-	prefixStk  = []byte{0x10} // + account -> staked balance
-	prefixChk  = []byte{0x11} // + account -> accPerShare checkpoint at last touch
-	prefixPend = []byte{0x12} // + account -> settled but unclaimed dividends
-	prefixMon  = []byte{0x20} // + uint32 BE month index -> revenue received that month
+	keyOwner      = []byte{0x01} // deploy owner; may Configure once
+	keyFTB        = []byte{0x02} // the FTB token hash
+	keyAcc        = []byte{0x03} // cumulative dividends per staked FTB, 1e18-scaled
+	keyTotStk     = []byte{0x04} // total staked FTB
+	keyQueued     = []byte{0x05} // revenue received while nothing was staked
+	keyTotRecv    = []byte{0x06} // lifetime revenue received (FTB base units)
+	prefixStk     = []byte{0x10} // + account -> staked balance
+	prefixChk     = []byte{0x11} // + account -> accPerShare checkpoint at last touch
+	prefixPend    = []byte{0x12} // + account -> settled but unclaimed dividends
+	prefixStakeAt = []byte{0x13} // + account -> block height of last stake-in (D-2 lock)
+	prefixMon     = []byte{0x20} // + uint32 BE month index -> revenue received that month
 )
 
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
@@ -145,16 +158,19 @@ func distribute(amount int) {
 	runtime.Notify("Distributed", total, getIntCtx(ctx, keyTotStk))
 }
 
-// stakeIn settles the staker's pending dividends at the old balance, then adds the stake.
+// stakeIn settles the staker's pending dividends at the old balance, then adds the stake and
+// (re)arms the D-2 commitment window on the whole position.
 func stakeIn(user interop.Hash160, amount int) {
 	ctx := storage.GetContext()
 	settle(ctx, user)
 	storage.Put(ctx, stkKey(user), getIntCtx(ctx, stkKey(user))+amount)
 	storage.Put(ctx, keyTotStk, getIntCtx(ctx, keyTotStk)+amount)
+	storage.Put(ctx, stakeAtKey(user), ledger.CurrentIndex()) // D-2: arm/renew the unstake lock
 	runtime.Notify("Staked", user, amount)
 }
 
-// Unstake returns staked FTB. Dividends earned up to this block stay claimable.
+// Unstake returns staked FTB. Dividends earned up to this block stay claimable (Claim is not
+// gated). The principal is locked for minStakeBlocks after the last stake-in: D-2 anti-JIT.
 func Unstake(user interop.Hash160, amount int) {
 	if !runtime.CheckWitness(user) {
 		panic("no witness")
@@ -163,6 +179,9 @@ func Unstake(user interop.Hash160, amount int) {
 	s := getIntCtx(ctx, stkKey(user))
 	if amount <= 0 || amount > s {
 		panic("bad amount")
+	}
+	if ledger.CurrentIndex() < getIntCtx(ctx, stakeAtKey(user))+minStakeBlocks {
+		panic("unstake: minimum stake period not elapsed") // D-2: principal must be committed
 	}
 	settle(ctx, user)
 	storage.Put(ctx, stkKey(user), s-amount)
@@ -220,6 +239,16 @@ func PendingOf(user interop.Hash160) int {
 func StakedOf(user interop.Hash160) int { return getInt(stkKey(user)) }
 func TotalStaked() int                  { return getInt(keyTotStk) }
 
+// UnlockHeightOf is the block height at which the user may unstake principal: the last
+// stake-in height plus minStakeBlocks (D-2). 0 if the user has never staked.
+func UnlockHeightOf(user interop.Hash160) int {
+	at := getInt(stakeAtKey(user))
+	if at == 0 {
+		return 0
+	}
+	return at + minStakeBlocks
+}
+
 // AccPerShare is the cumulative 1e18-scaled dividend per staked FTB — the growth curve
 // the front end samples for the dividend APY.
 func AccPerShare() int { return getInt(keyAcc) }
@@ -231,9 +260,10 @@ func Token() interop.Hash160 { return ftbHash() }
 
 // ---- helpers ----
 
-func stkKey(u interop.Hash160) []byte  { return append(prefixStk, u...) }
-func chkKey(u interop.Hash160) []byte  { return append(prefixChk, u...) }
-func pendKey(u interop.Hash160) []byte { return append(prefixPend, u...) }
+func stkKey(u interop.Hash160) []byte     { return append(prefixStk, u...) }
+func chkKey(u interop.Hash160) []byte     { return append(prefixChk, u...) }
+func pendKey(u interop.Hash160) []byte    { return append(prefixPend, u...) }
+func stakeAtKey(u interop.Hash160) []byte { return append(prefixStakeAt, u...) }
 
 // monthKey is fixed-width (big-endian uint32) so buckets sort and stay unambiguous.
 // The index is bounded before packing (Go canon Book II rule 5: a ceiling, not hope;

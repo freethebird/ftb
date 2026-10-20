@@ -25,9 +25,16 @@ import (
 )
 
 const (
-	bps             = 10000
-	maxDeviationBps = 2000 // O2: a single report may not move >20% off the current median
-	minQuorum       = 3    // O1: the minimum fresh-report quorum (never 1)
+	minQuorum = 3 // O1: the minimum fresh-report quorum (never 1)
+	// maxDevFactor is the O2 sanity gate. Once a quorum price exists, a single new report may
+	// not be more than this factor above, or below, the current fresh median. Its job is to
+	// reject a decimal / fat-finger mis-scale at entry — the NEO-decimals vector, where a
+	// price mis-scaled by 1e8 would otherwise poison the feed. It is deliberately GENEROUS
+	// (an order of magnitude), not a tight band: the real manipulation defense is the median
+	// of a quorum of independent reporters — one compromised reporter cannot move the median —
+	// and a tight per-report cap would freeze the feed during a genuine crash and block the
+	// very liquidations the lend market needs, which is itself a lending-oracle anti-pattern.
+	maxDevFactor = 10
 )
 
 var (
@@ -94,14 +101,15 @@ func Report(reporter interop.Hash160, asset interop.Hash160, price int) {
 		panic("report: bad asset or price")
 	}
 	ctx := storage.GetContext()
-	// O2 remediation: circuit-breaker. Once a quorum price exists, a single report may not
-	// deviate from it by more than maxDeviationBps — a manipulated or fat-fingered spike is
-	// rejected rather than entering the set. During bootstrap (no quorum yet) reports are
-	// unconstrained so the feed can establish itself.
+	// O2 remediation: a sanity gate (not a tight circuit-breaker). Once a quorum price exists,
+	// a single report may not be more than maxDevFactor× above or below the current fresh
+	// median — this rejects a decimal / fat-finger mis-scale (a price off by ~1e8) at entry.
+	// It is intentionally generous so it cannot freeze the feed during a real market move; the
+	// median of the quorum, not this bound, is what stops a compromised reporter. During
+	// bootstrap (no quorum yet) reports are unconstrained so the feed can establish itself.
 	if cur, ok := medianFresh(ctx, asset); ok {
-		band := cur * maxDeviationBps / bps
-		if price < cur-band || price > cur+band {
-			panic("report: price deviates beyond the circuit-breaker bound")
+		if price > cur*maxDevFactor || price*maxDevFactor < cur {
+			panic("report: price outside the sanity band (likely a decimal or fat-finger error)")
 		}
 	}
 	storage.Put(ctx, priceKey(asset, reporter), price)

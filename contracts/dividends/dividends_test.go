@@ -16,6 +16,9 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/vm/stackitem"
 )
 
+// must mirror minStakeBlocks in dividends.go (the D-2 unstake lock)
+const minStakeBlocks = 5760
+
 type sys struct {
 	e                        *neotest.Executor
 	owner, alice, bob, other neotest.Signer
@@ -136,6 +139,7 @@ func TestUnstakeStopsAccrual(t *testing.T) {
 	s := setup(t)
 	s.stake(t, s.alice, 100)
 	s.revenue(t, 100)
+	s.e.GenerateNewBlocks(t, minStakeBlocks) // D-2: wait out the commitment window before unstaking
 	s.e.NewInvoker(s.div, s.alice).Invoke(t, stackitem.Null{}, "unstake", s.alice.ScriptHash().BytesBE(), 100)
 	s.bal(t, s.alice.ScriptHash(), 10000) // principal back in full
 	s.pending(t, s.alice.ScriptHash(), 100)
@@ -152,9 +156,31 @@ func TestUnstakeStopsAccrual(t *testing.T) {
 func TestUnstakeValidation(t *testing.T) {
 	s := setup(t)
 	s.stake(t, s.alice, 100)
+	// witness and amount bounds are checked before the D-2 lock, so they fire without maturing
 	s.e.NewInvoker(s.div, s.other).InvokeFail(t, "no witness", "unstake", s.alice.ScriptHash().BytesBE(), 50)
 	s.e.NewInvoker(s.div, s.alice).InvokeFail(t, "bad amount", "unstake", s.alice.ScriptHash().BytesBE(), 0)
 	s.e.NewInvoker(s.div, s.alice).InvokeFail(t, "bad amount", "unstake", s.alice.ScriptHash().BytesBE(), 101)
+}
+
+// D-2: principal is locked for minStakeBlocks after staking, but earned dividends remain
+// claimable immediately — a same-block / flash JIT staker cannot capture a distribution and
+// exit, which was the reserve-dilution vector.
+func TestMinStakeLock(t *testing.T) {
+	s := setup(t)
+	s.stake(t, s.alice, 100)
+	s.revenue(t, 100)
+
+	divAlice := s.e.NewInvoker(s.div, s.alice)
+	// unstake is locked right after staking (no same-block exit)
+	divAlice.InvokeFail(t, "minimum stake period not elapsed", "unstake", s.alice.ScriptHash().BytesBE(), 100)
+	// the earned dividend is claimable immediately — Claim is not gated
+	divAlice.Invoke(t, stackitem.Null{}, "claim", s.alice.ScriptHash().BytesBE())
+	s.bal(t, s.alice.ScriptHash(), 10000) // -100 stake, +100 dividend
+
+	// once the commitment window elapses, principal unstakes
+	s.e.GenerateNewBlocks(t, minStakeBlocks)
+	divAlice.Invoke(t, stackitem.Null{}, "unstake", s.alice.ScriptHash().BytesBE(), 100)
+	s.bal(t, s.alice.ScriptHash(), 10100)
 }
 
 func TestRejectsForeignToken(t *testing.T) {

@@ -42,6 +42,11 @@ const (
 	// rate; it only bounds gross misconfiguration and keeps accrual products inside 256 bits.
 	blocksPerYear = 2_102_400 // 15-second target block time; linear annualization
 	maxReserveBps = 5000      // holders' fee share can never exceed half, even by vote
+	// sweepCooldown rate-limits the permissionless SweepDividends (D-2 defense-in-depth): the
+	// reserve can be swept at most once per ~hour, so a JIT staker cannot trigger a fresh
+	// distribution on demand at the instant their stake peaks. The primary anti-JIT fix is
+	// the dividends module's own unstake lock; this bounds the sweep's timing as well.
+	sweepCooldown = 240 // ~1 hour @ 15s
 )
 
 var (
@@ -62,6 +67,7 @@ var (
 	keyTotBorrow = []byte{0x21}
 	keyBIdx      = []byte{0x22}
 	keyLastBlk   = []byte{0x23}
+	keySweepBlk  = []byte{0x24} // height of the last successful dividend sweep (D-2 cooldown)
 
 	prefixShares = []byte{0x30}
 	prefixBNorm  = []byte{0x31}
@@ -411,8 +417,16 @@ func accrue() {
 // timelocked and in the open. Dividends is fail-closed while unbound; the treasury leg is
 // optional — until it is bound, the holders receive the whole reserve and nothing is stuck.
 func SweepDividends() {
-	accrue()
 	ctx := storage.GetContext()
+	// D-2 defense-in-depth: rate-limit the permissionless sweep so its timing cannot be
+	// weaponized. The first sweep (keySweepBlk == 0) is always allowed; after that at least
+	// sweepCooldown blocks must pass between sweeps.
+	now := ledger.CurrentIndex()
+	last := getIntCtx(ctx, keySweepBlk)
+	if last != 0 && now-last < sweepCooldown {
+		panic("sweep: cooldown not elapsed")
+	}
+	accrue()
 	reserve := getIntCtx(ctx, keyResAccrued)
 	if reserve <= 0 {
 		panic("sweep: no reserve")
@@ -423,6 +437,7 @@ func SweepDividends() {
 	}
 	tre := contract.Call(regHash(), "get", contract.ReadOnly, "treasury")
 	storage.Put(ctx, keyResAccrued, 0)
+	storage.Put(ctx, keySweepBlk, now) // consume the cooldown only on a real sweep
 	dividendsAmt := reserve
 	if tre != nil {
 		treasuryAmt := reserve / 3 // of total interest this leg is exactly 1/9

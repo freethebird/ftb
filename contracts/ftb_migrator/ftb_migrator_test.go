@@ -110,10 +110,11 @@ func TestConfigureIsWriteOnce(t *testing.T) {
 	mig.InvokeFail(t, "already configured", "configure", tokC.Hash.BytesBE(), root)
 }
 
-// The R2 + R3 live exploit, replayed: a wallet claimed on migrator A, the owner pointed
-// the token at freshly-deployed migrator B, and the same wallet claimed AGAIN because the
-// ledger lived in (and died with) each migrator. In R4 the ledger is in the token, so
-// the second claim faults no matter which migrator carries it.
+// The R2 + R3 live exploit, replayed — now closed twice over. Originally a wallet claimed on
+// migrator A, the owner pointed the token at freshly-deployed migrator B, and the same wallet
+// claimed AGAIN because the ledger lived in (and died with) each migrator. R4 moved the ledger
+// into the token; the H1 remediation then FROZE setMigrator after the first mint, so the rogue
+// swap can no longer even be installed. Both defenses are asserted below.
 func TestSecondMigratorCannotReopenClaims(t *testing.T) {
 	bc, validator := chain.NewSingle(t)
 	e := neotest.NewExecutor(t, bc, validator, validator)
@@ -140,19 +141,18 @@ func TestSecondMigratorCannotReopenClaims(t *testing.T) {
 		pArg[i] = s
 	}
 
-	// migrator A live: a1 claims, both migrators read the SAME canonical ledger
+	// migrator A live: a1 claims; this is the first mint, so supply becomes > 0
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", migAC.Hash.BytesBE())
 	e.NewInvoker(migAC.Hash, owner).Invoke(t, stackitem.Null{}, "configure", tokC.Hash.BytesBE(), root)
 	e.NewInvoker(migAC.Hash, a1).Invoke(t, stackitem.Null{}, "claim", a1.ScriptHash(), 1000, pArg)
 	tok.Invoke(t, stackitem.Make(true), "claimed", a1.ScriptHash().BytesBE())
 
-	// the owner swaps in migrator B (same snapshot root) — the R2 -> R3 move
-	e.NewInvoker(migBC.Hash, owner).Invoke(t, stackitem.Null{}, "configure", tokC.Hash.BytesBE(), root)
-	tok.Invoke(t, stackitem.Null{}, "setMigrator", migBC.Hash.BytesBE())
+	// H1: the R2 -> R3 move is refused at the door — once supply exists the token will not
+	// re-point its migrator, so a rogue migrator B can never be installed in the first place.
+	tok.InvokeFail(t, "locked after first mint", "setMigrator", migBC.Hash.BytesBE())
 
-	// B's passthrough already sees a1 as claimed (the ledger is the token's, not A's)
-	e.NewInvoker(migBC.Hash, owner).Invoke(t, stackitem.Make(true), "claimed", a1.ScriptHash())
-	// and the replayed claim faults at the token, not at any migrator state
-	e.NewInvoker(migBC.Hash, a1).InvokeFail(t, "already claimed", "claim", a1.ScriptHash(), 1000, pArg)
+	// belt-and-suspenders: even through the still-bound migrator A, the token's canonical
+	// per-account ledger faults the replayed claim, and supply never moves.
+	e.NewInvoker(migAC.Hash, a1).InvokeFail(t, "already claimed", "claim", a1.ScriptHash(), 1000, pArg)
 	tok.Invoke(t, stackitem.Make(189), "totalSupply")
 }

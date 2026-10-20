@@ -27,7 +27,8 @@ const dec = 100_000_000
 
 type sys struct {
 	e                            *neotest.Executor
-	owner, rep                   neotest.Signer
+	owner                        neotest.Signer
+	reps                         []neotest.Signer // a quorum of 3 oracle reporters (O1)
 	ftb, caller, orac, reg, lend util.Uint160
 	neo, gas                     util.Uint160
 }
@@ -51,13 +52,15 @@ func setup(t *testing.T) *sys {
 	e.DeployContract(t, oracC, owner.ScriptHash().BytesBE())
 	s.orac = oracC.Hash
 	oOwner := e.NewInvoker(s.orac, owner)
-	oOwner.Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 1)
-	s.rep = e.NewAccount(t)
-	oOwner.Invoke(t, stackitem.Null{}, "setReporter", s.rep.ScriptHash().BytesBE(), true)
+	// O1: a real quorum of 3 independent reporters (never a single key)
+	oOwner.Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 3)
+	s.reps = []neotest.Signer{e.NewAccount(t), e.NewAccount(t), e.NewAccount(t)}
+	for _, r := range s.reps {
+		oOwner.Invoke(t, stackitem.Null{}, "setReporter", r.ScriptHash().BytesBE(), true)
+	}
 	// NEO at 50 FTB (per whole NEO), GAS at 5 FTB (per whole GAS)
-	rep := e.NewInvoker(s.orac, s.rep)
-	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 50*dec)
-	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.gas.BytesBE(), 5*dec)
+	s.setPrice(t, s.neo, 50*dec)
+	s.setPrice(t, s.gas, 5*dec)
 
 	regC := neotest.CompileFile(t, e.Validator.ScriptHash(), "../registry/registry.go", "../registry/registry.yml")
 	e.DeployContract(t, regC, owner.ScriptHash().BytesBE())
@@ -74,6 +77,16 @@ func setup(t *testing.T) *sys {
 	lOwner.Invoke(t, stackitem.Null{}, "setRisk", 6000, 7500, 800)
 	lOwner.Invoke(t, stackitem.Null{}, "setRates", 0, 0, 0, 8000, 3333)
 	return s
+}
+
+// setPrice moves the whole quorum to `price` for an asset, so the median actually shifts
+// (a single reporter can no longer move the median — that is the O1 point). Each step stays
+// within the oracle's generous sanity band, so a realistic crash/pump lands in one call.
+func (s *sys) setPrice(t *testing.T, asset util.Uint160, price int) {
+	for _, r := range s.reps {
+		s.e.NewInvoker(s.orac, r).Invoke(t, stackitem.Null{}, "report",
+			r.ScriptHash().BytesBE(), asset.BytesBE(), price)
+	}
 }
 
 func (s *sys) mintFTB(t *testing.T, to util.Uint160, amt int) {
@@ -195,7 +208,7 @@ func TestLiquidationOnPriceDrop(t *testing.T) {
 	lendOwner.Invoke(t, stackitem.Make(false), "isUnhealthy", borrower.ScriptHash().BytesBE())
 
 	// NEO price falls 50 -> 20. Collateral value 2000, threshold 75% = 1500, debt 2500 -> unhealthy
-	s.e.NewInvoker(s.orac, s.rep).Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 20*dec)
+	s.setPrice(t, s.neo, 20*dec)
 	lendOwner.Invoke(t, stackitem.Make(true), "isUnhealthy", borrower.ScriptHash().BytesBE())
 
 	// liquidator repays 1000 FTB and seizes NEO at an 8% bonus:
@@ -232,9 +245,8 @@ func TestLiquidationSpillsIntoGas(t *testing.T) {
 	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 600*dec)
 
 	// NEO 50 -> 20 (10 NEO = 200), GAS 5 -> 2 (100 GAS = 200): cv 400 < debt 600 -> underwater
-	rep := s.e.NewInvoker(s.orac, s.rep)
-	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 20*dec)
-	rep.Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.gas.BytesBE(), 2*dec)
+	s.setPrice(t, s.neo, 20*dec)
+	s.setPrice(t, s.gas, 2*dec)
 
 	// liquidator repays 300: seize = 300 * 1.08 = 324 FTB. NEO covers only 200 -> all 10 NEO
 	// seized, and the remaining 124 FTB spills into GAS at 2 FTB/GAS -> exactly 62 GAS.
@@ -281,7 +293,7 @@ func TestSupplyRejectsZeroShares(t *testing.T) {
 }
 
 // FTB-10: a debt-free user can withdraw collateral even while the oracle is paused (too few
-// fresh prices). We pause it by requiring 2 reports when only 1 reporter exists.
+// fresh prices). We pause it by requiring more fresh reports than the configured reporters supply.
 func TestDebtFreeWithdrawDuringOraclePause(t *testing.T) {
 	s := setup(t)
 	user := s.e.NewAccount(t)
@@ -290,8 +302,8 @@ func TestDebtFreeWithdrawDuringOraclePause(t *testing.T) {
 	s.fundNeo(t, user.ScriptHash(), 10)
 	s.postNeo(t, user, 10)
 
-	// pause the oracle: require 2 fresh reports when only 1 reporter is configured
-	s.e.NewInvoker(s.orac, s.owner).Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 2)
+	// pause the oracle: require more fresh reports (4) than the 3 configured reporters can give
+	s.e.NewInvoker(s.orac, s.owner).Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 4)
 
 	// sanity: a price-dependent read now reverts, proving the oracle is paused
 	lendOwner := s.e.NewInvoker(s.lend, s.owner)
@@ -320,7 +332,7 @@ func TestCloseFactorCapsLiquidation(t *testing.T) {
 
 	// price dips 50 -> 30: collateral value 3000 (>= debt 2500, so NOT underwater); threshold
 	// 75% = 2250, debt 2500 -> unhealthy. Close factor caps one repay at 2500/2 = 1250.
-	s.e.NewInvoker(s.orac, s.rep).Invoke(t, stackitem.Null{}, "report", s.rep.ScriptHash().BytesBE(), s.neo.BytesBE(), 30*dec)
+	s.setPrice(t, s.neo, 30*dec)
 
 	// liquidator offers 2000 FTB, but only 1250 is accepted; the rest is refunded
 	s.mintFTB(t, liquidator.ScriptHash(), 2000*dec)
@@ -471,9 +483,9 @@ func TestReserveSplitAndSweep(t *testing.T) {
 	// (1/9 of total interest), 2/3 to dividends (2/9)
 	treasury := s.e.NewAccount(t)
 	s.e.NewInvoker(s.reg, s.owner).Invoke(t, stackitem.Null{}, "bootstrap", "treasury", treasury.ScriptHash().BytesBE())
-	for i := 0; i < 50; i++ {
-		s.e.AddNewBlock(t)
-	}
+	// advance past the D-2 sweep cooldown (240 blocks) so the second sweep is allowed, and
+	// let interest accrue over the gap
+	s.e.GenerateNewBlocks(t, 260)
 	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1*dec) // accrue again
 	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "sweepDividends")
 
