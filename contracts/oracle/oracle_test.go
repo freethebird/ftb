@@ -55,14 +55,39 @@ func TestStalenessReverts(t *testing.T) {
 	e, oracleOwner, oracleHash := deployOracle(t)
 	asset := e.NewAccount(t).ScriptHash()
 
-	// freshness of 1ms with a single reporter: 2ms of block advancement makes it stale
-	oracleOwner.Invoke(t, stackitem.Null{}, "setParams", 1, 1)
-	r1 := e.NewAccount(t)
-	oracleOwner.Invoke(t, stackitem.Null{}, "setReporter", r1.ScriptHash().BytesBE(), true)
-	e.NewInvoker(oracleHash, r1).Invoke(t, stackitem.Null{}, "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 500)
-
-	// neotest advances block timestamps by 1ms; one empty block puts now - reportTime = 2ms,
-	// past the 1ms freshness bound, so no fresh prices remain
+	// freshness of 1ms with the quorum of 3: block advancement ages the reports out
+	oracleOwner.Invoke(t, stackitem.Null{}, "setParams", 1, 3)
+	r1, r2, r3 := e.NewAccount(t), e.NewAccount(t), e.NewAccount(t)
+	for _, r := range []neotest.Signer{r1, r2, r3} {
+		oracleOwner.Invoke(t, stackitem.Null{}, "setReporter", r.ScriptHash().BytesBE(), true)
+		e.NewInvoker(oracleHash, r).Invoke(t, stackitem.Null{}, "report", r.ScriptHash().BytesBE(), asset.BytesBE(), 500)
+	}
+	// advance a block so the reports age past the 1ms freshness bound -> no fresh quorum
 	e.AddNewBlock(t)
 	oracleOwner.InvokeFail(t, "not enough fresh prices", "price", asset.BytesBE())
+}
+
+// O1 remediation: minReports can never be set below the quorum floor (no single-reporter feed).
+func TestMinReportsFloorEnforced(t *testing.T) {
+	_, oracleOwner, _ := deployOracle(t)
+	oracleOwner.InvokeFail(t, "below the quorum floor", "setParams", 100_000_000, 1)
+	oracleOwner.InvokeFail(t, "below the quorum floor", "setParams", 100_000_000, 2)
+	oracleOwner.Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 3) // 3 is allowed
+}
+
+// O2 remediation: once a quorum price exists, a single report outside the deviation band
+// is rejected (circuit-breaker); a report within the band is accepted.
+func TestCircuitBreakerBoundsReports(t *testing.T) {
+	e, oracleOwner, oracleHash := deployOracle(t)
+	asset := e.NewAccount(t).ScriptHash()
+	oracleOwner.Invoke(t, stackitem.Null{}, "setParams", 100_000_000, 3)
+	r1, r2, r3 := e.NewAccount(t), e.NewAccount(t), e.NewAccount(t)
+	for _, r := range []neotest.Signer{r1, r2, r3} {
+		oracleOwner.Invoke(t, stackitem.Null{}, "setReporter", r.ScriptHash().BytesBE(), true)
+		e.NewInvoker(oracleHash, r).Invoke(t, stackitem.Null{}, "report", r.ScriptHash().BytesBE(), asset.BytesBE(), 1000)
+	}
+	// quorum established at median 1000; a re-report 2x over (beyond the 20% band) is rejected
+	e.NewInvoker(oracleHash, r1).InvokeFail(t, "circuit-breaker", "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 2000)
+	// a report within the band (+10%) is accepted
+	e.NewInvoker(oracleHash, r1).Invoke(t, stackitem.Null{}, "report", r1.ScriptHash().BytesBE(), asset.BytesBE(), 1100)
 }

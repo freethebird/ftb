@@ -50,6 +50,14 @@ var (
 // maxMetaLen bounds the free-text field (Annex B class 5: every input has a length).
 const maxMetaLen = 1024
 
+// H4/M3 remediation: the timelock has a meaningful floor and a ceiling (blocks, ~15s each).
+// A sub-floor delay cannot finish bootstrap (no 1-block "timelock"); a delay above the
+// ceiling cannot be set, so IncreaseDelay can never be used to freeze governance.
+const (
+	minDelay = 5760    // ~1 day: the minimum a value-routing seam swap must sit in the open
+	maxDelay = 2102400 // ~1 year: the maximum, so the timelock can never become a freeze
+)
+
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
@@ -104,8 +112,8 @@ func Bootstrap(name string, value interop.Hash160) {
 func FinishBootstrap() {
 	requireOwner()
 	requireNotFinished()
-	if getInt(keyDelay) <= 0 {
-		panic("set a non-zero timelock before finishing bootstrap")
+	if getInt(keyDelay) < minDelay {
+		panic("timelock below the minimum floor")
 	}
 	storage.Put(storage.GetContext(), keyFinished, 1)
 	runtime.Notify("BootstrapFinished")
@@ -154,11 +162,18 @@ func Cancel(name string) {
 	runtime.Notify("Cancelled", name)
 }
 
-// IncreaseDelay can only lengthen the timelock (MO: one-way toward more safety).
+// IncreaseDelay can only lengthen the timelock (MO: one-way toward more safety), but is
+// itself capped: M3 remediation — without a ceiling, a captured owner could ratchet the
+// delay to effectively infinite blocks and freeze every future seam swap (a governance
+// deadlock dressed up as "more safety"). The cap keeps the longest honest timelock below
+// the freeze threshold.
 func IncreaseDelay(blocks int) {
 	requireOwner()
 	if blocks <= getInt(keyDelay) {
 		panic("delay can only increase")
+	}
+	if blocks > maxDelay {
+		panic("delay above the maximum")
 	}
 	storage.Put(storage.GetContext(), keyDelay, blocks)
 	runtime.Notify("DelayIncreased", blocks)

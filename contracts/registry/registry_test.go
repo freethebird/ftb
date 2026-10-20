@@ -1,5 +1,6 @@
 // Reference neotest suite for the Registry seam. Covers bootstrap gating, the two-step
-// timelock (propose, wait, apply), apply-by-anyone, and delay-can-only-increase.
+// timelock (propose, wait, apply), apply-by-anyone, delay-can-only-increase, and the
+// H4/M3 timelock floor and ceiling.
 //
 // Hash160 result assertions below use BytesBE; if your neo-go serializes them the other
 // way, flip to BytesLE (test-only, does not affect contract correctness).
@@ -13,6 +14,12 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/neotest"
 	"github.com/nspcc-dev/neo-go/pkg/neotest/chain"
 	"github.com/nspcc-dev/neo-go/pkg/vm/stackitem"
+)
+
+// must mirror the floor/ceiling constants in registry.go (H4/M3 remediation)
+const (
+	minDelay = 5760
+	maxDelay = 2102400
 )
 
 func deployRegistry(t *testing.T) (*neotest.Executor, *neotest.ContractInvoker, neotest.Signer) {
@@ -35,8 +42,9 @@ func TestBootstrapAndTimelock(t *testing.T) {
 	// only owner can bootstrap
 	otherReg.InvokeFail(t, "only owner", "bootstrap", "token", v1.BytesBE())
 
-	// owner sets a small timelock, bootstraps a value, finishes bootstrap
-	reg.Invoke(t, stackitem.Null{}, "setInitialDelay", 2)
+	// owner sets the timelock at the floor, bootstraps a value, finishes bootstrap.
+	// H4 remediation: finishBootstrap refuses any delay below minDelay.
+	reg.Invoke(t, stackitem.Null{}, "setInitialDelay", minDelay)
 	reg.Invoke(t, stackitem.Null{}, "bootstrap", "token", v1.BytesBE())
 	// newer VM returns Buffer for stored byte values; NewByteArray would mismatch
 	reg.Invoke(t, stackitem.NewBuffer(v1.BytesBE()), "get", "token")
@@ -49,22 +57,31 @@ func TestBootstrapAndTimelock(t *testing.T) {
 	reg.Invoke(t, stackitem.Null{}, "propose", "token", v2.BytesBE())
 	reg.InvokeFail(t, "timelock not elapsed", "apply", "token")
 
-	// mine past the timelock, then anyone can apply
-	e.AddNewBlock(t)
-	e.AddNewBlock(t)
+	// mine past the (one-day) timelock, then anyone can apply
+	e.GenerateNewBlocks(t, minDelay+2)
 	otherReg.Invoke(t, stackitem.Null{}, "apply", "token")
 	reg.Invoke(t, stackitem.NewBuffer(v2.BytesBE()), "get", "token")
 }
 
-func TestDelayOnlyIncreases(t *testing.T) {
+func TestDelayOnlyIncreasesWithinBounds(t *testing.T) {
 	_, reg, _ := deployRegistry(t)
-	reg.Invoke(t, stackitem.Null{}, "setInitialDelay", 3)
-	reg.InvokeFail(t, "delay can only increase", "increaseDelay", 2)
-	reg.Invoke(t, stackitem.Null{}, "increaseDelay", 10)
+	reg.Invoke(t, stackitem.Null{}, "setInitialDelay", minDelay)
+	// cannot shorten the timelock
+	reg.InvokeFail(t, "delay can only increase", "increaseDelay", minDelay-1)
+	// M3 remediation: cannot ratchet past the ceiling (no governance-freeze dressed as safety)
+	reg.InvokeFail(t, "delay above the maximum", "increaseDelay", maxDelay+1)
+	// a legitimate increase within bounds is accepted
+	reg.Invoke(t, stackitem.Null{}, "increaseDelay", minDelay*2)
 }
 
-func TestCannotFinishWithZeroTimelock(t *testing.T) {
+func TestCannotFinishBelowFloor(t *testing.T) {
 	_, reg, _ := deployRegistry(t)
-	// delay defaults to 0; finishing must be refused
-	reg.InvokeFail(t, "non-zero timelock", "finishBootstrap")
+	// delay defaults to 0; finishing must be refused by the floor
+	reg.InvokeFail(t, "below the minimum floor", "finishBootstrap")
+	// a non-zero but sub-floor delay is still refused: a 1-block "timelock" is not a timelock
+	reg.Invoke(t, stackitem.Null{}, "setInitialDelay", minDelay-1)
+	reg.InvokeFail(t, "below the minimum floor", "finishBootstrap")
+	// exactly at the floor, bootstrap can finish
+	reg.Invoke(t, stackitem.Null{}, "setInitialDelay", minDelay)
+	reg.Invoke(t, stackitem.Null{}, "finishBootstrap")
 }

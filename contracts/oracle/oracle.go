@@ -8,8 +8,10 @@
 // Reporters are a trust assumption. Use several independent operators, each aggregating
 // multiple venues off-chain. The oracle module is swappable behind the registry timelock.
 //
-// Price unit: FTB base units per 1 whole asset (bNEO or GAS, both 8 decimals). So
-// collateralValueFTB = assetBaseUnits * Price(asset) / 1e8.
+// Price unit: FTB base units per 1 WHOLE asset. NEO is 0-decimal (whole units), so the
+// lend market values NEO collateral as wholeNEO * Price(NEO); GAS is 8-decimal, valued as
+// gasBaseUnits * Price(GAS) / 1e8. Reporters MUST price per 1 whole asset, never per base
+// unit — a per-base-unit (÷1e8) NEO report mis-scales collateral by 1e8 (O3 remediation).
 //
 // Reference implementation. Internal audit lineage only - no external audit was
 // performed (DECISIONS.md, Decision 7). Verify before trusting value.
@@ -20,6 +22,12 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/interop/iterator"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
+)
+
+const (
+	bps             = 10000
+	maxDeviationBps = 2000 // O2: a single report may not move >20% off the current median
+	minQuorum       = 3    // O1: the minimum fresh-report quorum (never 1)
 )
 
 var (
@@ -42,8 +50,8 @@ func _deploy(data any, isUpdate bool) {
 	}
 	ctx := storage.GetContext()
 	storage.Put(ctx, keyOwner, owner)
-	storage.Put(ctx, keyFreshnessMs, 600000) // 10 minutes default
-	storage.Put(ctx, keyMinReports, 1)       // >>> set to a real quorum (e.g. 3) before launch
+	storage.Put(ctx, keyFreshnessMs, 600000)   // 10 minutes default
+	storage.Put(ctx, keyMinReports, minQuorum) // O1: a real quorum by default, not 1
 }
 
 // ---- admin (owner = multisig) ----
@@ -64,8 +72,8 @@ func SetReporter(reporter interop.Hash160, enabled bool) {
 
 func SetParams(freshnessMs int, minReports int) {
 	requireOwner()
-	if freshnessMs <= 0 || minReports <= 0 {
-		panic("bad params")
+	if freshnessMs <= 0 || minReports < minQuorum {
+		panic("bad params: minReports below the quorum floor")
 	}
 	ctx := storage.GetContext()
 	storage.Put(ctx, keyFreshnessMs, freshnessMs)
@@ -86,6 +94,16 @@ func Report(reporter interop.Hash160, asset interop.Hash160, price int) {
 		panic("report: bad asset or price")
 	}
 	ctx := storage.GetContext()
+	// O2 remediation: circuit-breaker. Once a quorum price exists, a single report may not
+	// deviate from it by more than maxDeviationBps — a manipulated or fat-fingered spike is
+	// rejected rather than entering the set. During bootstrap (no quorum yet) reports are
+	// unconstrained so the feed can establish itself.
+	if cur, ok := medianFresh(ctx, asset); ok {
+		band := cur * maxDeviationBps / bps
+		if price < cur-band || price > cur+band {
+			panic("report: price deviates beyond the circuit-breaker bound")
+		}
+	}
 	storage.Put(ctx, priceKey(asset, reporter), price)
 	storage.Put(ctx, timeKey(asset, reporter), runtime.GetTime())
 	runtime.Notify("Reported", reporter, asset, price)
@@ -96,7 +114,17 @@ func Report(reporter interop.Hash160, asset interop.Hash160, price int) {
 // Price returns the median of fresh reporter prices for an asset, or reverts if too few
 // are fresh (which pauses dependent borrowing, the safe failure mode).
 func Price(asset interop.Hash160) int {
-	ctx := storage.GetContext()
+	m, ok := medianFresh(storage.GetContext(), asset)
+	if !ok {
+		panic("oracle: not enough fresh prices")
+	}
+	return m
+}
+
+// medianFresh returns the lower median of the fresh reporter prices for an asset and
+// whether the fresh count met the quorum. Shared by Price (which reverts when short) and
+// the Report circuit-breaker (which uses it as the reference to bound a new report).
+func medianFresh(ctx storage.Context, asset interop.Hash160) (int, bool) {
 	now := runtime.GetTime()
 	freshnessMs := getIntCtx(ctx, keyFreshnessMs)
 
@@ -109,9 +137,8 @@ func Price(asset interop.Hash160) int {
 			fresh = append(fresh, getIntCtx(ctx, priceKey(asset, reporter)))
 		}
 	}
-
 	if len(fresh) < getIntCtx(ctx, keyMinReports) {
-		panic("oracle: not enough fresh prices")
+		return 0, false
 	}
 	// insertion sort (committees are small)
 	for i := 1; i < len(fresh); i++ {
@@ -123,7 +150,7 @@ func Price(asset interop.Hash160) int {
 		}
 		fresh[j+1] = v
 	}
-	return fresh[(len(fresh)-1)/2] // lower median
+	return fresh[(len(fresh)-1)/2], true // lower median
 }
 
 func Enabled(reporter interop.Hash160) bool {
