@@ -87,11 +87,17 @@ browser except signed transactions and public RPC reads.
    the wallet.
 5. Motion is the blinking cursor. Everything else is still.
 
-## Design lab outcome: Terra Station is canonical (12 October 2026)
+## Design lab outcome: Terra won the lab (12 Oct), then Template 3 superseded it (14 Oct)
+
+> **Canonical page, as of 14 October 2026: Template 3 — the Flamingo blend** (`index.html` +
+> `js/`). The Terra grid (`[data-skin="terra"]`) and the original arc/command-bar layout are
+> retired history; their CSS was removed in v0.12 (nothing set `data-skin`, so the Terra skin
+> never rendered). Read the "Template 3" section below for the live layout; the invariants in
+> this file still bind every module.
 
 Three complete variants were built and screened - Hyperliquid (dense two-column terminal with
 inverted ink bands), THORSwap (centered swap-hero), and Terra Station (governance front page).
-**Terra Station won and is now the canonical `index.html`; the lab is retired.** What carried
+**Terra Station won the lab and was the canonical skin through 13 October.** What carried
 it: this project's defining act is the community vote and the claim, not day trading - the
 proposal leads in display type inside a framed hero panel, turnout is the headline number, and
 trading sits beneath as a utility. The loser's lessons survive in the parts that were already

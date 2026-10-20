@@ -42,9 +42,9 @@ has been tested and accepted is **locked**: it is never edited in place.
 | verify | verify card header | `js/mod-verify.js` | v0.10 |
 | wallet | menu (manifest only) | `js/mod-wallet.js` | v0.10 |
 | your node | node panel header | `js/shell.js` | v0.10 |
-| rpc seam | manifest only | `js/ftb-rpc.js` | v0.11 |
+| rpc seam | manifest only | `js/ftb-rpc.js` | v0.12 |
 | state seam | manifest only | `js/ftb-state.js` | v0.10 |
-| wallet adapter | manifest only | `ftb-dapi.js` | v0.11 |
+| wallet adapter | manifest only | `ftb-dapi.js` | v0.12 |
 
 Locked backups: `web/js/backup/v0.10/` (all 13 files, byte-identical to the
 published commit above).
@@ -55,3 +55,4 @@ published commit above).
 | --- | --- | --- | --- |
 | v0.10 | 2026-10-20 | 708b4f5 | First locked baseline: R4 stack live, first-deposit LP entry, claim/vote/lend/dividends tested on TestNet |
 | v0.11 | 2026-10-20 | (this commit) | Module audit pass (WEB_AUDIT.md addendum 20 Oct): RPC 10s timeout, swap/token read coalescing, claim pre-checks the token's claimed ledger, dead vote() builder removed. LOCKED 20 Oct - acceptance passed on-chain: GAS/FTB seeded, first swap landed (pool moved 40.00 -> 33.35 FTB/GAS, reserves and TVL painted live) |
+| v0.12 | 2026-10-20 | (this commit) | Security + design pass. Seams: `ftb-dapi.js` binds the executed call to the inspected plan (args↔summary integrity) and validates every script-hash (0x+40hex); `ftb-rpc.js` labels the serving node attested (config set) vs unattested (own/public). Shell: CSP `<meta>` on `index.html`/`mainnet.html`; the mainnet countdown externalised to `mainnet.js` so script-src stays `'self'`. Design tighten: removed ~100 lines of dead CSS (the retired command bar, the Terra grid - nothing sets `data-skin`, and the arc/masthead leftovers), merged the duplicate `:root`/`body`. v0.11 shell backed up to `js/backup/v0.11/index.html`; render verified byte-stable. |
