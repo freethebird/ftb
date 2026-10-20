@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- F6 remediation: Content-Security-Policy. The countdown script was moved to mainnet.js so this
+     page needs no inline script, letting script-src stay strict 'self'. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>free the bird - mainnet</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
 <style>
@@ -108,23 +111,6 @@ a:hover, button:hover{background:var(--keyfg); color:var(--keybg)}
   Not financial advice. MIT code, public proofs - a gift to the Flamingo community.
 </footer>
 
-<script>
-// countdown to the MainNet window, 7 Nov 2026 00:00 UTC - same target as shell.js
-(function () {
-  var target = Date.UTC(2026, 10, 7, 0, 0, 0);
-  function pad(n) { return (n < 10 ? '0' : '') + n; }
-  function render(ms) {
-    if (ms <= 0) return 'T-0 - MAIN-NET WINDOW OPEN';
-    var sec = Math.floor(ms / 1000);
-    var d = Math.floor(sec / 86400); sec -= d * 86400;
-    var h = Math.floor(sec / 3600); sec -= h * 3600;
-    var m = Math.floor(sec / 60); sec -= m * 60;
-    return 'T-' + d + 'D ' + pad(h) + ':' + pad(m) + ':' + pad(sec);
-  }
-  var small = document.getElementById('tminus'), big = document.getElementById('bigminus');
-  function tick() { var s = render(target - Date.now()); small.textContent = s; big.textContent = s; }
-  tick(); setInterval(tick, 1000);
-})();
-</script>
+<script src="mainnet.js"></script>
 </body>
 </html>

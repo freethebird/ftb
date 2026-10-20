@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- F6 remediation: Content-Security-Policy. All scripts are first-party ('self'); no inline
+     or remote script may run, so an injected <script> (e.g. via the config-label ticker) cannot
+     execute. Styles/fonts are self + inline + data: (the page embeds its font as a data: URL);
+     reads go to https RPC/mirror endpoints (incl. a user's own node) via connect-src; framing,
+     base-uri and form posting are locked down. frame-ancestors is a header-only directive and is
+     intentionally omitted here (ignored in a meta tag). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>free the bird</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
 <style>

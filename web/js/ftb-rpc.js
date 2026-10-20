@@ -37,17 +37,22 @@
       .finally(function () { if (to) clearTimeout(to); });
   }
 
-  // say WHICH source won and, for a public fallback, why that is - the community
-  // node list comes first in RPCS, so landing on a public endpoint means every
-  // configured community node refused (still syncing, or down).
+  // F1 remediation: make the serving node's TRUST STATUS explicit. Reads size and label the
+  // transactions a user is invited to sign, so the UI distinguishes an ATTESTED node (one pinned
+  // in the shipped config.rpcs set) from an UNATTESTED one — the user's own pasted node, or a
+  // public fallback — and marks the latter plainly. An unattested node can mislead a display or
+  // mis-size a deposit (recoverable) but cannot steal: recipients are config-pinned and every
+  // contract re-validates on-chain. The community node list comes first in RPCS, so landing on a
+  // public endpoint means every configured community node refused (still syncing, or down).
   function paintNote(url) {
     var n = $('rpcNote'); if (!n) return;
-    var ci = (CFG.rpcs || []).indexOf(url), note;
-    if (url === ownStored()) note = ' (your node)';
-    else if (ci >= 0) note = ' (community node #' + (ci + 1) + ')';
-    else if ((CFG.rpcs || []).length) note = ' (public fallback - community node unreachable or still syncing)';
-    else note = NET === 'MainNet' ? ' (public mainnet endpoint)' : ' (public testnet endpoint)';
+    var ci = (CFG.rpcs || []).indexOf(url), note, attested = true;
+    if (url === ownStored()) { note = ' (your node - UNATTESTED; reads trust this node only)'; attested = false; }
+    else if (ci >= 0) { note = ' (attested community node #' + (ci + 1) + ')'; }
+    else if ((CFG.rpcs || []).length) { note = ' (UNATTESTED public fallback - every community node is unreachable or still syncing)'; attested = false; }
+    else { note = NET === 'MainNet' ? ' (UNATTESTED public mainnet endpoint)' : ' (UNATTESTED public testnet endpoint)'; attested = false; }
     n.textContent = 'rpc: ' + url + note;
+    try { n.dataset.attested = attested ? '1' : '0'; } catch (e) {} // lets the UI style unattested reads
   }
   function ownStored() { try { return localStorage.getItem('ftb_rpc'); } catch (e) { return null; } }
 

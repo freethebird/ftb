@@ -26,6 +26,24 @@
   var WITNESS = { None: 0, CalledByEntry: 1, CustomContracts: 16, CustomGroups: 32, Global: 128 };
   var GAS = '0xd2a4cff31913016155e38e474a2c06d08be276cf'; // native GAS, 8 decimals
   var NEO = '0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5'; // native NEO, 0 decimals (whole units)
+
+  // F3 remediation: a Neo N3 script hash is exactly 0x + 40 hex. Validate every hash that becomes
+  // a call target, a signer account, or an allowedContracts entry, so a malformed config value or
+  // an RPC-derived hash can never reach the wallet as a 'contract' the user is asked to trust.
+  function isScriptHash(h) { return typeof h === 'string' && /^0x[0-9a-fA-F]{40}$/.test(h); }
+  function requireScriptHash(h, what) {
+    if (!isScriptHash(h)) throw new Error('invalid ' + (what || 'script hash') + ' (expected 0x + 40 hex): ' + String(h));
+    return h;
+  }
+  // F2 helper: deep-freeze a plan's args so they cannot be mutated between the moment the user
+  // inspects .summary and the moment execute() hands the call to the wallet.
+  function deepFreeze(o) {
+    if (o && typeof o === 'object' && !Object.isFrozen(o)) {
+      Object.keys(o).forEach(function (k) { deepFreeze(o[k]); });
+      Object.freeze(o);
+    }
+    return o;
+  }
   var DEC = 8; // FTB and GAS are 8 decimals; NEO is whole-unit, never scale it
 
   // ---------------- byte / number helpers (no deps) ----------------
@@ -275,7 +293,7 @@
   FtbDapi.prototype._need = function (name) {
     var h = this.cfg.contracts[name];
     if (!h) throw new Error('config.contracts.' + name + ' is not set');
-    return h;
+    return requireScriptHash(h, 'contracts.' + name); // F3: reject a malformed configured hash
   };
   FtbDapi.prototype.connect = function () {
     var self = this;
@@ -298,13 +316,25 @@
   };
   FtbDapi.prototype.execute = function (plan) {
     if (!plan || plan.kind !== 'write') throw new Error('execute expects a write plan');
+    if (!plan.summary) throw new Error('refusing to execute a plan with no summary'); // F2
     var req = { scriptHash: plan.scriptHash, operation: plan.operation, args: plan.args };
+    // F2 remediation: the call handed to the wallet must be byte-for-byte the plan whose .summary
+    // the UI showed. _bound is a snapshot taken at build time; if scriptHash/operation/args drifted
+    // between inspection and signing, refuse rather than sign something the user did not see.
+    if (plan._bound && plan._bound !== JSON.stringify([req.scriptHash, req.operation, req.args])) {
+      throw new Error('plan integrity check failed: the executed call does not match the inspected summary');
+    }
     req.signers = plan.signers || [this.defaultSigner()];
     if (plan.fee) req.fee = plan.fee;
     return this.n3.invoke(req);
   };
   FtbDapi.prototype._w = function (scriptHash, operation, args, summary, extra) {
-    return Object.assign({ kind: 'write', scriptHash: scriptHash, operation: operation, args: args, summary: summary }, extra || {});
+    requireScriptHash(scriptHash, 'write target'); // F3: never sign against a malformed target
+    if (!summary || typeof summary !== 'string') throw new Error('write plan requires a human summary'); // F2
+    var plan = Object.assign({ kind: 'write', scriptHash: scriptHash, operation: operation, args: args, summary: summary }, extra || {});
+    deepFreeze(plan.args); // F2: the inspected args cannot be mutated before signing
+    plan._bound = JSON.stringify([scriptHash, operation, args]); // F2: snapshot asserted in execute()
+    return plan;
   };
 
   // ---- reads ----
@@ -458,10 +488,12 @@
     // NeoLine expects the signer account as the little-endian script hash hex (verified). Pass
     // {be:true} only if a particular wallet rejects it and wants big-endian.
     var le = !(opts && opts.be);
+    var allowed = allowedContracts || [];
+    for (var i = 0; i < allowed.length; i++) requireScriptHash(allowed[i], 'allowedContracts[' + i + ']'); // F3
     return {
       account: addressToScriptHashHex(address, { le: le }),
       scopes: WITNESS.CustomContracts,
-      allowedContracts: allowedContracts || []
+      allowedContracts: allowed
     };
   };
 
