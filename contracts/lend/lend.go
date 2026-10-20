@@ -99,6 +99,12 @@ func Configure(registry, ftb interop.Hash160) {
 		panic("configure: bad hash")
 	}
 	ctx := storage.GetContext()
+	// H2 remediation: wiring is write-once. A re-pointable registry/ftb seam lets the owner
+	// swap the oracle/token references instantly, bypassing the registry timelock. Set once
+	// at launch; a later change must go through a timelocked module replacement.
+	if storage.Get(ctx, keyFTB) != nil {
+		panic("configure: already configured")
+	}
 	storage.Put(ctx, keyRegistry, registry)
 	storage.Put(ctx, keyFTB, ftb)
 	runtime.Notify("Configured", registry, ftb) // FTB-09: wiring changes must be observable
@@ -313,6 +319,11 @@ func repayIn(user interop.Hash160, amount int) {
 
 func liquidateIn(liquidator interop.Hash160, repay int, borrower interop.Hash160) {
 	ctx := storage.GetContext()
+	// O6 remediation: no self-liquidation — a borrower cannot pay themselves the bonus to
+	// exit a position; liquidation is a third-party action.
+	if string(liquidator) == string(borrower) {
+		panic("liquidate: self-liquidation")
+	}
 	orc := oracleHash() // resolved once per transaction, not once per price read
 	cv := collateralValueFrom(orc, borrower)
 	debt := DebtOf(borrower)
@@ -470,7 +481,18 @@ func UtilizationBps() int {
 	if tb == 0 {
 		return 0
 	}
-	return tb * bps / (cashAvailable() + tb)
+	denom := cashAvailable() + tb
+	// O5 remediation: in a bad-debt edge (reserve > cash) the denominator can go <= 0;
+	// clamp utilization to 100% rather than divide by a non-positive number or report an
+	// out-of-range value that would push the rate past the audited ceiling.
+	if denom <= 0 {
+		return bps
+	}
+	u := tb * bps / denom
+	if u > bps {
+		u = bps
+	}
+	return u
 }
 
 // BorrowRatePerBlock is the current point on the kinked utilization curve (1e18 scale).
@@ -510,7 +532,14 @@ func cash() int {
 	return contract.Call(ftbHash(), "balanceOf", contract.ReadOnly, runtime.GetExecutingScriptHash()).(int)
 }
 func priceFrom(orc, asset interop.Hash160) int {
-	return contract.Call(orc, "price", contract.ReadOnly, asset).(int)
+	p := contract.Call(orc, "price", contract.ReadOnly, asset).(int)
+	// O1 remediation: never trust the oracle blindly. A non-positive price is used as a
+	// divisor in liquidation (seize-all / div-by-zero) and would zero collateral value in
+	// borrow checks — fail closed instead of acting on garbage.
+	if p <= 0 {
+		panic("price: oracle returned non-positive")
+	}
+	return p
 }
 func oracleHash() interop.Hash160 {
 	h := contract.Call(regHash(), "get", contract.ReadOnly, "oracle")

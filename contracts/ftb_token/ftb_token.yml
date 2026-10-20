@@ -25,6 +25,7 @@ events:
         type: Hash160
   - name: MigrationClosed
   - name: OwnershipRenounced
+  - name: Updated
 permissions:
   - contract: '*'
     methods:

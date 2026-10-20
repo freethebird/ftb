@@ -197,7 +197,15 @@ func SetMigrator(migrator interop.Hash160) {
 	if len(migrator) != 20 {
 		panic("setMigrator: bad address")
 	}
-	storage.Put(storage.GetContext(), keyMigrator, migrator)
+	ctx := storage.GetContext()
+	// H1 remediation: once minting has begun, the migrator is frozen here. Re-pointing it
+	// while supply exists would let a new merkle root mint the cap headroom to fresh
+	// addresses (the once-per-account ledger only blocks a re-mint to the SAME address).
+	// Set or fix the migrator before the first claim; after that it is immutable.
+	if getIntCtx(ctx, keySupply) > 0 {
+		panic("setMigrator: locked after first mint")
+	}
+	storage.Put(ctx, keyMigrator, migrator)
 	runtime.Notify("MigratorSet", migrator)
 }
 
@@ -212,6 +220,9 @@ func GetMigrator() interop.Hash160 {
 // Update exists for pre-launch fixes only and MUST be renounced before value flows.
 func Update(nef []byte, manifest []byte, data any) {
 	requireOwner()
+	// L1 remediation: the most dangerous power emits a named, observable event
+	// (the native ContractManagement notification alone is easy to miss).
+	runtime.Notify("Updated")
 	management.UpdateWithData(nef, manifest, data)
 }
 

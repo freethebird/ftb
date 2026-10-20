@@ -169,28 +169,25 @@ func TestClaimedLedgerBlocksDoubleMint(t *testing.T) {
 	tok.Invoke(t, stackitem.Make(12_000), "totalSupply")
 }
 
-// The regression test for the live exploit: claim via migrator A, swap in migrator B
-// (setMigrator, owner action), attempt the same claim again -> the token refuses.
-func TestNewMigratorCannotRemintClaimed(t *testing.T) {
+// H1 remediation: once minting has begun, the migrator is frozen. Re-pointing it while
+// supply exists is the rogue-swap-under-a-new-root headroom vector (the per-account
+// claimed ledger only blocks a re-mint to the SAME address, not fresh addresses under a
+// new root). The token now refuses setMigrator after the first mint. The per-account
+// double-mint protection remains independently covered by TestClaimedLedgerBlocksDoubleMint.
+func TestSetMigratorFrozenAfterFirstMint(t *testing.T) {
 	e, tok, owner, other := deploy(t)
 	cc1 := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
 	e.DeployContract(t, cc1, nil)
 	cc2 := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller2/caller2.go", "testdata/caller2/caller2.yml")
 	e.DeployContract(t, cc2, nil)
-	if cc1.Hash == cc2.Hash {
-		t.Fatal("test setup broken: the two callers must have distinct hashes")
-	}
 
 	to := other.ScriptHash()
-	// migrator A mints
+	// migrator A is set before any mint (allowed), then mints -> supply becomes > 0
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc1.Hash.BytesBE())
 	e.NewInvoker(cc1.Hash, owner).Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), to.BytesBE(), 5_000)
 
-	// the owner swaps in migrator B (this is what R2 -> R3 did on TestNet)
-	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc2.Hash.BytesBE())
-	// migrator B can mint to a fresh account...
-	e.NewInvoker(cc2.Hash, owner).Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), owner.ScriptHash().BytesBE(), 1_000)
-	// ...but NEVER to an account that already claimed through migrator A
-	e.NewInvoker(cc2.Hash, owner).InvokeFail(t, "already claimed", "mint", tok.Hash.BytesBE(), to.BytesBE(), 5_000)
-	tok.Invoke(t, stackitem.Make(6_000), "totalSupply")
+	// the owner can no longer swap in a different migrator: frozen after first mint
+	tok.InvokeFail(t, "locked after first mint", "setMigrator", cc2.Hash.BytesBE())
+	// supply unchanged; the rogue-root headroom path is unreachable
+	tok.Invoke(t, stackitem.Make(5_000), "totalSupply")
 }
