@@ -69,6 +69,28 @@
   function slipMin(amt, sym) {
     return decOf(sym) === 0 ? (amt * 995n + 999n) / 1000n : amt * 995n / 1000n;
   }
+  // the swap ticket's advanced slippage control: read the chosen % as basis points
+  // (default 0.5%), apply it as the min-received floor, and show it in words. Only
+  // the swap uses this; the LP forms keep the fixed 0.5% slipMin above.
+  function swapSlipBps() {
+    var picks = document.querySelectorAll('#trade .slip input[type=radio]');
+    for (var i = 0; i < picks.length; i++) {
+      if (!picks[i].checked) continue;
+      var lab = picks[i].parentNode;
+      if (lab && lab.className.indexOf('slipcustom') >= 0) {
+        var t = lab.querySelector('input[type=text]'), v = parseFloat(t && t.value);
+        return (v > 0 && v <= 50) ? Math.round(v * 100) : 50;
+      }
+      var m = ((lab && lab.textContent) || '').match(/([\d.]+)\s*%/);
+      return m ? Math.round(parseFloat(m[1]) * 100) : 50;
+    }
+    return 50;
+  }
+  function slipPct() { return (swapSlipBps() / 100).toString(); }
+  function swapSlipMin(amt, sym) {
+    var keep = BigInt(10000 - swapSlipBps());
+    return decOf(sym) === 0 ? (amt * keep + 9999n) / 10000n : amt * keep / 10000n;
+  }
   var swFrom = 'GAS', swTo = 'FTB', swQuote = null, qSeq = 0;
   function routerReady() { return !!(FtbState.configured && C.router && C.router.indexOf('0x0000') !== 0); }
   function paintSel(id, cur, setter) {
@@ -118,7 +140,7 @@
     // changed tokens or retyped is discarded - never paint an old pair's numbers
     if (!routerReady()) { $('swMeta').textContent = 'loads when the router hash is configured for this network'; return; }
     var raw = $('swAmt').value.trim();
-    if (!raw) { $('swMeta').textContent = 'quote from live pool reserves · 0.3% pool fee · min received at 0.5% slippage'; return; }
+    if (!raw) { $('swMeta').textContent = 'quote from live pool reserves · 0.3% pool fee · min received at ' + slipPct() + '% slippage'; return; }
     var amtIn = parseT(raw, swFrom);
     if (amtIn === null) { $('swMeta').textContent = decOf(swFrom) === 0 ? 'bad amount - NEO moves in whole units' : 'bad amount'; return; }
     var a = TOKENS[swFrom](), b = TOKENS[swTo]();
@@ -128,7 +150,7 @@
       var rr = reservesOf(st), rA = rr[0], rB = rr[1]; // order matches the queried tokens
       if (rA === 0n || rB === 0n) throw new Error('pool empty');
       var out = (amtIn * 997n * rB) / (rA * 1000n + amtIn * 997n);
-      var minOut = slipMin(out, swTo);
+      var minOut = swapSlipMin(out, swTo);
       var spot = whole(rB, swTo) / whole(rA, swFrom);
       var impact = (1 - (whole(out, swTo) / whole(amtIn, swFrom)) / spot) * 100;
       swQuote = { amtIn: amtIn, out: out, minOut: minOut, rA: rA, rB: rB };
@@ -140,6 +162,11 @@
   }
   var swT = null;
   $('swAmt').addEventListener('input', function () { clearTimeout(swT); swT = setTimeout(quote, 250); });
+  // re-quote when the max-slippage choice changes, so minOut tracks the control
+  document.querySelectorAll('#trade .slip input').forEach(function (inp) {
+    inp.addEventListener('change', quote);
+    if (inp.type === 'text') inp.addEventListener('input', function () { clearTimeout(swT); swT = setTimeout(quote, 250); });
+  });
   $('swGo').addEventListener('click', function () {
     if (!routerReady()) {
       FtbShell.showPlan('swap not wired', 'the router hash is a placeholder in this deployment. the swap contracts are the reused, audited Flamingo Factory/Pair/Router - verify the method and signer scope against the deployed manifest before enabling.',
@@ -161,7 +188,7 @@
       var plan = FtbState.dapi.swap(FtbState.account, q.amtIn.toString(), q.minOut.toString(), [a, b], deadline, signer);
       plan.summary = 'Swap ' + fmtT(q.amtIn, swFrom) + ' ' + swFrom + ' for at least ' + fmtT(q.minOut, swTo) + ' ' + swTo;
       FtbShell.showPlan('swap ' + fmtT(q.amtIn, swFrom) + ' ' + swFrom,
-        'external flamingo router. quote from live reserves; min received is 0.5% under the quote. verify the router hash in section IV first.',
+        'external flamingo router. quote from live reserves; min received is at most ' + slipPct() + '% under the quote. verify the router hash in section IV first.',
         [['you pay', fmtT(q.amtIn, swFrom) + ' ' + swFrom],
          ['you receive (est.)', fmtT(q.out, swTo) + ' ' + swTo],
          ['min received', fmtT(q.minOut, swTo) + ' ' + swTo],
@@ -227,6 +254,7 @@
     e.textContent = fiatFmt(v.usd, '$') + ' · ' + fiatFmt(v.cny, '¥');
     e.title = '1 FTB - derived from the ' + (ftbPx.gas ? 'GAS/FTB' : 'FTB/NEO') +
       ' pool ratio x the coingecko reference rate. display only, never a protocol input.';
+    paintTvlFiat(); // the fiat TVL tile depends on this price
   }
   function noteFtbPx(symA, fiatOfFtb) {
     if (!fiatOfFtb) return;
@@ -234,84 +262,84 @@
     paintFtbPx();
   }
 
+  // ---------- TVL in fiat (reference only): on-chain TVL x the external rate ----------
+  // FTB is priced from the pool ratio (ftbPx), NEO/GAS from the coingecko reference.
+  // Blank unless the FTB price is live - absent rather than wrong (Art 10). The figure
+  // is display only; it is never a protocol input and never cached past the 5-min fiat.
+  var tvlWhole = null; // { ftb, neo, gas } in whole units, from the last refreshTvl
+  function paintTvlFiat() {
+    var e = $('tTvlFiat'); if (!e) return;
+    var fp = ftbPx.gas || ftbPx.other; // derived FTB price
+    if (!tvlWhole || !fp) {
+      e.innerHTML = '<div class="tnline">-</div>';
+      e.title = 'reference TVL in fiat - shows once an FTB pool ratio and the external rate are both live. display only, never a protocol input.';
+      return;
+    }
+    var np = fiatRates && fiatRates.NEO, gp = fiatRates && fiatRates.GAS;
+    var usd = tvlWhole.ftb * fp.usd + (np ? tvlWhole.neo * np.usd : 0) + (gp ? tvlWhole.gas * gp.usd : 0);
+    var cny = tvlWhole.ftb * fp.cny + (np ? tvlWhole.neo * np.cny : 0) + (gp ? tvlWhole.gas * gp.cny : 0);
+    function money(v, cur) { return cur + Math.round(v).toLocaleString('en-US'); }
+    e.innerHTML = '';
+    e.appendChild(el('div', 'tnline', money(usd, '$')));
+    e.appendChild(el('div', 'tnline', money(cny, '¥')));
+    e.title = 'reference only: on-chain TVL x the coingecko rate (FTB priced from the pool ratio). never a protocol input; blank when the rate source is unreachable.';
+  }
+
   function refreshRatios() {
-    var body = $('ratioBody'); if (!body) return;
+    var body = $('poolList'); if (!body) return;
     var pairs = CFG.pairs || [];
     if (!FtbRpc.current() || !FtbState.configured || !C.router || C.router.indexOf('0x0000') === 0 || !pairs.length) {
-      var hint = $('ratioHint'); if (hint) hint.textContent = 'loads when the router and pairs are configured for this network';
+      body.innerHTML = ''; body.appendChild(el('div', 'small muted', 'loads when the router and pairs are configured for this network'));
       return;
     }
     var hist = {}; try { hist = JSON.parse(localStorage.getItem('ftb_ratios') || '{}'); } catch (e) {}
     body.innerHTML = '';
-    pairs.forEach(function (p) {
+    pairs.forEach(function (p, pi) {
       var sym = p.label.split('/'), a = resolveTok(p.a), b = resolveTok(p.b);
       var other = sym[0] === 'FTB' ? sym[1] : sym[0]; // the non-FTB leg
-      var card = el('div', 'rcard');
-      card.appendChild(el('div', 'rp', sym[0] + ' / ' + sym[1] + ' pool'));
-      // pooled reserves: two boxes under the pool title, one per leg, painted
-      // from the same getReserves read that feeds the ratio boxes below.
-      var prow = el('div', 'lpoolrow');
-      var poolA = el('div', 'lpoolbox'); poolA.appendChild(el('div', 'lpl', 'pooled ' + sym[0]));
-      var poolAv = el('div', 'lpv', '-'); poolA.appendChild(poolAv); prow.appendChild(poolA);
-      var poolB = el('div', 'lpoolbox'); poolB.appendChild(el('div', 'lpl', 'pooled ' + sym[1]));
-      var poolBv = el('div', 'lpv', '-'); poolB.appendChild(poolBv); prow.appendChild(poolB);
-      card.appendChild(prow);
-      var wrap = el('div', 'rwrap');
-      var left = el('div', 'rcol');
-      left.appendChild(el('div', 'rcolh', 'ratio · price'));
-      var num = el('div', 'rbox', 'reading…'); left.appendChild(num);
-      var inv = el('div', 'rbox', ''); left.appendChild(inv);
-      var usd = el('div', 'rbox', ''); left.appendChild(usd);
-      var cny = el('div', 'rbox', ''); left.appendChild(cny);
-      wrap.appendChild(left);
-      var right = el('div', 'rcol');
-      right.appendChild(el('div', 'rcolh', 'change'));
-      var pctBox = el('div', 'rchgbox', '-'); right.appendChild(pctBox);
-      var arrBox = el('div', 'rchgbox arr', ''); right.appendChild(arrBox);
-      wrap.appendChild(right);
-      card.appendChild(wrap);
-      body.appendChild(card);
+      // one disclosure row per pair: pair · ratio · %change, opening to the detail
+      var d = el('details', 'poolrow'); if (pi === 0) d.setAttribute('open', '');
+      var sm = el('summary');
+      sm.appendChild(el('span', 'pr-pair', sym[0].toLowerCase() + ' / ' + sym[1].toLowerCase()));
+      var ratioEl = el('span', 'pr-ratio', 'reading…'); sm.appendChild(ratioEl);
+      var chgEl = el('span', 'pr-chg'); sm.appendChild(chgEl);
+      var caret = el('span', 'pr-caret', '▸'); caret.setAttribute('aria-hidden', 'true'); sm.appendChild(caret);
+      d.appendChild(sm);
+      var det = el('div', 'pr-detail');
+      function drow(l) { var r = el('div', 'pr-d'); r.appendChild(el('span', 'pr-dl', l)); var v = el('span', 'pr-dv', '-'); r.appendChild(v); det.appendChild(r); return v; }
+      var pooledV = drow('pooled'), invV = drow('inverse'), fiatV = drow('fiat ref');
+      d.appendChild(det);
+      body.appendChild(d);
       FtbRpc.read(C.router, 'getReserves', [{ type: 'Hash160', value: a }, { type: 'Hash160', value: b }]).then(function (st) {
         var rr = reservesOf(st);
         var rA = whole(rr[0], sym[0]), rB = whole(rr[1], sym[1]);
         if (!(rA > 0 && rB > 0)) throw new Error('pool empty');
-        poolAv.textContent = fmtT(rr[0], sym[0]);
-        poolBv.textContent = fmtT(rr[1], sym[1]);
         var ratio = rB / rA; // display-only: whole units of B per 1 A
         var h = hist[p.label] || []; h.push(ratio); if (h.length > 40) h = h.slice(h.length - 40);
         hist[p.label] = h;
         try { localStorage.setItem('ftb_ratios', JSON.stringify(hist)); } catch (e) {}
-        num.textContent = '1 ' + sym[0] + ' = ' + ratio.toPrecision(6) + ' ' + sym[1];
-        inv.textContent = '1 ' + sym[1] + ' = ' + (1 / ratio).toPrecision(6) + ' ' + sym[0];
-        num.title = num.textContent; inv.title = inv.textContent; // full precision on hover if ellipsized
-        // fiat reference: the leg with a public market rate prices the other leg
-        // through the on-chain ratio (FTB has no market rate of its own - derived).
-        // the card shows the NON-FTB leg only: FTB's price lives exactly once,
-        // in the stat-band tile - never per card, never two different figures.
+        ratioEl.textContent = '1 ' + sym[0] + ' = ' + ratio.toPrecision(6) + ' ' + sym[1];
+        ratioEl.title = ratioEl.textContent;
+        pooledV.textContent = fmtT(rr[0], sym[0]) + ' ' + sym[0] + ' · ' + fmtT(rr[1], sym[1]) + ' ' + sym[1];
+        invV.textContent = '1 ' + sym[1] + ' = ' + (1 / ratio).toPrecision(6) + ' ' + sym[0];
+        // fiat reference (display only): price the NON-FTB leg through the on-chain
+        // ratio; FTB's own price lives once, in the stat-band tile - never per row.
         var ra = fiatRates && fiatRates[sym[0]], rb = fiatRates && fiatRates[sym[1]];
         if (!rb && ra) rb = { usd: ra.usd / ratio, cny: ra.cny / ratio };
         if (!ra && rb) ra = { usd: rb.usd * ratio, cny: rb.cny * ratio };
         var ro = sym[0] === 'FTB' ? rb : ra;
-        usd.textContent = '1 ' + other + ' = ' + (ro ? fiatFmt(ro.usd, '$') : '-');
-        cny.textContent = '1 ' + other + ' = ' + (ro ? fiatFmt(ro.cny, '¥') : '-');
-        usd.title = usd.textContent; cny.title = cny.textContent;
-        // the canonical FTB price tile: FTB leg of this pair feeds it
+        fiatV.textContent = '1 ' + other + ' = ' + (ro ? fiatFmt(ro.usd, '$') + ' · ' + fiatFmt(ro.cny, '¥') : '-');
         if (sym[1] === 'FTB') noteFtbPx(sym[0], rb);
         if (sym[0] === 'FTB') noteFtbPx(sym[1], ra);
         var chg = h.length > 1 ? (ratio / h[0] - 1) * 100 : 0;
         var cls = chg > 0.005 ? 'up' : (chg < -0.005 ? 'dn' : 'flat');
-        var dnCls = cls === 'dn' ? ' dn' : '';
-        pctBox.className = 'rchgbox' + dnCls;
-        pctBox.textContent = (chg >= 0 ? '+' : '-') + Math.abs(chg).toFixed(2) + '%';
-        pctBox.title = 'ratio change across ' + h.length + ' reads in this browser';
-        arrBox.className = 'rchgbox arr' + dnCls;
-        arrBox.textContent = cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=';
-        arrBox.title = pctBox.title;
+        chgEl.className = 'pr-chg ' + cls;
+        chgEl.textContent = (cls === 'up' ? '▲ ' : cls === 'dn' ? '▼ ' : '= ') + Math.abs(chg).toFixed(2) + '%';
+        chgEl.title = 'ratio change across ' + h.length + ' reads in this browser';
         tick[p.label] = ratio.toPrecision(6) + ' ' + (cls === 'up' ? '▲' : cls === 'dn' ? '▼' : '=');
         paintTicker();
       }).catch(function (e) {
-        num.textContent = '-';
-        inv.textContent = e.message || 'unavailable';
+        ratioEl.textContent = '-'; invV.textContent = e.message || 'unavailable';
       });
     });
   }
@@ -330,13 +358,12 @@
   // signer: the token (and pair) contracts witness-check the sender while the caller
   // is the router, so CalledByEntry cannot cross that boundary.
   var lpStates = [];
-  function lpReady() { return $('lpBody') && routerReady() && (CFG.pairs || []).length && FtbRpc.current(); }
-  function stat(l) { var d = el('div', 'fs'); d.appendChild(el('div', 'l', l)); var v = el('div', 'v', '-'); d.appendChild(v); return v; }
+  function lpReady() { return $('lpList') && routerReady() && (CFG.pairs || []).length && FtbRpc.current(); }
   function buildLpPanels() {
-    var body = $('lpBody'); if (!body || !lpReady()) return;
+    var body = $('lpList'); if (!body || !lpReady()) return;
     if (lpStates.length) return; // built once; refresh paints
     body.innerHTML = '';
-    (CFG.pairs || []).forEach(function (p) {
+    (CFG.pairs || []).forEach(function (p, pi) {
       var sym = p.label.split('/');
       var st = {
         p: p, symA: sym[0], symB: sym[1],
@@ -344,29 +371,38 @@
         pair: null, rA: 0n, rB: 0n, ts: 0n, lpBal: 0n,
         addQ: null, rmQ: null
       };
-      var card = el('div', 'lpair');
-      card.appendChild(el('div', 'lpp', p.label + ' pool'));
-      var stats = el('div', 'lpstats');
-      st.vBal = stat('lp balance'); stats.appendChild(st.vBal.parentNode);
-      st.vShare = stat('pool share'); stats.appendChild(st.vShare.parentNode);
-      // pooled reserves moved to the tokens-on-FTB card (the getReserves read
-      // there already lands both legs); the LP card keeps balance and share.
-      card.appendChild(stats);
-      st.vYours = el('div', 'lpsub', 'your share: -'); card.appendChild(st.vYours);
+      // one disclosure row per pool: the summary carries your lp balance + share,
+      // the row opens to the add / remove liquidity forms (two pools no longer
+      // stack two full forms down the page).
+      var d = el('details', 'poolrow'); if (pi === 0) d.setAttribute('open', '');
+      var sm = el('summary');
+      sm.appendChild(el('span', 'pr-pair', sym[0].toLowerCase() + ' / ' + sym[1].toLowerCase()));
+      var ratioEl = el('span', 'pr-ratio');
+      ratioEl.appendChild(document.createTextNode('lp '));
+      st.vBal = el('b', null, '-'); ratioEl.appendChild(st.vBal);
+      ratioEl.appendChild(document.createTextNode(' · share '));
+      st.vShare = el('b', null, '-'); ratioEl.appendChild(st.vShare);
+      sm.appendChild(ratioEl);
+      sm.appendChild(el('span', 'pr-chg'));
+      var caret = el('span', 'pr-caret', '▸'); caret.setAttribute('aria-hidden', 'true'); sm.appendChild(caret);
+      d.appendChild(sm);
+
+      var card = el('div', 'pr-detail lpform');
+      st.vYours = el('div', 'lpsub', 'connect a wallet to see your share'); card.appendChild(st.vYours);
 
       card.appendChild(el('div', 'lplabel', 'add liquidity'));
       var r1 = el('div', 'trow');
-      r1.appendChild(el('label', null, st.symA + ' in')); r1.firstChild.htmlFor = 'lpAddA';
+      r1.appendChild(el('label', null, st.symA + ' in'));
       st.inAddA = el('input'); st.inAddA.inputMode = 'decimal'; st.inAddA.autocomplete = 'off'; st.inAddA.placeholder = '0.0'; r1.appendChild(st.inAddA);
       r1.appendChild(FtbUtil.balChip(st.a, st.symA, decOf(st.symA), function (raw) { st.inAddA.value = fillStr(raw, st.symA); quoteAdd(st, 'A'); }));
       card.appendChild(r1);
       var r2 = el('div', 'trow');
-      r2.appendChild(el('label', null, st.symB + ' in')); r2.firstChild.htmlFor = 'lpAddB';
+      r2.appendChild(el('label', null, st.symB + ' in'));
       st.inAddB = el('input'); st.inAddB.inputMode = 'decimal'; st.inAddB.autocomplete = 'off'; st.inAddB.placeholder = '0.0'; r2.appendChild(st.inAddB);
       r2.appendChild(FtbUtil.balChip(st.b, st.symB, decOf(st.symB), function (raw) { st.inAddB.value = fillStr(raw, st.symB); quoteAdd(st, 'B'); }));
       card.appendChild(r2);
       st.addMeta = el('div', 'tmeta', 'amounts quote each other from live reserves · mins at 0.5% slippage'); card.appendChild(st.addMeta);
-      st.addGo = el('button', 'go', 'add liquidity -&gt;'); st.addGo.textContent = 'add liquidity ->'; card.appendChild(st.addGo);
+      st.addGo = el('button', 'go'); st.addGo.textContent = 'add liquidity ->'; card.appendChild(st.addGo);
 
       card.appendChild(el('div', 'lplabel', 'remove liquidity'));
       var r3 = el('div', 'trow');
@@ -377,9 +413,10 @@
       r3.appendChild(FtbUtil.balChip(function () { return st.pair; }, 'LP', 8, function (raw) { st.inRm.value = FtbDapi.util.fromBaseUnits(raw.toString()); quoteRm(st); }));
       card.appendChild(r3);
       st.rmMeta = el('div', 'tmeta', 'burns lp tokens, returns both pool assets · mins at 0.5% slippage'); card.appendChild(st.rmMeta);
-      st.rmGo = el('button', 'go', 'remove liquidity -&gt;'); st.rmGo.textContent = 'remove liquidity ->'; card.appendChild(st.rmGo);
+      st.rmGo = el('button', 'go'); st.rmGo.textContent = 'remove liquidity ->'; card.appendChild(st.rmGo);
 
-      body.appendChild(card);
+      d.appendChild(card);
+      body.appendChild(d);
 
       var tA = null, tB = null, tR = null;
       st.inAddA.addEventListener('input', function () { clearTimeout(tA); tA = setTimeout(function () { quoteAdd(st, 'A'); }, 250); });
@@ -587,6 +624,10 @@
         (hasRouter ? ' + FTB-side pool reserves' : '') +
         (hasLend ? '; NEO and GAS locked as loan collateral' : '') +
         '. ratios only, no fiat.' + (failed ? ' (one leg unreadable right now)' : '');
+      // the fiat TVL tile is a separate, display-only derivation: remember the whole
+      // amounts and paint them against the reference rate (blank until the rate is live).
+      tvlWhole = { ftb: Number(ftb) / 1e8, neo: Number(neo), gas: Number(gas) / 1e8 };
+      paintTvlFiat();
     }).catch(function () { e.innerHTML = '<div class="tnline">-</div>'; e.title = 'TVL unreadable'; });
   }
 

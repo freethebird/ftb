@@ -55,6 +55,10 @@
   --mono:'Space Mono',"Courier New",Courier,"DejaVu Sans Mono","Liberation Mono",monospace;
   --disp:'Space Mono',"Courier New",monospace;
   --keybg:#101010; --keyfg:#33ff33;  /* phosphor key well + legend (merged) */
+  /* v0.12 proposal: a 6-step type scale (was ~18 ad-hoc sizes) + spacing steps */
+  --fs-meta:11px; --fs-small:13px; --fs-body:15px; --fs-lead:19px; --fs-num:26px; --fs-disp:40px;
+  --sp-1:8px; --sp-2:14px; --sp-3:26px;
+  --data-bd:#3a3a3a;  /* data-box border: visible on black, not green, not hard-to-read grey */
   --col:760px;
   color-scheme:dark;
 }
@@ -95,16 +99,13 @@ textarea,input{
 
 .idstate{letter-spacing:.04em; color:var(--ink-2); white-space:nowrap}
 
-/* menu jumps: land each module just below the fixed bar, fully visible */
-[id]{scroll-margin-top:calc(66px + env(safe-area-inset-top,0px))}
+/* menu jumps: land each module just below the sticky bar, fully visible.
+   the two-row bar is ~91px on desktop and taller as the nav wraps, so the
+   offset steps up at the same breakpoints the bar grows (see media queries) */
+[id]{scroll-margin-top:calc(98px + env(safe-area-inset-top,0px))}
 
 main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   padding-top:calc(54px + env(safe-area-inset-top,0px))}
-
-/* ---- terminal prompt flourish ---- */
-.term{font-size:14.5px; color:var(--faint); letter-spacing:.04em; margin:6px 0 2px}
-.cursor{display:inline-block; width:.55em; height:1em; background:var(--ink);
-  vertical-align:-.12em; margin-left:.12em; animation:blink 1.1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 
 .entry{display:grid; grid-template-columns:2.3em 1fr auto; gap:.15rem .9rem;
@@ -129,11 +130,31 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .prov dd{margin:0; color:var(--ink); word-break:break-all}
 .witness{border-top:1px solid var(--hair); margin-top:22px; padding-top:16px}
 .witness .row{display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:center}
-#witnessOut{word-break:break-all; font-size:12.5px}
 
-/* ---- footer ---- */
-.foot{margin-top:44px; padding-top:18px; border-top:3px double var(--ink);
-  font-size:12.5px; color:var(--ink-2); line-height:1.9; max-width:66ch}
+/* ---- claim (v0.11 redesign): state strip -> action -> eligibility/anchor rows ---- */
+#claim .go{width:100%}
+.claimstate{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem .9rem; font-size:12.5px;
+  color:var(--ink-2); letter-spacing:.03em; padding-bottom:13px; margin-bottom:16px;
+  border-bottom:1px solid var(--hair)}
+.claimstate .linkish{margin-left:auto; font-size:12px}
+.clist{margin-top:16px}
+.crow{display:grid; grid-template-columns:8em 1fr auto; gap:.4rem .9rem; align-items:baseline;
+  padding:12px 0; border-top:1px solid var(--hair)}
+.crow:first-child{border-top:0; padding-top:4px}
+.crow .cr-l{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.crow .cr-v{font-size:13px; color:var(--ink-2); line-height:1.55; min-width:0; word-break:break-word}
+.crow .cr-v b{color:var(--ink); font-weight:400}
+.crow .linkish{font-size:12px; white-space:nowrap; align-self:center}
+/* ---- verify (v0.10 redesign): one provenance pane, grouped contracts / integrity ---- */
+.vprov .vgh{grid-column:1 / -1; color:var(--ink); letter-spacing:.14em; text-transform:uppercase;
+  font-size:11px; border-bottom:1px solid var(--hair); padding-bottom:5px; margin-top:9px}
+.vprov .vgh:first-child{margin-top:0}
+@media (max-width:640px){
+  .crow{grid-template-columns:1fr auto}
+  .crow .cr-l{grid-column:1 / 3}
+  .crow .cr-v{grid-column:1 / 3}
+}
+#witnessOut{word-break:break-all; font-size:12.5px}
 .foot .disp{font-size:20px; color:var(--ink); letter-spacing:.08em}
 
 /* ---- identify overlay ---- */
@@ -154,52 +175,66 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   word-break:break-all; font-size:12px; background:var(--panel)}
 .err{border:1px solid var(--ink); background:var(--panel); padding:.55em .7em; margin-top:.8rem; font-size:13px}
 .ok::before{content:"[ ok ] "}
-
-/* ---- market board: ratio cards ---- */
-.mkt{margin-top:26px}
-.mkt-h{display:flex; justify-content:space-between; align-items:baseline; gap:.6rem;
-  border-bottom:1px solid var(--ink); padding-bottom:4px; margin-bottom:12px;
-  font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
-.rgrid{display:grid; grid-template-columns:1fr; gap:10px}
-.rcard{border:1px solid var(--ink); padding:14px 15px}
-.rcard .rp{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
-/* pooled reserves: two boxes under the pool title, same height as the change boxes */
-.lpoolrow{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:9px}
-.lpoolbox{border:1px solid var(--ok); color:var(--ok); padding:10px 12px; min-height:82px;
-  display:flex; flex-direction:column; justify-content:center; font-size:13px; line-height:1.5}
-.lpoolbox .lpl{font-size:10px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--faint); margin-bottom:4px}
-.lpoolbox .lpv{white-space:nowrap; overflow:visible}
-/* minmax(0,1fr): tracks never grow past half - a wide ratio line ellipsizes
-   (full value on hover) instead of squeezing the change column */
-.rwrap{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:9px; align-items:stretch}
-.rcol{display:flex; flex-direction:column; min-width:0}
-.rcolh{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint);
-  margin-bottom:6px; border-bottom:1px solid var(--hair); padding-bottom:3px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-/* ratio + price: green boxes, one horizontal line each - never wrapped digits */
-.rbox{border:1px solid var(--ok); color:var(--ok); padding:8px 12px;
-  font-size:13px; line-height:1.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.rbox + .rbox{margin-top:8px}
-/* change column: boxes flex to exactly the ratio column's height - % on top,
-   arrow below, so both columns always share their top and bottom edges */
-.rchgbox{border:1px solid var(--ok); color:var(--ok); font-size:13px; flex:1;
-  display:flex; align-items:center; justify-content:flex-start; padding:6px 12px;
-  letter-spacing:.08em}
-.rchgbox + .rchgbox{margin-top:8px}
 .rchgbox.arr{justify-content:center; font-size:42px; letter-spacing:0; line-height:1}
 .rchgbox.dn{border-color:var(--dn); color:var(--dn)}
-
-/* ---- governance: option bars ---- */
-.gopt{border:1px solid var(--ink); padding:11px 13px; margin-top:10px}
-.gopt .grow{display:flex; justify-content:space-between; align-items:baseline;
-  gap:.4rem .8rem; flex-wrap:wrap}
+/* ---- compact pool list (v0.12 proposal): one collapsed row per pool, details on demand ---- */
+.poollist{display:flex; flex-direction:column; gap:8px}
+.poolrow{border:1px solid var(--data-bd); background:var(--panel)}
+.poolrow > summary{display:grid; grid-template-columns:7.5em 1fr auto 1.2em; gap:.7rem 1rem;
+  align-items:center; padding:11px 14px; cursor:pointer; list-style:none; user-select:none}
+.poolrow > summary::-webkit-details-marker{display:none}
+.poolrow > summary::marker{content:""}
+.poolrow[open] > summary{border-bottom:1px solid var(--hair)}
+.poolrow .pr-pair{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); white-space:nowrap}
+.poolrow .pr-ratio{font-family:var(--disp); font-size:15px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.poolrow .pr-chg{justify-self:end; font-family:var(--disp); font-size:14px; color:var(--ink-2); white-space:nowrap}
+.poolrow .pr-chg.dn{color:var(--dn)}
+.poolrow .pr-caret{justify-self:end; color:var(--ink-2); transition:transform .15s ease; font-size:11px}
+.poolrow[open] .pr-caret{transform:rotate(90deg)}
+/* fee-split rows carry longer labels ("to dev treasury") than the pool list */
+.feesplit .poolrow > summary{grid-template-columns:10.5em 1fr auto 1.2em}
+/* ---- governance: serialized ballot menu ---- */
+.ballotmenu .poolrow > summary{grid-template-columns:2.6em minmax(0,1fr) auto auto 1.2em; gap:.5rem .9rem}
+.bnum{font-family:var(--disp); font-size:15px; color:var(--faint); letter-spacing:.08em}
+.bq{font-size:13px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bres{font-family:var(--disp); font-size:13px; color:var(--ink-2); white-space:nowrap}
+.bres b{color:var(--ink)}
+.bdid{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2); white-space:nowrap}
+.bdid.voted{color:var(--keyfg)}
+.poolrow .pr-detail.bdetail{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px 22px; align-items:center; padding:14px}
+.bopts{display:flex; flex-direction:column; gap:9px; min-width:0}
+.bopt{display:grid; grid-template-columns:5.5em minmax(0,1fr) 3em; gap:.7rem; align-items:center; font-size:13px}
+.bopt .bo-l{text-transform:uppercase; letter-spacing:.1em; font-size:11px; color:var(--faint)}
+.bopt .bo-bar{height:8px; background:var(--panel); border:1px solid var(--data-bd); position:relative; overflow:hidden}
+.bopt .bo-bar i{position:absolute; top:0; left:0; bottom:0; background:var(--ink); display:block}
+.bopt .bo-p{font-family:var(--disp); text-align:right; color:var(--ink)}
+.bside{display:flex; align-items:center; gap:12px}
+.bdonut{width:58px; height:58px; flex-shrink:0}
+.bturn{font-size:12px; color:var(--ink); line-height:1.45}
+.bturn .muted2{color:var(--ink-2); font-size:11px}
+.brow-act{grid-column:1 / -1; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid var(--hair); padding-top:10px}
+.brow-act button{font-size:12px}
+@media (max-width:640px){
+  .ballotmenu .poolrow > summary{grid-template-columns:2.6em 1fr 1.2em; row-gap:.2rem}
+  .ballotmenu .bres{grid-column:2; justify-self:start}
+  .ballotmenu .bdid{grid-column:2; justify-self:start}
+  .bdetail{grid-template-columns:1fr}
+}
+.poolrow:hover .pr-caret{color:var(--keyfg)}
+.poolrow .pr-detail{padding:10px 14px 12px; display:flex; flex-direction:column; gap:7px}
+.pr-d{display:grid; grid-template-columns:6.5em 1fr; gap:1rem; align-items:baseline}
+.pr-d .pr-dl{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.pr-d .pr-dv{font-family:var(--disp); font-size:13px; color:var(--ink)}
+/* liquidity form inside an expanded pool row: block flow so the trow/label margins apply */
+.pr-detail.lpform{display:block; padding:4px 14px 14px}
+.lpform .lplabel{margin-top:14px}
+.lpform .lplabel:first-child{margin-top:4px}
+.lpform .go{margin-top:8px}
+/* right-aligned balance hint on the label line (the 'you have … · max' / 'unreadable' note) */
+.trow .rhint{grid-area:max; justify-self:end; font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ink-2); white-space:nowrap}
+.trow .rhint .rmax{color:var(--keyfg); cursor:pointer}
 .gopt .gname{font-size:15px}
-.gopt .gnum{font-family:var(--disp); font-size:26px; white-space:nowrap}
-.gbar{height:14px; border:1px solid var(--ink); margin-top:9px; position:relative}
-.gbar i{position:absolute; top:0; bottom:0; left:0; background:var(--ink); display:block}
-.gopt .gmeta{display:flex; justify-content:space-between; gap:.6rem;
-  font-size:11.5px; color:var(--faint); margin-top:5px; letter-spacing:.06em}
 
 /* ---- ticker (Hyperliquid: the numbers never hide) ---- */
 .ticker{margin-top:12px; padding:6px 0; border-top:1px solid var(--hair); border-bottom:1px solid var(--hair);
@@ -224,20 +259,102 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 /* ---- swap ticket (THORSwap/Hyperliquid order panel, typewriter skin) ---- */
 .ticket{border:2px solid var(--ink); padding:16px; margin-top:14px}
-.trow{display:grid; grid-template-columns:6.5em 1fr auto; gap:.4rem .8rem; align-items:center;
-  padding:9px 0}
+/* swap header: tabs left, version tag at the right edge (outside the green key) */
+.swap-h{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.swap-h .ver{align-self:center}
+/* each row is a stack: [label .......... max] / [--- input line ---] / [pills, right].
+   both rows share this shape, so pay and receive are symmetric even though only
+   the pay row carries a MAX button (JS inserts it after the input; grid-areas place
+   it on the label line regardless of DOM order). */
+.trow{display:grid; grid-template-columns:1fr auto;
+  grid-template-areas:"label max" "line line" "pills pills";
+  gap:.3rem .8rem; align-items:center; padding:11px 0}
 .trow + .trow{border-top:1px solid var(--hair)}
-.trow label{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
-.trow input{border:0; border-bottom:1px solid var(--ink); text-align:right; font-size:19px;
+.trow label{grid-area:label; justify-self:start; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.trow input{grid-area:line; width:100%; border:0; border-bottom:1px solid var(--ink); text-align:right; font-size:19px;
   font-family:var(--disp); padding:.1em .2em; background:transparent}
 .trow input:focus{outline:none; background:var(--panel)}
-.trow input[readonly]{border-bottom-style:dashed; color:var(--ink-2)}
+.trow input[readonly]{color:var(--ink-2)}  /* solid line, same as the pay row; value stays slightly muted to read as an estimate */
+.trow .maxbox{grid-area:max; justify-self:end}
 .tsel{display:flex; gap:.3rem}
+.trow .tsel{grid-area:pills; justify-self:end; margin-top:3px}
 .tsel button{font-size:11.5px; padding:.2em .6em; letter-spacing:.1em; color:var(--ink-2)}
 .tsel button.on{background:var(--ink); color:var(--paper)}
 .tmeta{font-size:12px; color:var(--ink-2); line-height:1.8; padding:9px 0; border-top:1px solid var(--hair)}
 .tmeta .impact-warn{border:1px dashed var(--ink); padding:0 .4em}
+/* advanced disclosure: slippage control, collapsed by default */
+.adv{border-top:1px solid var(--hair)}
+.adv summary{cursor:pointer; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ink-2); padding:9px 0; user-select:none}
+.adv summary:hover{color:var(--keyfg)}
+.adv[open] summary{color:var(--ink)}
+.advbody{padding:2px 0 10px}
+.advrow{display:flex; align-items:center; gap:.5rem .9rem; flex-wrap:wrap}
+.advlbl{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.slip{display:flex; gap:.3rem; flex-wrap:wrap}
+.slip label{display:inline-flex; align-items:center; gap:.25em; border:1px solid var(--keyfg);
+  color:var(--keyfg); background:var(--keybg); border-radius:2px; padding:.28em .7em;
+  font-size:11.5px; letter-spacing:.1em; cursor:pointer}
+.slip label input[type=radio]{position:absolute; opacity:0; width:0; height:0}
+.slip label:has(input[type=radio]:checked){background:var(--keyfg); color:var(--keybg)}
+.slip .slipcustom input[type=text]{width:3em; border:0; border-bottom:1px solid currentColor;
+  background:transparent; color:inherit; font-family:var(--disp); font-size:12px; text-align:right; padding:0 .15em}
+.slip .slipcustom input[type=text]:focus{outline:none}
+.advnote{font-size:11.5px; color:var(--ink-2); line-height:1.7; margin:8px 0 0; max-width:62ch}
 .ticket .go{width:100%; margin-top:6px; font-size:15px; padding:.55em; letter-spacing:.06em}
+
+/* ---- proposals: ballot|listing create ticket (v0.11) ---------------------
+   one ticket, two shapes. a hidden radio pair drives the whole thing in pure
+   CSS (CSP-safe, no inline script): checking ballot/listing lights the toggle
+   and swaps which form + which bond line shows. ballot = a question + 1-4
+   options (a..d); listing = a token hash to onboard, bond split 50/50. */
+.ptkt{position:relative}
+.ptype-in{position:absolute; width:0; height:0; opacity:0; pointer-events:none}
+.ptype-h{display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding-bottom:12px; border-bottom:1px solid var(--hair); margin-bottom:4px}
+.ptype-lab{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.ptoggle{display:inline-flex; gap:.3rem}
+.pt-opt{font-size:11.5px; padding:.3em .95em; letter-spacing:.1em; color:var(--ink-2);
+  border:1px solid var(--hair); cursor:pointer}
+.pt-opt:hover{color:var(--ink)}
+/* active segment = solid green, same convention as .tsel button.on */
+#ptBallot:checked ~ .ptype-h .pt-b,
+#ptListing:checked ~ .ptype-h .pt-l{background:var(--keyfg); color:var(--keybg); border-color:var(--keyfg)}
+/* form + bond-line swap */
+.pform{display:none}
+.pfbond{display:none; font-size:11.5px; color:var(--ink-2); line-height:1.7;
+  margin:12px 0 10px; max-width:66ch}
+.pfbond b{color:var(--ink)}
+#ptBallot:checked ~ .pf-ballot,
+#ptBallot:checked ~ .pb-ballot,
+#ptListing:checked ~ .pf-listing,
+#ptListing:checked ~ .pb-listing{display:block}
+/* a labelled text row (question, token hash) */
+.pfrow{display:grid; grid-template-columns:auto 1fr; align-items:center; gap:14px; padding:12px 0 10px}
+.pfrow label{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.pfrow input{border:0; border-bottom:1px solid var(--ink); width:100%; font-size:17px;
+  background:transparent; color:var(--ink); font-family:var(--disp)}
+.pfrow input::placeholder{color:var(--ink-2)}
+.pfrow input:focus{outline:none; background:var(--panel)}
+/* the a..d option list */
+.pfopts{border-top:1px solid var(--hair); padding-top:10px}
+.pfopt-h{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-bottom:4px}
+.pfopt-h .muted2{text-transform:none; letter-spacing:.04em}
+.pfopt{display:grid; grid-template-columns:auto 1fr; align-items:center; gap:12px; padding:5px 0}
+.pfopt .pfk{width:1.5em; height:1.5em; display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--ink); font-size:12px; color:var(--ink)}
+.pfopt input{border:0; border-bottom:1px solid var(--hair); width:100%; font-size:15px;
+  background:transparent; color:var(--ink); font-family:var(--disp)}
+.pfopt input::placeholder{color:var(--ink-2)}
+.pfopt input:focus{outline:none; background:var(--panel)}
+.pfopt.opt .pfk{color:var(--ink-2); border-color:var(--hair)}   /* c/d are optional - muted key */
+.pfnote{font-size:11.5px; color:var(--ink-2); line-height:1.7; margin:10px 0 0; max-width:66ch}
+.pfnote b{color:var(--ink)}
+.ptkt .go{margin-top:2px}
+/* board rule strip: the cap + congestion-bond, stated once above the list */
+.boardstate{font-size:11.5px; letter-spacing:.04em; color:var(--ink-2); line-height:1.6;
+  padding:0 0 10px; margin-bottom:8px; border-bottom:1px solid var(--hair)}
+.boardstate b{color:var(--ink)}
 
 /* wallet balance chip: live balance beside an input, click = fill max */
 .balchip{background:none; border:0; border-bottom:1px dashed var(--ink-2); padding:0 0 1px;
@@ -260,16 +377,14 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 @media (max-width:460px){
   .idstate{display:none}
-  .bar nav{display:none}
-  .trow{grid-template-columns:1fr; gap:.3rem}
+  .tiles{grid-template-columns:1fr}  /* phones: one tile per row, every figure always fits */
+  .trow{grid-template-columns:1fr auto; gap:.3rem}  /* keep label|max top row; line + pills still stack */
   .trow input{text-align:left}
-  .tsel{justify-content:flex-start}
   .entry{grid-template-columns:1.9em 1fr}
   .entry .read{grid-column:1 / 3; justify-self:start; margin-top:.5rem}
   .entry .meta{grid-column:1 / 3}
 }
 @media (prefers-reduced-motion:reduce){
-  .cursor{animation:none}
   *{transition:none!important}
 }
 
@@ -285,8 +400,8 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 /* ---- top tab bar (Flamingo app chrome, flattened) ---- */
 .topbar{position:sticky; top:0; z-index:50; background:var(--paper);
-  border-bottom:1px solid var(--ink); display:flex; align-items:center;
-  gap:18px; padding:10px 20px; flex-wrap:wrap}
+  border-bottom:1px solid var(--ink); display:flex; flex-direction:column;
+  align-items:stretch; gap:9px; padding:10px 20px}
 /* launch countdown strip: status, not a button - strict grayscale, one line */
 .launchbar{border-bottom:1px solid var(--ink); background:var(--paper); color:var(--ink);
   text-align:center; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
@@ -298,13 +413,18 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .topbar .wordmark{font-family:var(--disp); font-size:26px; letter-spacing:.08em;
   border:0}
 .topbar .wordmark:hover{background:transparent; color:var(--ink)}
-.tabs{display:flex; gap:2px; flex-wrap:wrap; margin-left:8px}
+.tabs{display:flex; align-items:center; gap:3px; flex-wrap:wrap}
+/* thin divider between the in-page sections and the external links (↗) */
+.tabs .tabsep{width:1px; align-self:center; height:1.5em; background:var(--hair); margin:0 6px}
 .tabs a{border:1px solid transparent; padding:5px 11px; font-size:12px;
   letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2)}
 .tabs a:hover{border-color:var(--ink); background:transparent; color:var(--ink)}
-.topright{margin-left:auto; display:flex; align-items:center; gap:10px;
-  font-size:12px; flex-wrap:wrap}
-.topright .idstate{font-size:11.5px}
+/* controls cluster: fixed on the right, never shrinks, no variable-width text inside it,
+   so connect / own-node keep their place when the network toggles or the rpc text changes */
+.topright{display:flex; align-items:center; gap:8px;
+  font-size:12px; flex-shrink:0}
+.statusline .idstate{color:var(--ink-2); flex-shrink:0}
+.statusline .rpc{color:var(--ink-2)}
 
 /* ---- hero (Flamingo landing: one sentence + one button) ---- */
 .hero3{max-width:1060px; margin:0 auto; padding:64px 22px 40px; text-align:center}
@@ -323,21 +443,25 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .page{max-width:1060px; margin:0 auto; padding:0 22px 90px}
 
 /* ---- stat tiles (Flamingo analytics band) ---- */
-.tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:8px}
-.tile{border:1px solid var(--ink); padding:10px 10px}
+/* v0.12: tiles wide enough for the full numbers (the band never abbreviates); each tile
+   contains its own value, so a long figure can never bleed into the next tile */
+.tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; margin-top:8px}
+.tile{border:1px solid var(--ink); padding:10px 12px; min-width:0; overflow:hidden}
 .tile .tl{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
 .tile .tn{font-family:var(--disp); font-size:15px; line-height:1.3; white-space:nowrap}
 .tile .tnline{font-family:var(--disp); font-size:15px; line-height:1.5; white-space:nowrap}
+.tile .tnline.tsub{font-size:13px; color:var(--ink-2)}  /* secondary figure under a headline (e.g. the cap under supply) */
+.tile .tnline .ag{color:var(--ink-2)}  /* the "against" half of a ballot line, muted vs the favor figure */
 
 /* ---- cards (the Flamingo panel: titled card, content inside) ---- */
 .card{border:1px solid var(--ink); margin-top:26px; background:var(--paper)}
-.card-h{display:flex; align-items:baseline; gap:14px; padding:12px 16px;
-  border-bottom:1px solid var(--ink); flex-wrap:wrap}
+.card-h{display:flex; align-items:center; gap:14px; padding:12px 16px;
+  border-bottom:1px solid var(--ink); flex-wrap:wrap}  /* center, so the small version tag never rides high next to the big name */
 .card-h .no{font-family:var(--disp); font-size:20px; letter-spacing:.12em;
-  text-transform:uppercase}
+  text-transform:uppercase; line-height:1}  /* hug the glyphs so the centered version tag reads level with the name */
 /* module version tag: locked releases carry it next to the name (VERSIONS.md) */
 .ver{font-size:10px; letter-spacing:.14em; color:var(--faint); text-transform:none;
-  margin-left:.7em; white-space:nowrap; align-self:baseline}
+  margin-left:.7em; white-space:nowrap; align-self:center}  /* center-aligned so it no longer rides high next to the big label */
 .lp-head .biglabel{text-transform:uppercase}
 .card-h .lede{font-size:12px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--faint)}
@@ -358,21 +482,12 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .earngrid{display:grid; grid-template-columns:1fr; gap:0; align-items:start}
 .biglabel{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
 .flockstats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:14px}
-.flockstats .fs{border-top:1px solid var(--ink); padding-top:8px}
+.flockstats .fs{border-top:1px solid var(--ink); padding-top:8px; min-width:0}
 .flockstats .fs .l{font-size:10px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--faint)}
-.flockstats .fs .v{font-family:var(--disp); font-size:19px; word-break:break-all}
-
-/* ---- governance: full-width card, ballot left / pie + countdown right ---- */
-.govgrid{display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:start}
-.govcols{display:grid; grid-template-columns:7fr 5fr; gap:26px; align-items:start}
-.govside{border-left:1px solid var(--hair); padding-left:22px}
-.govside svg{display:block; width:100%; max-width:220px; height:auto; margin:0 auto}
-.govleg-row{display:flex; justify-content:space-between; gap:.8rem}
+.flockstats .fs .v{font-family:var(--disp); font-size:19px; overflow-wrap:break-word}
 .govleg-row .sw{display:inline-block; width:.9em; height:.9em; border:1px solid var(--ink);
   margin-right:.45em; vertical-align:-.1em}
-.hero3mini{border:1px solid var(--ink); padding:16px}
-.hero3mini h2{font-family:var(--disp); font-weight:400; font-size:30px; margin:.2em 0 .3em}
 
 /* ---- network switch: two flush keys, current network engaged ---- */
 .netswitch{display:flex; font-size:11px; letter-spacing:.14em; text-transform:uppercase}
@@ -418,10 +533,12 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
 @media (max-width:860px){
   .tradegrid, .earngrid, .govgrid, .govcols{grid-template-columns:1fr}
-  .govside{border-left:0; padding-left:0; border-top:1px solid var(--hair); padding-top:16px}
   .tiles{grid-template-columns:1fr 1fr}
-  .topbar{gap:10px; padding:8px 12px}
-  .topright{margin-left:0}
+  .topbar{padding:8px 12px}
+  [id]{scroll-margin-top:calc(126px + env(safe-area-inset-top,0px))}
+}
+@media (max-width:460px){
+  [id]{scroll-margin-top:calc(168px + env(safe-area-inset-top,0px))}
 }
 
 </style>
@@ -479,13 +596,22 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 
   <!-- ============ STAT BAND ============ -->
   <div class="tiles">
-    <div class="tile"><div class="tl">ftb supply</div><div class="tn" id="tSupply">-</div></div>
-    <div class="tile"><div class="tl">hard cap</div><div class="tn" id="tCap">-</div></div>
-    <div class="tile"><div class="tl">weight voted</div><div class="tn" id="tVoted">-</div></div>
+    <!-- supply + hard cap, one box -->
+    <div class="tile">
+      <div class="tl">ftb supply / hard cap</div>
+      <div class="tnstack">
+        <div class="tnline"><span id="tSupply">-</span> FTB</div>
+        <div class="tnline tsub">of <span id="tCap">-</span> cap</div>
+      </div>
+    </div>
     <div class="tile"><div class="tl">block</div><div class="tn" id="tBlock">-</div></div>
     <div class="tile"><div class="tl">mirrors live</div><div class="tn" id="tMirrors">-</div></div>
-    <div class="tile"><div class="tl">tvl locked</div><div class="tnstack" id="tTvl"><div class="tnline">-</div></div></div>
+    <div class="tile"><div class="tl">tvl locked (tokens)</div><div class="tnstack" id="tTvl"><div class="tnline">-</div></div></div>
+    <!-- TVL in fiat: on-chain TVL x the external reference rate. display only, blank when the rate source is unreachable (Art 10). -->
+    <div class="tile"><div class="tl">tvl locked (usd / cny)</div><div class="tnstack" id="tTvlFiat"><div class="tnline">-</div></div></div>
     <div class="tile"><div class="tl">ftb price</div><div class="tn" id="tFtbPx">-</div></div>
+    <!-- active ballots: mod-gov writes one line per ballot (leader bright / runner-up muted) -->
+    <div class="tile"><div class="tl">active ballots</div><div class="tnstack" id="tBallots"><div class="tnline">-</div></div></div>
   </div>
 
   <div class="ticker" id="ticker" style="margin-top:12px">// market: waiting for the pools</div>
@@ -493,8 +619,9 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <!-- ============ TRADE: swap card + tokens table ============ -->
   <div class="tradegrid">
     <div class="card" id="trade">
-      <div class="card-h">
-        <div class="ctabs"><span class="cur">swap <span class="ver">v0.11</span></span><a href="#market">pools</a></div>
+      <div class="card-h swap-h">
+        <div class="ctabs"><span class="cur">swap</span><a href="#market">pools</a></div>
+        <span class="ver">v0.12</span>
       </div>
       <div class="card-b">
         <div class="bal" id="balStrip" hidden>
@@ -516,35 +643,53 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
               <div class="tsel" id="swToSel" role="group" aria-label="receive asset"></div>
             </div>
             <div class="tmeta" id="swMeta">quote from live pool reserves · 0.3% pool fee · min received at 0.5% slippage</div>
+            <!-- advanced: collapsed by default so the median user never touches slippage;
+                 the chosen % feeds minOut and re-quotes on change. -->
+            <details class="adv">
+              <summary>advanced</summary>
+              <div class="advbody">
+                <div class="advrow">
+                  <span class="advlbl">max slippage</span>
+                  <div class="slip" role="radiogroup" aria-label="max slippage">
+                    <label><input type="radio" name="slip" checked>0.5%</label>
+                    <label><input type="radio" name="slip">1%</label>
+                    <label><input type="radio" name="slip">2%</label>
+                    <label class="slipcustom"><input type="radio" name="slip"><input type="text" inputmode="decimal" placeholder="—" aria-label="custom slippage percent">%</label>
+                  </div>
+                </div>
+                <p class="advnote">the trade reverts if you'd receive more than this below the quote. raise it only on thin or volatile pools — a high limit invites sandwich bots.</p>
+              </div>
+            </details>
             <button class="go" id="swGo">review &amp; sign -&gt;</button>
           </div>
-          <p class="small muted" id="swapHint">loads when the router hash is configured for this network.</p>
         </div>
       </div>
     </div>
 
     <div class="card" id="market">
       <div class="card-h">
-        <span class="no">tokens on ftb</span><span class="ver">v0.11</span>
+        <span class="no">tokens on ftb</span>
         <span class="spacer"></span>
         <span class="lede">on-chain ratios are the truth · fiat is reference only</span>
         <button class="linkish" id="ratioBtn">refresh -&gt;</button>
+        <span class="ver">v0.12</span>
       </div>
       <div class="card-b">
-        <div class="rgrid" id="ratioBody">
-          <div class="rcard">
-            <div class="rp">standby</div>
-            <div class="rinv" id="ratioHint">loads when the router and pairs are configured for this network</div>
-          </div>
+        <!-- compact pool list: each pool collapses to pair · ratio · %change, opening
+             to reserves / inverse / fiat ref. mod-swap fills this from live reserves. -->
+        <div class="poollist" id="poolList">
+          <div class="small muted">loads when the router and pairs are configured for this network</div>
         </div>
         <div id="lp">
           <div class="lp-head">
-            <span class="biglabel">swap liquidity</span><span class="ver">v0.11</span>
+            <span class="biglabel">swap liquidity</span>
             <span class="spacer"></span>
             <button class="linkish" id="lpRefresh">refresh -&gt;</button>
+            <span class="ver">v0.12</span>
           </div>
-          <div id="lpBody">
-            <p class="small muted" id="lpHint">connect a wallet to add or remove liquidity.</p>
+          <!-- pick a pool; the row expands to its add / remove liquidity form -->
+          <div class="poollist" id="lpList">
+            <div class="small muted">connect a wallet to add or remove liquidity.</div>
           </div>
         </div>
       </div>
@@ -555,92 +700,136 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <div class="earngrid">
     <div class="card" id="earn">
       <div class="card-h">
-        <span class="no">ftb dividends</span><span class="ver">v0.10</span>
+        <span class="no">ftb dividends</span>
         <span class="spacer"></span>
-        <span class="lede">the holders' 2/9 of every fee</span>
+        <span class="lede">holders' 22.2% of every fee</span>
         <button class="read linkish" id="earnRefresh">refresh -&gt;</button>
+        <span class="ver">v0.11</span>
       </div>
       <div class="card-b">
+        <!-- most important, always visible: the yield + your position -->
         <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
-          <div class="fs"><div class="l">this month</div><div class="v" id="dMonth">-</div></div>
-          <div class="fs"><div class="l">last month</div><div class="v" id="dLast">-</div></div>
-          <div class="fs"><div class="l">lifetime</div><div class="v" id="dLife">-</div></div>
           <div class="fs"><div class="l">dividend apy</div><div class="v" id="dApy">-</div></div>
+          <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">-</div></div>
+          <div class="fs"><div class="l">my stake</div><div class="v" id="dStaked">-</div></div>
+          <div class="fs"><div class="l">i can claim</div><div class="v" id="dPending">-</div></div>
         </div>
-        <div id="feeFlows" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
-          <span class="biglabel">where every fee goes - the split is compiled in</span>
-          <div class="ticket" style="margin-top:10px">
-            <div class="trow"><label>to lp</label><span class="gname" style="font-size:13px">2/3 - accrues into the pool itself; no mint, no transfers</span><div class="tsel"><span id="fLp" style="font-family:var(--disp); font-size:15px">-</span></div></div>
-            <div class="trow"><label>to staked ftb</label><span class="gname" style="font-size:13px">2/9 - swept here; the stake board below</span><div class="tsel"><span id="fStake" style="font-family:var(--disp); font-size:15px">-</span></div></div>
-            <div class="trow"><label>to dev treasury</label><span class="gname" style="font-size:13px">1/9 - pays only passed, auditor-attested proposals</span><div class="tsel"><span id="fTres" style="font-family:var(--disp); font-size:15px">-</span></div></div>
+        <!-- stake / unstake / claim (shown once a wallet is connected) -->
+        <div id="earnPos" hidden style="margin-top:12px">
+          <div class="ticket" style="margin-top:0">
+            <div class="trow"><label>stake</label><input id="dvStakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 FTB"><div class="tsel"><button id="dvStakeGo">stake -&gt;</button></div></div>
+            <div class="trow"><label>unstake</label><input id="dvUnstakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 FTB"><div class="tsel"><button id="dvUnstakeGo">unstake -&gt;</button></div></div>
+            <div class="trow"><label>claim</label><span class="gname" style="font-size:13px">everything your stake has earned to this block</span><div class="tsel"><button id="dvClaimGo">claim -&gt;</button></div></div>
           </div>
-          <p class="small muted">no burn and no loan leg exist: every fee reaches a provider, a staker,
-          or a funded proposal. FTB is hard-capped at 100,000,000 - nothing is destroyed, nothing is
-          minted past the cap.</p>
+          <p class="small muted" id="dvHint">review-and-sign in your wallet - the page never holds keys</p>
         </div>
-        <div id="stakeBoard" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
-          <span class="biglabel">stake board - the global pool and your share of it</span>
-          <div class="flockstats" style="margin-top:10px; grid-template-columns:repeat(4,1fr)">
-            <div class="fs"><div class="l">total staked</div><div class="v" id="dTotal">-</div></div>
-            <div class="fs"><div class="l">my stake</div><div class="v" id="dStaked">-</div></div>
-            <div class="fs"><div class="l">my share</div><div class="v" id="dShare">-</div></div>
-            <div class="fs"><div class="l">i can claim</div><div class="v" id="dPending">-</div></div>
+        <!-- fee split as percentages, compact menu (same style as the pool list) -->
+        <div style="margin-top:16px; border-top:1px solid var(--hair); padding-top:12px">
+          <span class="biglabel">where every fee goes</span>
+          <div class="poollist feesplit" id="feeFlows" style="margin-top:8px">
+            <details class="poolrow">
+              <summary>
+                <span class="pr-pair">to lp</span><span class="pr-ratio">66.7%</span>
+                <span class="pr-chg"></span><span class="pr-caret" aria-hidden="true">&#9656;</span>
+              </summary>
+              <div class="pr-detail">
+                <div class="pr-d"><span class="pr-dl">what</span><span class="pr-dv">accrues into the pool itself; no mint, no transfers</span></div>
+                <div class="pr-d"><span class="pr-dl">live</span><span class="pr-dv" id="fLp">-</span></div>
+              </div>
+            </details>
+            <details class="poolrow">
+              <summary>
+                <span class="pr-pair">to staked ftb</span><span class="pr-ratio">22.2%</span>
+                <span class="pr-chg"></span><span class="pr-caret" aria-hidden="true">&#9656;</span>
+              </summary>
+              <div class="pr-detail">
+                <div class="pr-d"><span class="pr-dl">what</span><span class="pr-dv">swept to stakers; your cut shows in "i can claim" above</span></div>
+                <div class="pr-d"><span class="pr-dl">live</span><span class="pr-dv" id="fStake">-</span></div>
+              </div>
+            </details>
+            <details class="poolrow">
+              <summary>
+                <span class="pr-pair">to dev treasury</span><span class="pr-ratio">11.1%</span>
+                <span class="pr-chg"></span><span class="pr-caret" aria-hidden="true">&#9656;</span>
+              </summary>
+              <div class="pr-detail">
+                <div class="pr-d"><span class="pr-dl">what</span><span class="pr-dv">pays only passed, auditor-attested proposals</span></div>
+                <div class="pr-d"><span class="pr-dl">live</span><span class="pr-dv" id="fTres">-</span></div>
+              </div>
+            </details>
           </div>
-          <div id="earnPos" hidden style="margin-top:12px">
-            <div class="ticket" style="margin-top:0">
-              <div class="trow"><label>stake</label><input id="dvStakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 FTB"><div class="tsel"><button id="dvStakeGo">stake -&gt;</button></div></div>
-              <div class="trow"><label>unstake</label><input id="dvUnstakeAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 FTB"><div class="tsel"><button id="dvUnstakeGo">unstake -&gt;</button></div></div>
-              <div class="trow"><label>claim</label><span class="gname" style="font-size:13px">everything your stake has earned to this block</span><div class="tsel"><button id="dvClaimGo">claim -&gt;</button></div></div>
+        </div>
+        <!-- secondary: payout history + the fee-model note, behind one expansion -->
+        <details class="adv" style="margin-top:12px">
+          <summary>payout history &amp; model</summary>
+          <div class="advbody">
+            <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
+              <div class="fs"><div class="l">this month</div><div class="v" id="dMonth">-</div></div>
+              <div class="fs"><div class="l">last month</div><div class="v" id="dLast">-</div></div>
+              <div class="fs"><div class="l">lifetime</div><div class="v" id="dLife">-</div></div>
+              <div class="fs"><div class="l">my share</div><div class="v" id="dShare">-</div></div>
             </div>
-            <p class="small muted" id="dvHint">review-and-sign in your wallet - the page never holds keys</p>
+            <p class="advnote">no burn and no loan leg exist: every fee reaches a provider, a staker, or a funded proposal. FTB is hard-capped at 100,000,000 — nothing is destroyed, nothing is minted past the cap.</p>
           </div>
-        </div>
+        </details>
         <p class="small muted" id="earnOff">standby - goes live when the dividends module hash is configured for this network</p>
       </div>
     </div>
 
     <div class="card" id="lend">
       <div class="card-h">
-        <span class="no">lend</span><span class="ver">v0.10</span>
+        <span class="no">lend</span>
         <span class="spacer"></span>
         <span class="lede">NEO+GAS collateral · FTB loans</span>
         <button class="read linkish" id="lendRefresh">refresh -&gt;</button>
+        <span class="ver">v0.11</span>
       </div>
       <div class="card-b">
+        <!-- most important, always visible: the rates, pool size, your health -->
         <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
           <div class="fs"><div class="l">liquidity apy</div><div class="v" id="lSApy">-</div></div>
           <div class="fs"><div class="l">borrow apy</div><div class="v" id="lBApy">-</div></div>
           <div class="fs"><div class="l">total liquidity</div><div class="v" id="lTotal">-</div></div>
           <div class="fs"><div class="l">health</div><div class="v"><span class="tag pub" id="pHealth">-</span></div></div>
         </div>
+        <!-- actions, shown once a wallet is connected; withdraw collateral last -->
         <div id="lendAct" hidden style="margin-top:14px">
           <div class="row" style="gap:8px; flex-wrap:wrap">
             <button id="lnWizLoan">start loan -&gt;</button>
             <button id="lnWizPay">pay loan -&gt;</button>
-            <button id="lnWizWdCol">withdraw collateral -&gt;</button>
             <button id="lnWizAdd">add liquidity -&gt;</button>
             <button id="lnWizRemove">remove liquidity -&gt;</button>
+            <button id="lnWizWdCol">withdraw collateral -&gt;</button>
           </div>
           <div id="lnWizard" style="margin-top:12px"></div>
-          <p class="small muted">review-and-sign in your wallet - the page never holds keys. NEO collateral is whole units. oracle ratios: 1 NEO = 100 FTB, 1 GAS = 40 FTB · 60% LTV · 75% liquidation.</p>
         </div>
-        <div id="loansBoard" style="margin-top:18px; border-top:1px solid var(--hair); padding-top:10px">
-          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; flex-wrap:wrap">
-            <span class="biglabel">loans board - every position, read from chain storage</span>
-            <button class="linkish" id="loansRefresh">refresh -&gt;</button>
+        <!-- loan terms: the compiled-in params a borrower needs (menu style) -->
+        <details class="adv" style="margin-top:12px">
+          <summary>loan terms</summary>
+          <div class="advbody">
+            <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
+              <div class="fs"><div class="l">max ltv</div><div class="v">60%</div></div>
+              <div class="fs"><div class="l">liquidation at</div><div class="v">75%</div></div>
+              <div class="fs"><div class="l">1 neo</div><div class="v">100 FTB</div></div>
+              <div class="fs"><div class="l">1 gas</div><div class="v">40 FTB</div></div>
+            </div>
+            <p class="advnote">collateral is NEO + GAS in whole units. health = collateral × 75% vs debt; an unhealthy position can be liquidated by anyone for an 8% bonus. borrow interest is dynamic — 2% base, 12% at 80% utilisation, up to 72% near full.</p>
           </div>
-          <div class="flockstats" style="margin-top:10px; grid-template-columns:repeat(4,1fr)">
-            <div class="fs"><div class="l">total ftb loaned</div><div class="v" id="lbLoaned">-</div></div>
-            <div class="fs"><div class="l">collateral locked</div><div class="v" id="lbCollat">-</div></div>
-            <div class="fs"><div class="l">open loans</div><div class="v" id="lbCount">-</div></div>
-            <div class="fs"><div class="l">% liquidity loaned</div><div class="v" id="lbUtil">-</div></div>
+        </details>
+        <!-- loans board: protocol-wide positions (menu style) -->
+        <details class="adv" id="loansBoard" style="margin-top:10px">
+          <summary>loans board</summary>
+          <div class="advbody">
+            <div class="flockstats" style="grid-template-columns:repeat(4,1fr)">
+              <div class="fs"><div class="l">total ftb loaned</div><div class="v" id="lbLoaned">-</div></div>
+              <div class="fs"><div class="l">collateral locked</div><div class="v" id="lbCollat">-</div></div>
+              <div class="fs"><div class="l">open loans</div><div class="v" id="lbCount">-</div></div>
+              <div class="fs"><div class="l">% liquidity loaned</div><div class="v" id="lbUtil">-</div></div>
+            </div>
+            <div id="loansBody" style="margin-top:8px" class="small">-</div>
+            <button class="linkish" id="loansRefresh" hidden>refresh -&gt;</button>
           </div>
-          <div id="loansBody" style="margin-top:8px" class="small">-</div>
-          <p class="small muted">health = collateral × 75% vs debt. anyone can liquidate an unhealthy
-          position and earn the 8% bonus - that is what keeps the pool solvent.
-          interest is dynamic: the more of the pool is loaned out, the higher the rate -
-          2% base, 12% when 80% of liquidity is loaned, up to 72% near full.</p>
-        </div>
+        </details>
         <p class="small muted" id="lendOff">standby - goes live when the lend contract hash is configured for this network</p>
       </div>
     </div>
@@ -649,36 +838,35 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <!-- ============ GOVERNANCE (full width, same size as CLAIM) ============ -->
   <div class="card act3" id="vote">
     <div class="card-h">
-      <span class="no">governance</span><span class="ver">v0.10</span>
+      <span class="no">governance</span>
       <span class="spacer"></span>
       <span class="lede">snapshot-weighted, counted on-chain · 3 ballots · close 31 Oct</span>
       <button class="linkish" id="govRefresh">tally -&gt;</button>
+      <span class="ver">v0.11</span>
     </div>
     <div class="card-b">
-      <div class="govcols">
-        <div>
-          <h2 class="disp" style="font-size:28px; margin:.1em 0 .3em" id="govQ">no live ballot</h2>
-          <p class="small muted" id="govHint">weight = your snapshot balance.</p>
-          <div id="govBody"></div>
-        </div>
-        <div class="govside">
-          <div id="govDonut" aria-label="vote split of snapshot supply"></div>
-          <div class="biglabel" style="margin-top:14px">voting ends in</div>
-          <div class="disp" id="govClock" style="font-size:34px; line-height:1.15">-</div>
-          <div class="small muted" id="govLegend" style="margin-top:8px; line-height:1.8"></div>
-        </div>
+      <!-- serialized ballot menu (001, 002, 003): each row shows number, question,
+           running result and whether the connected wallet voted; opens to that
+           ballot's own option bars, turnout donut and vote options. mod-gov fills
+           this from live chain tallies and also writes the stat-band #tBallots tile. -->
+      <div class="poollist ballotmenu" id="ballotMenu">
+        <div class="small muted">reading ballots…</div>
       </div>
     </div>
   </div>
 
   <div class="card act3" id="board">
     <div class="card-h">
-      <span class="no">proposals</span><span class="ver">v0.10</span>
+      <span class="no">proposals</span>
       <span class="spacer"></span>
       <span class="lede">bonded - spam pays</span>
       <button class="linkish" id="boardRefresh">refresh -&gt;</button>
+      <span class="ver">v0.11</span>
     </div>
     <div class="card-b">
+      <!-- board rule: cap + congestion-priced bond -->
+      <div class="boardstate">max <b>3</b> ballots active at once &middot; a proposal opens as a ballot &middot; <span class="muted2">the bond rises as the queue fills</span></div>
+      <!-- live list: mod-board fills this from the registry; empty state until the first proposal -->
       <div id="boardBody">
         <div class="entry">
           <span class="idx">//</span>
@@ -686,17 +874,34 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
           <div class="meta"><span class="tag">standby</span></div>
         </div>
       </div>
-      <div class="ticket" style="margin-top:12px">
-        <div class="trow">
-          <label for="pMeta">proposal</label>
-          <input id="pMeta" maxlength="1024" autocomplete="off" placeholder="what should the community decide?">
-          <div class="tsel" id="pKindSel" role="group" aria-label="proposal kind"></div>
+      <!-- create a proposal: ballot | listing (CSS-only type toggle) -->
+      <div class="ticket ptkt">
+        <input type="radio" name="ptype" id="ptBallot" class="ptype-in" checked>
+        <input type="radio" name="ptype" id="ptListing" class="ptype-in">
+        <div class="ptype-h">
+          <span class="ptype-lab">new proposal</span>
+          <div class="ptoggle" role="group" aria-label="proposal type">
+            <label for="ptBallot" class="pt-opt pt-b">ballot</label>
+            <label for="ptListing" class="pt-opt pt-l">listing</label>
+          </div>
         </div>
-        <div class="trow">
-          <label for="pRef">reference</label>
-          <input id="pRef" autocomplete="off" spellcheck="false" placeholder="0x… ballot contract hash, or the token hash for a listing">
+        <div class="pform pf-ballot">
+          <div class="pfrow"><label for="pqBallot">question</label><input id="pqBallot" autocomplete="off" placeholder="what should the community decide?"></div>
+          <div class="pfopts">
+            <div class="pfopt-h">options <span class="muted2">&mdash; 1 to 4</span></div>
+            <div class="pfopt"><span class="pfk">a</span><input autocomplete="off" placeholder="first choice"></div>
+            <div class="pfopt opt"><span class="pfk">b</span><input autocomplete="off" placeholder="second choice &mdash; optional"></div>
+            <div class="pfopt opt"><span class="pfk">c</span><input autocomplete="off" placeholder="third choice &mdash; optional"></div>
+            <div class="pfopt opt"><span class="pfk">d</span><input autocomplete="off" placeholder="fourth choice &mdash; optional"></div>
+          </div>
         </div>
-        <div class="tmeta" id="pMetaHint">bond: - FTB · exact, escrowed - refunded on a legitimate close, kept against spam</div>
+        <div class="pform pf-listing">
+          <div class="pfrow"><label for="plToken">token contract</label><input id="plToken" autocomplete="off" spellcheck="false" placeholder="0x&hellip; the project's NEP-17 token hash"></div>
+          <p class="pfnote">onboarding a project: the community votes it in. on approval the bond seeds the market &mdash; <b>50% to liquidity</b>, <b>50% to a rug-pull insurance reserve</b>.</p>
+        </div>
+        <div class="pfbond pb-ballot">bond rises with the queue &mdash; refunded on a legitimate close, kept against spam.</div>
+        <div class="pfbond pb-listing">bond is <b>0.1% of FTB supply</b>, rising with the queue &middot; seeds the market on approval (above) &mdash; refunded if rejected.</div>
+        <div class="tmeta" id="pMetaHint" style="margin:8px 0 2px"></div>
         <button class="go" id="pGo">review &amp; sign -&gt;</button>
       </div>
     </div>
@@ -705,33 +910,33 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <!-- ============ CLAIM ============ -->
   <div class="card act3" id="claim">
     <div class="card-h">
-      <span class="no">claim</span><span class="ver">v0.11</span>
+      <span class="no">claim</span>
       <span class="spacer"></span>
-      <span class="lede">migration - claim your FTB</span>
+      <span class="lede">migration &mdash; claim your FTB</span>
+      <span class="ver">v0.12</span>
     </div>
     <div class="card-b">
-      <button class="go" id="claimGo" style="margin-bottom:16px">claim your ftb -&gt;</button>
-      <div class="entry">
-        <span class="idx">01</span>
-        <div><span class="ttl">Migration status</span></div>
-        <button class="read linkish" id="refreshBtn">refresh -&gt;</button>
-        <div class="meta">
-          <span class="tag pub" id="migState">reading</span>
-          <span id="supplyLine">supply -</span>
-          <span id="capLine">cap -</span>
+      <!-- state strip -> the one action -> the two anchors (entitlement, snapshot) -->
+      <div class="claimstate">
+        <span class="tag pub" id="migState">reading</span>
+        <span id="supplyLine">supply -</span>
+        <span id="capLine">cap -</span>
+        <button class="linkish" id="refreshBtn">refresh -&gt;</button>
+      </div>
+
+      <button class="go" id="claimGo">claim your ftb -&gt;</button>
+
+      <div class="clist">
+        <div class="crow">
+          <span class="cr-l">your claim</span>
+          <span class="cr-v" id="claimHint">connect a wallet to check your entitlement</span>
+          <button class="linkish" id="checkBtn">check -&gt;</button>
         </div>
-      </div>
-      <div class="entry">
-        <span class="idx">02</span>
-        <div><span class="ttl">Check your claim against the pre-exploit snapshot</span></div>
-        <button class="read linkish" id="checkBtn">check -&gt;</button>
-        <div class="meta"><span id="claimHint">connect a wallet to check</span></div>
-      </div>
-      <div class="entry">
-        <span class="idx">03</span>
-        <div><span class="ttl">The attacker is not in the snapshot.</span></div>
-        <button class="read linkish" id="proofsBtn">proofs -&gt;</button>
-        <div class="meta"><span class="tag">merkle</span><span id="rootLine">root -</span><span id="rootCount">-</span></div>
+        <div class="crow">
+          <span class="cr-l">snapshot</span>
+          <span class="cr-v">block 12,782,704 &middot; <b id="rootCount">-</b> &middot; root <b id="rootLine">-</b> &middot; the attacker is excluded by construction</span>
+          <button class="linkish" id="proofsBtn">proofs -&gt;</button>
+        </div>
       </div>
     </div>
   </div>
@@ -739,24 +944,28 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   <!-- ============ VERIFY ============ -->
   <div class="card act3" id="verify">
     <div class="card-h">
-      <span class="no">verify</span><span class="ver">v0.10</span>
+      <span class="no">verify</span>
       <span class="spacer"></span>
       <span class="lede">verify everything - trust nothing</span>
+      <span class="ver">v0.11</span>
     </div>
     <div class="card-b">
-      <dl class="prov">
+      <!-- one provenance pane, grouped contracts / integrity - every hash stays in the open -->
+      <dl class="prov vprov">
+        <dt class="vgh">contracts &mdash; check each against the repo</dt>
         <dt>token</dt><dd id="vToken">-</dd>
         <dt>migrator</dt><dd id="vMigrator">-</dd>
         <dt>registry</dt><dd id="vRegistry">-</dd>
         <dt>ballots</dt><dd id="vBallot">-</dd>
+        <dt class="vgh">integrity</dt>
         <dt>merkle root</dt><dd id="vRoot">-</dd>
         <dt>max supply</dt><dd id="vCap">-</dd>
         <dt>mint sealed</dt><dd id="vSealed">-</dd>
-        <dt>snapshot</dt><dd>block 12,782,704 - reproducible with snapshot_state.py against any archive node</dd>
+        <dt>snapshot</dt><dd>block 12,782,704 &middot; reproducible with snapshot_state.py against any archive node</dd>
       </dl>
       <p class="sealnote">
-        Check every hash against the repo before you sign. After close + renounceOwnership
-        the token has no admin - readable on-chain, forever.
+        check every hash against the repo before you sign. after close + renounceOwnership
+        the token has no admin &mdash; readable on-chain, forever.
       </p>
     </div>
   </div>

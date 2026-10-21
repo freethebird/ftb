@@ -152,8 +152,15 @@
         fromBase(ps[0].toString()) + ' FTB · 1 GAS = ' + fromBase(ps[1].toString()) + ' FTB.';
     }).catch(function (e) {
       s.row.removeChild(s.row.lastChild);
-      s.row.appendChild(el('span', 'gname', 'oracle unavailable'));
-      note.textContent = 'no fresh oracle price: ' + FtbUtil.errText(e);
+      var raw = FtbUtil.errText(e);
+      if (/fresh price/i.test(raw)) {
+        // the oracle's designed safe-failure: it reverts rather than price against a stale feed
+        s.row.appendChild(el('span', 'gname', 'collateral pricing paused'));
+        note.textContent = 'the oracle has no fresh NEO/GAS price right now, so new loans are paused - the safe default (the pool will not lend against a stale price). it clears as soon as a reporter refreshes the feed.';
+      } else {
+        s.row.appendChild(el('span', 'gname', 'oracle unavailable'));
+        note.textContent = 'could not read the oracle: ' + raw;
+      }
     });
   }
   function wizLoanSign(loanBase, loanDec, which, needDec, price, wholeNeo, needArg) {

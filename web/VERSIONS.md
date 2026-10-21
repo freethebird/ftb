@@ -26,28 +26,34 @@ has been tested and accepted is **locked**: it is never edited in place.
    and `shell.js` are locked and backed up under the same protocol; their tags
    live in this manifest only (no UI surface of their own, except `your node`).
 
-## Version map (locked baseline: v0.10, 20 October 2026, commit 708b4f5)
+## Version map (locked baseline: v0.13, 21 October 2026 - compact redesign)
 
 | UI module | Tag location | File(s) | Version |
 | --- | --- | --- | --- |
-| header strip (supply / cap / voted / block / mirrors / tvl / price) | tiles (manifest only) | `js/mod-token.js` | v0.11 |
-| swap | swap ticket tab | `js/mod-swap.js` | v0.11 |
-| tokens on ftb | market card header | `js/mod-swap.js` | v0.11 |
-| swap liquidity | LP section header | `js/mod-swap.js` | v0.11 |
-| ftb dividends | earn card header | `js/mod-earn.js` | v0.10 |
-| lend | lend card header | `js/mod-lend.js` | v0.10 |
-| governance | governance card header | `js/mod-gov.js` | v0.10 |
-| proposals | board card header | `js/mod-board.js` | v0.10 |
-| claim | claim card header | `js/mod-claim.js` | v0.11 |
-| verify | verify card header | `js/mod-verify.js` | v0.10 |
+| header strip (supply+cap / block / mirrors / tvl / price / active ballots) | tiles (manifest only) | `js/mod-token.js` + `js/mod-gov.js` | v0.12 |
+| swap | swap ticket tab | `js/mod-swap.js` | v0.12 |
+| tokens on ftb | market card header | `js/mod-swap.js` | v0.12 |
+| swap liquidity | LP section header | `js/mod-swap.js` | v0.12 |
+| ftb dividends | earn card header | `js/mod-earn.js` | v0.11 |
+| lend | lend card header | `js/mod-lend.js` | v0.11 |
+| governance | governance card header | `js/mod-gov.js` | v0.11 |
+| proposals | board card header | `js/mod-board.js` | v0.11 |
+| claim | claim card header | `js/mod-claim.js` | v0.12 |
+| verify | verify card header | `js/mod-verify.js` | v0.11 |
 | wallet | menu (manifest only) | `js/mod-wallet.js` | v0.10 |
 | your node | node panel header | `js/shell.js` | v0.10 |
 | rpc seam | manifest only | `js/ftb-rpc.js` | v0.12 |
 | state seam | manifest only | `js/ftb-state.js` | v0.10 |
 | wallet adapter | manifest only | `ftb-dapi.js` | v0.12 |
 
-Locked backups: `web/js/backup/v0.10/` (all 13 files, byte-identical to the
-published commit above).
+Note: the compact redesign is a presentation change. mod-gov and mod-board were
+rewritten to emit the new structures; mod-swap gained the disclosure pool/LP
+menus + the user slippage control; mod-earn, mod-lend, mod-claim, mod-verify,
+mod-token are byte-unchanged (markup-only in `index.html`) - their tag bump
+records the new shell, not a JS change.
+
+Locked backups: `web/js/backup/v0.13/` (all 13 files + `index.html`, byte-identical
+to this baseline). Earlier revert points: `v0.10/`, `v0.11/`.
 
 ## History
 
@@ -56,3 +62,4 @@ published commit above).
 | v0.10 | 2026-10-20 | 708b4f5 | First locked baseline: R4 stack live, first-deposit LP entry, claim/vote/lend/dividends tested on TestNet |
 | v0.11 | 2026-10-20 | (this commit) | Module audit pass (WEB_AUDIT.md addendum 20 Oct): RPC 10s timeout, swap/token read coalescing, claim pre-checks the token's claimed ledger, dead vote() builder removed. LOCKED 20 Oct - acceptance passed on-chain: GAS/FTB seeded, first swap landed (pool moved 40.00 -> 33.35 FTB/GAS, reserves and TVL painted live) |
 | v0.12 | 2026-10-20 | (this commit) | Security + design pass. Seams: `ftb-dapi.js` binds the executed call to the inspected plan (args↔summary integrity) and validates every script-hash (0x+40hex); `ftb-rpc.js` labels the serving node attested (config set) vs unattested (own/public). Shell: CSP `<meta>` on `index.html`/`mainnet.html`; the mainnet countdown externalised to `mainnet.js` so script-src stays `'self'`. Design tighten: removed ~100 lines of dead CSS (the retired command bar, the Terra grid - nothing sets `data-skin`, and the arc/masthead leftovers), merged the duplicate `:root`/`body`. v0.11 shell backed up to `js/backup/v0.11/index.html`; render verified byte-stable. |
+| v0.13 | 2026-10-21 | (this commit) | Compact redesign ported from `proposal1.html` into the live page, chain-wired (no fabricated figures, no hidden stubs - resolves the proposal1 MO-audit truth FAILs). Stat band: supply+cap merged, `weight voted` → live `active ballots` tile (`#tBallots`, written by mod-gov). Governance: serialized ballot disclosure menu (`#ballotMenu`) with per-ballot bars + turnout donut + vote options, from live tallies. Proposals: CSS-toggle ballot|listing create ticket, empty board, max-3 / queue-bond rule (inline-option ballots announced as pending the v2 factory). Swap: grid-area ticket + user `max slippage` control (feeds minOut, LP keeps fixed 0.5%). Tokens-on-FTB + Swap-liquidity: disclosure pool/LP menus (`#poolList`/`#lpList`). Earn/lend/claim/verify: compact menus/anchors, markup-only. CSS design-system folded into `index.html` (dead `.bar` dropped). QA: 14/14 `node --check`, profile pure, R3 clean (coingecko fiat + beat.json only), every module rendered live. |
