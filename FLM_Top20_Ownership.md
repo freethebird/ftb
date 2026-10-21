@@ -347,5 +347,33 @@ before the migrator's exclusion list is finalized. No address here is *provably*
 named exchange or named team wallet from chain data alone; the classification rests
 on behavior patterns anyone can re-check with the commands in this folder.
 
+## Appendix A - full addresses for the flagged 16 (added 2026-10-21)
+
+The shorthand used above truncates 7 of the 16 addresses. Full base58 forms,
+re-verified against `snapshot_full_state.csv` and confirmed absent from the v2
+claim tree (#8 excepted - restored, as recorded above):
+
+| Shorthand | Full address | Snapshot FLM | Snapshot FLOCKS |
+|---|---|---:|---:|
+| #5 NiU7ic | NiU7ic68RHF4oo5QK8Li5JbXx22rs2V3DS | 20,083,298.57 | 0 |
+| #6 NTWC7H | NTWC7Hh5VYMQ5K8YJbyCLbmJ4RhfQ1Ej64 | 18,431,767.02 | 0 |
+| #8 NWu2ng (restored) | NWu2ng1hBxU6w6AUmGy4QDkscQTXY3pnVM | 15,500,000.00 | 1,000,000.00 |
+| #10 NLdYPX | NLdYPXACYPKa6zTvoThPuJxd3uEmeMg93t | 12,961,268.28 | 0 |
+| #11 NXF8xB | NXF8xBeBaXSrrvTAHWK6xuGTyutAX9mcVH | 10,385,342.33 | 0 |
+| #12 NQSbtd | NQSbtd1YYCe1d6gHubwt275QzNTbcP9JUC | 8,000,000.00 | 0 |
+| #16 Nfps2r | Nfps2rFwD9VZ8kd6GRkgWix8LH8A5Y4S4a | 6,324,107.88 | 0 |
+| NiF2ukj | NiF2ukjNVxrLbP7XScPBfKLxyyh8s8ifwA | 5,000,000.00 | 0 |
+| NRfDCVn | NRfDCVn3zFJ9XkXnYYHSTJaqSXNxvGgfGR | 4,836,421.34 | 0 |
+| NjEFZv | NjEFZv4p3ascRwBcKcoTjbSAJtegiAupFm | 4,266,865.91 | 0 |
+| NNuxvz | NNuxvzNUHGFfPJoAWdAYRCpe3vYYBo6t6A | 1,323,418.02 | 0 |
+| Ndwkrm | NdwkrmxQy3tZu5VDDELPhc6gRqYMf4Akgh | 909,120.84 | 0 |
+| NNkbhJ | NNkbhJDHsQJRUc7ff8gtgFxybEFgndRQLT | 542,009.80 | 0 |
+| NazUQh | NazUQhvnw3KF71KGa5MgXdfZknM116ze5F | 508,381.05 | 0 |
+| NLPAk2 | NLPAk27emKrnCSJN3vvYskfryXBxqmTnJ4 | 489,555.73 | 0 |
+| Ndx6j9 | Ndx6j9ZpoUnTqDy6Pq2ERnQNd6HRceddyS | 437,475.66 | 0 |
+| **Total** | | **109,999,032.43** | **1,000,000.00** |
+
+Sum matches the flagged total quoted above to the cent.
+
 *On-chain measurement, not legal or financial advice. Figures at block 12,782,704;
 reproduce via `snapshot_state.py` and the probes in `snap_state/`.*
