@@ -64,7 +64,21 @@ on the payment-first sequencing, not on price coherence.
   Broker for FLOCKS yield, then unwound - a yield-farmer loop, not a treasury drip.
 - **FLOCKS contract NSuUJy:** weekly yield drips (~5k FLM) over the wallet's life.
 
-## 5. Where the NEO went - the collector
+## 5. Where the NEO went - wrapped into bNEO
+
+> **Correction 2026-10-21.** NPmdLGJN47EddqYcxixdGMhtkr7Z5w4Aos is **not a collection
+> address** - it is the **bNEO (BurgerNEO) token contract** (NEP-17,
+> `0x48c40d4666f93408be1bef038b6722404d9a4c2a`; confirmed on-chain and in our own
+> `contract_names.json`). Forwarding NEO to it is an ordinary **NEO→bNEO wrap** (send
+> NEO, receive bNEO 1:1; a later small GAS send unwraps it) - the most common DeFi
+> action on N3 and the gateway to the FLM–bNEO Flamingo pair. Shared use is chain-wide
+> and carries **zero** evidentiary weight for common ownership. A fresh full-window pull
+> supersedes the figures below: attacker main NWuHQdx **273 wraps / 154,602 NEO**;
+> NUWq8bh6 **688 wraps / 395,676 NEO** (Dec 2021–Oct 2026) + 1,033 GAS unwraps; NWu2ng
+> itself only **4 dust-sized interactions**; and **zero direct transfers** between any
+> attacker wallet and the #8 cluster (NWu2ng, NUWq8bh6, NV8D4oeD).
+
+_Superseded (original pre-correction text, retained for the evidence trail):_
 
 Nearly every NEO received was forwarded **within 1–3 minutes** to
 **NPmdLGJN47EddqYcxixdGMhtkr7Z5w4Aos** - a fan-in collection address with **33
@@ -102,7 +116,7 @@ Two readings, both supported:
    followed. Buyers and seller are all 2022-vintage wallets. Under this reading #15
    (and its buyers) are ordinary, if large, market participants → **unflag**.
 2. **Ring treasury with internal bookkeeping.** The seed from NT6Zw2, the inconsistent
-   implied prices, the reverse NEO flows, the shared 1-minute cash-out collector, and
+   implied prices, the reverse NEO flows, the 1-minute NPmdLG forwarding (corrected 2026-10-21: bNEO wraps, not a shared cash-out collector - see §5), and
    the Feb 2026 hub behavior all fit a coordinated group settling internally →
    **stay flagged**.
 
@@ -120,8 +134,8 @@ word plus this evidence trail.
 - **Na7Th1bprF5FEwh8** (early yield forwarder): zero RPC history; identity unresolved.
 - **NgHY57 / NTrujvx** (Feb 2026, 20k NEO each from #15): fresh wallets funded by the
   ring hub - worth a first-activity check before launch disclosure.
-- **NPmdLG collector:** shared by #15, the attacker, and the #8 funding wallet; only
-  resolvable with venue-side data.
+- **NPmdLG - Resolved 2026-10-21:** NPmdLG is the bNEO token contract (see §5
+  correction), not a shared collector; shared use is chain-wide and resolves to nothing.
 
 ---
 

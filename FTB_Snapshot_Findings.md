@@ -92,7 +92,7 @@ out of anyone's claim:
 - **#15 NUN32i's snapshot position, held in custody - not owned.** #15's
   6,989,116.71 FLM + 5,030,925.75 FLOCKS sits **under the custody of the dev wallet
   until someone claims it and proves ownership**. #15 was an OTC seller whose network
-  ties (desk funding, ring hub behavior, shared cash-out collector) made an automatic
+  ties (desk funding, ring hub behavior, and 1-minute NPmdLG forwarding - the latter now known to be bNEO wraps, not a "cash-out collector"; corrected 2026-10-21) made an automatic
   community claim inappropriate - but custody is not confiscation: **if a legitimate
   owner proves control during the challenge window, the position is released to them.
   If it is never claimed, the amount moves to the Governance contract proposal

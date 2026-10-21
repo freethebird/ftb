@@ -26,7 +26,7 @@ transfer-leaderboard data (neoanalytics.info). Raw evidence: `snap_state/wallet_
 | 12 | NQSbtd1Y…cP9JUC | 8,000,000 | 0 | **Person - OTC buyer** (rev. 2026-10-14) - paid NUN32i ~25.6k NEO in Nov 2025, received 5M FLM days later; 3M more from Nft4JE (same ring) Jul 2026; wallet active since Jul 2022 | high (flow-timed) | **revised: keep/review** |
 | 13 | NSuUJyZr…Tu4KwC | 7,295,673 | 0 | **DEX infra** - the FLOCKS contract itself | certain | auto-excluded |
 | 14 | NLXTWhgi…QjwFjH | 7,112,355 | 0 | **DEX infra** - FlamingoSwapPair | certain | auto-excluded |
-| 15 | NUN32id3…we4ZZ | 6,989,117 | 5,030,926 | **OTC seller / trader** (rev. 2026-10-14) - accumulated FLM via desk NXF8xB (124 legs) and Broker lock cycles; Oct–Nov 2025 sold FLM for NEO to four long-standing wallets (see below); forwarded ~all NEO within minutes to NPmdLG, a 33-sender collection address also used by the attacker wallet | high (flow-timed) | **revised: keep/review** |
+| 15 | NUN32id3…we4ZZ | 6,989,117 | 5,030,926 | **OTC seller / trader** (rev. 2026-10-14) - accumulated FLM via desk NXF8xB (124 legs) and Broker lock cycles; Oct–Nov 2025 sold FLM for NEO to four long-standing wallets (see below); forwarded ~all NEO within minutes to NPmdLG (**corrected 2026-10-21: the bNEO token contract, not a collection address; NEO→bNEO wraps, zero ownership weight**) | high (flow-timed) | **revised: keep/review** |
 | 16 | Nfps2rFw…Y4S4a | 6,324,108 | 0 | **Person / real DeFi whale** - holds fUSDT 4.9M, fWETH 52, pONT, FTW; FLM built from two wallet transfers (14.35M, 6.49M) and LP activity | medium-high | **keep** |
 | 17 | NRwXs5yZ…pV7Mb | 5,991,168 | 0 | **DEX infra** - FlamingoSwapPair | certain | auto-excluded |
 | 18 | NRbVXs55…Rnzfv | 5,603,193 | 0 | **DEX infra** - Flamingo Swap-Pair | certain | auto-excluded |
@@ -51,9 +51,14 @@ insider distribution. Tracing the NEO legs reverses it:
   ~22.5k+ later legs, Nft4JE ~15.3k, NT6Zw2 ~89.9k), and the round FLM amounts
   (5M / 5M / 3M / 4M) arrived **days after the NEO**. Payment first, goods second =
   **OTC purchases**, not allocations.
-- NUN32i forwarded nearly every NEO within ~1–3 minutes to **NPmdLG…4Aos**, a fan-in
-  collection address with 33 distinct NEO senders (exchange-deposit pattern; notably
-  the pre-exploit attacker wallet NWuHQdx also sent NEO there 28 times).
+- NUN32i forwarded nearly every NEO within ~1–3 minutes to **NPmdLG…4Aos**.
+  _[Corrected 2026-10-21: NPmdLG is the **bNEO (BurgerNEO) token contract**
+  (`0x48c40d46…4d9a4c2a`), not a "fan-in collection address." These are ordinary
+  NEO→bNEO wraps; shared use is chain-wide and carries zero ownership weight. Fresh
+  full-window pull: attacker NWuHQdx 273 wraps/154,602 NEO (not "28 times"). Original
+  wording struck below for the record.]_ ~~a fan-in collection address with 33 distinct
+  NEO senders (exchange-deposit pattern; notably the pre-exploit attacker wallet
+  NWuHQdx also sent NEO there 28 times)~~.
 - NUN32i's own FLM came from desk NXF8xB (124 legs) and FlamingoBroker lock/unlock
   cycles - an accumulator-turned-seller, not a treasury.
 
@@ -200,7 +205,7 @@ wallets in that range (raw: `snap_state/deep_11_20_raw.json`, `deep_11_full.json
   is ring-connected after all; **NUqLhf settlement wallet (6 legs)**; and **NgHY57
   (1 leg)** - one of the fresh Feb-2026 wallets #15 seeded.
 - **#16 Nfps2r (flagged by owner call):** zero connections to any flagged wallet, the
-  desk, the collector, or the ring. Its funders (NNikg6 14.5M/84 legs, NUeY5i 14.35M,
+  desk, NPmdLG (the bNEO contract), or the ring. Its funders (NNikg6 14.5M/84 legs, NUeY5i 14.35M,
   NbrACQj 6.49M) are also clean of the desk. On-chain evidence supports the original
   "real LP whale" reading - **flag rests on the owner call alone; candidate for
   re-review**.
@@ -244,9 +249,15 @@ any of them are hidden ring buyers:
   allocation-pattern stands. Stay flagged** unless the owner attests.
 - **#8 NWu2ng (15.5M):** its entire position arrived as 4 chunks (1M+5M+2M+3.5M+4M,
   May–Jun 2026) from **NUWq8bh6**, a desk-connected trading wallet that receives NEO
-  from desks NXF8xB / NTWC7H and cashed 4,993 NEO to the same NPmdLG collector as the
-  #15 ring. No payment leg from NWu2ng → **trading-network vault, not a buyer. Stay
-  flagged**, now with a documented link to the desk/collector network.
+  from desks NXF8xB / NTWC7H. _[Corrected 2026-10-21: the claim that NUWq8bh6 "cashed
+  4,993 NEO to the same NPmdLG collector" is wrong - NPmdLG is the **bNEO token
+  contract**; these are NEO→bNEO wraps (fresh pull: NUWq8bh6 688 wraps/395,676 NEO,
+  Dec 2021–Oct 2026), shared chain-wide, zero ownership weight.]_ No payment leg from
+  NWu2ng. **Superseded - unflagged 2026-10-17/19** (TestNet key-control proof; read as
+  the customer side of desk flows). A 2026-10-21 re-check found **zero direct
+  transfers** between any attacker wallet and the #8 cluster (NWu2ng, NUWq8bh6,
+  NV8D4oeD); the desk-adjacency that first drew the flag stays on record but is not a
+  link to the exploit. In the v2 tree at 16,500,000.00 FLM-equiv.
 - **#10 NRfDCVn (4.84M):** still a single 9.24M inbound (NVGFUq), no payment legs,
   11 lifetime transfers. **Unresolved - stays flagged-as-review.**
 - **#11 NjEFZv (4.27M):** funded July 2026 in seven identical 599,999.90 FLM chunks
