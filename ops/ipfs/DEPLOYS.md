@@ -97,3 +97,39 @@ republishes IPNS, and appends a row to this log.
 | auto | 2026-10-20 09:41 | `QmUspmZKm8qaP7kPV1qXrXnBRnthbhPaZ6bdWZx8BEZdzt` | `708b4f5` | Deployed via ftb-push-ipfs.sh |
 | auto | 2026-10-20 10:27 | `QmNhcU1L7838EcUmSvyG3bc3vnAiRpt75S2raqD24vG8ML` | `6faddff` | Deployed via ftb-push-ipfs.sh |
 | auto | 2026-10-20 10:51 | `Qmaz4rEoiUEn9nxtSpxZVmwJPbR8T8Wjz3VSVWMAaQ3MHM` | `1189789` | Deployed via ftb-push-ipfs.sh |
+
+## Deploy from git (git is the source of truth)
+
+`freethebird.co` is **not** served from GitHub — it is the CID pinned on this node and
+published under IPNS. A `git push` updates the repo; it does **not** touch the site.
+`ftb-deploy-from-git.sh` makes the **node pull the canonical git and deploy itself**, so
+a push becomes a deploy and `ftb-push-ipfs.sh` (laptop rsync) becomes break-glass only.
+
+**One-time node setup** (run on `ftb-node` / 185.112.147.245, as root):
+
+```bash
+# 1. read-only deploy key so the node can pull the private repo (no personal key on the node)
+sudo mkdir -p /etc/ftb
+sudo ssh-keygen -t ed25519 -f /etc/ftb/deploy_key -N "" -C "ftb-node deploy"
+sudo cat /etc/ftb/deploy_key.pub
+#    → add at github.com/freethebird/ftb → Settings → Deploy keys → "Add deploy key"
+#      (paste the line; leave "Allow write access" UNCHECKED — read-only)
+
+# 2. install the node-side deploy script (from the repo)
+sudo install -m755 ops/ipfs/ftb-deploy-from-git.sh /usr/local/bin/ftb-deploy-from-git.sh
+
+# 3. first deploy (clones to /srv/ftb-src, then pins + publishes)
+sudo ftb-deploy-from-git.sh origin/main
+
+# 4. TestNet auto-follow: deploy within 5 min of any push to main (cron poll, no inbound port)
+printf '%s\n' \
+ "*/5 * * * * root cd /srv/ftb-src && GIT_SSH_COMMAND='ssh -i /etc/ftb/deploy_key -o IdentitiesOnly=yes' git fetch -q origin && [ \"\$(git rev-parse HEAD)\" != \"\$(git rev-parse origin/main)\" ] && /usr/local/bin/ftb-deploy-from-git.sh origin/main" \
+ | sudo tee /etc/cron.d/ftb-deploy
+```
+
+**MainNet:** do **not** auto-follow a raw branch. Deploy a governance-tagged ref only —
+`sudo ftb-deploy-from-git.sh gov-N` — so the front end follows the vote by construction,
+and/or point the cron at a `release` ref that CI fast-forwards only on a green
+Gate-Manifest (a red build never reaches the site).
+
+After step 1–3, every `freethebird` push to `main` reaches `freethebird.co` on its own.
