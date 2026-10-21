@@ -45,6 +45,14 @@ trap 'rm -rf "$STAGE_PARENT"' EXIT
 rsync -aL --exclude '.DS_Store' --exclude 'beat.json' --exclude 'archive/' --exclude '__pycache__/' \
   "$REPO_DIR/web/" "$STAGE/"
 
+# config.js is git-ignored (filled config, never committed); materialize it from the
+# tracked profile so the git-deploy ships a working config. TestNet follows main;
+# a gov-tagged (MainNet) ref uses the mainnet profile.
+CFG_PROFILE=testnet
+case "$REF" in gov-*|release*|*mainnet*) CFG_PROFILE=mainnet ;; esac
+cp "$STAGE/config.$CFG_PROFILE.js" "$STAGE/config.js"
+log "config.js <- config.$CFG_PROFILE.js"
+
 # version stamp (the front-end mirror counter compares this across origins)
 IPNS="$(asipfs key list -l | awk -v k="$IPFS_KEY" '$2==k{print $1}')"
 [ -n "$IPNS" ] || { echo "FATAL: IPNS key '$IPFS_KEY' not found in the node keystore" >&2; exit 1; }
