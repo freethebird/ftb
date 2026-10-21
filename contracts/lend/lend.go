@@ -4,7 +4,7 @@
 // and never prints. Supply uses cToken-style shares so interest accrues into every
 // share's value; debt accrues through a borrow index.
 //
-// Economics (ECONOMICS.md): the borrow rate follows utilization along a kinked curve,
+// Economics (docs/governance/ECONOMICS.md): the borrow rate follows utilization along a kinked curve,
 // and interest splits 2/3 to suppliers (share value) and 1/3 to the dividend reserve for
 // FTB holders. The reserve is swept to the "dividends" module bound in the registry —
 // fail-closed until it is bound. NEO is indivisible (0 decimals): it is priced per whole
@@ -103,7 +103,7 @@ func _deploy(data any, isUpdate bool) {
 	storage.Put(ctx, keyLiq, 7500)    // 75% liquidation threshold
 	storage.Put(ctx, keyBonus, 800)   // 8% liquidation bonus
 	storage.Put(ctx, keyKink, 8000)   // the curve steepens past 80% utilization
-	storage.Put(ctx, keyResBps, 3333) // 1/3 of interest to FTB holders (ECONOMICS.md)
+	storage.Put(ctx, keyResBps, 3333) // 1/3 of interest to FTB holders (docs/governance/ECONOMICS.md)
 	// rates ship at zero: set a real curve with SetRates before launch
 }
 

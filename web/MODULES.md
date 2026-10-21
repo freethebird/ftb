@@ -177,7 +177,7 @@ modules in any order (R2 makes order irrelevant among them).
   `refresh` bursts after a signed transaction collapse into one in-flight read pass
   plus at most one trailing run, on a minimum interval.
 - **Standby:** lend hash placeholder → `#lendOff` names it.
-- **Anchors:** MO 5, 6, 10; QRN F; the launch-gating discipline of `ARCHITECTURE.md`.
+- **Anchors:** MO 5, 6, 10; QRN F; the launch-gating discipline of `docs/overview/ARCHITECTURE.md`.
 
 ### 5. Governance - `mod-gov.js` - owns `#vote` and the tile `#tVoted`
 

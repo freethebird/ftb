@@ -27,13 +27,13 @@ by hash - battle-tested code, and no second language ever enters the repo.
 
 | you want… | read |
 |---|---|
-| the one-page "what is this" | `OVERVIEW.md` |
-| the architecture and the seams | `ARCHITECTURE.md` + `docs/STACK_MAP.md` |
-| fees, rates, APY, the 2/3 : 2/9 : 1/9 constitution | `ECONOMICS.md` |
-| proposal → vote → code lifecycle | `GOVERNANCE.md` |
-| every user action → the contract it invokes → who published it | `USECASES.md` |
+| the one-page "what is this" | `docs/overview/OVERVIEW.md` |
+| the architecture and the seams | `docs/overview/ARCHITECTURE.md` + `docs/STACK_MAP.md` |
+| fees, rates, APY, the 2/3 : 2/9 : 1/9 constitution | `docs/governance/ECONOMICS.md` |
+| proposal → vote → code lifecycle | `docs/governance/GOVERNANCE.md` |
+| every user action → the contract it invokes → who published it | `docs/overview/USECASES.md` |
 | run one of the five community nodes | `ops/NODE_OPERATOR_RUNBOOK.md` |
-| audit the code | `AUDIT.md`, then `AUDIT_REPORT.md` / `AUDIT_REPORT_PASS2.md` / `AUDIT_MOV8_QRN_V1.md` |
+| audit the code | `docs/audits/AUDIT.md`, then `docs/audits/AUDIT_REPORT.md` / `docs/audits/AUDIT_REPORT_PASS2.md` / `docs/audits/AUDIT_MOV8_QRN_V1.md` |
 | build any client against the contracts | `web/invocations.md` |
 | extend the front end without breaking the discipline | `web/UI_RATIONALE.md` |
 
@@ -81,8 +81,18 @@ so nothing merges unless it compiles and all tests pass.
 
 ```
 ftb/
-  ARCHITECTURE.md
-  go.mod
+  README.md  DECISIONS.md  Makefile  go.mod      # root: entry point, decision log, build
+  docs/              # all project documentation - see docs/README.md for the full map
+    overview/        # OVERVIEW, ARCHITECTURE, USECASES, STACK_MAP
+    governance/      # ECONOMICS, GOVERNANCE (+ proposal / ballot records)
+    audits/          # internal + external audit reports, IAR briefs
+    security/        # threat model, attack-vector register, key custody, disclosures
+    migration/       # 2026 migration forensics + reconciliation
+    community/       # community manual, FAQ, Discord-bond governance
+    releases/        # release notes / changelog history
+  data/              # published datasets - see data/README.md
+    migration/       # claim lists, merkle proofs, flagged wallets
+    salvage/         # LP / vault / orderbook / broker salvage
   contracts/
     ftb_token/
       ftb_token.go          # the contract
@@ -151,7 +161,7 @@ neo-go contract invokefunction -r $RPC -w wallet.json <migratorHash> configure  
 # registry: setInitialDelay, bootstrap token/migrator, finishBootstrap
 ```
 
-Order and gates are in `ARCHITECTURE.md`. The registry governs module swaps behind a
+Order and gates are in `docs/overview/ARCHITECTURE.md`. The registry governs module swaps behind a
 timelock; the token is sealed and immutable. Set `owner_multisig` in the deploy config so the
 contracts are born with the multisig as owner (FTB-14), run the migration window, then
 multisig-sign `migrator close` to seal the mint and `renounceOwnership` after it, in that

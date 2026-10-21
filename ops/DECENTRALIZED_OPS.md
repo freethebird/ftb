@@ -1,7 +1,7 @@
 # FTB decentralized operations plan
 
 How five community members with five VMs run the whole FTB stack with no single point of
-control. This is the operational companion to `ARCHITECTURE.md` (the seams) and
+control. This is the operational companion to `docs/overview/ARCHITECTURE.md` (the seams) and
 `../docs/STACK_MAP.md` (the signing boundary), and it is the script for the TestNet rehearsal
 before MainNet.
 
@@ -208,4 +208,4 @@ quietly, censor a user, or take the app down.
 *Operational plan, not financial or legal advice. Command names for multisig creation and
 offline signing vary between neo-cli/neo-go releases - pin the exact commands here after the
 first TestNet rehearsal. Nothing reaches MainNet until the pre-launch gate in
-`AUDIT_REPORT.md` passes.*
+`docs/audits/AUDIT_REPORT.md` passes.*

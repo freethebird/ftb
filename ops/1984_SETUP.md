@@ -104,7 +104,7 @@ TestNet RPC with the `cmd/deploy` and `cmd/seed` tools (see `README.md`), so you
 your own Neo node. If you later want your own node for privacy or reliability, neo-go (already
 installed) can run one, and you would open its ports in `ufw`; that is optional and not needed to
 build, test, or deploy. The remaining project steps are in `DECISIONS.md` (the cap number and oracle
-governance) and the pre-launch gate in `AUDIT_REPORT.md` (TestNet and bug bounty; the
+governance) and the pre-launch gate in `docs/audits/AUDIT_REPORT.md` (TestNet and bug bounty; the
 external-audit leg is withdrawn per DECISIONS.md Decision 7).
 
 ## Notes

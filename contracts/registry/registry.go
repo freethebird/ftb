@@ -8,7 +8,7 @@
 // shortened, and the token (the supply invariant) is deliberately NOT governed here; it
 // seals itself and is immutable.
 //
-// v2 adds the proposals board (GOVERNANCE.md): anyone may put a governance or listing
+// v2 adds the proposals board (docs/governance/GOVERNANCE.md): anyone may put a governance or listing
 // proposal on the public board; the cost is an exact bond in FTB, paid by transfer with
 // the proposal as the payment data. The board is only the read model — votes live in
 // per-proposal ballot contracts, listing money in the bond vault. No new authority is

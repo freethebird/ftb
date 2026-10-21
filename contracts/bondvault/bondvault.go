@@ -1,5 +1,5 @@
 // Package bondvault holds the FTB bonds that projects post when governance lists their
-// token (GOVERNANCE.md, listing track). The bond is bought on the open market in FTB and
+// token (docs/governance/GOVERNANCE.md, listing track). The bond is bought on the open market in FTB and
 // split in two at the door:
 //
 //   - liquidity half — earmarked for the FTB/<token> pool. Until the AMM exists it stays

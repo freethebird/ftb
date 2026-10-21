@@ -16,7 +16,7 @@
 //	base    2% APR                      = 0.020e18 / 2102400
 //	slope1  +10 APR points to the kink  = 0.125e18 / 2102400   -> 12% at 80% util
 //	slope2  +60 APR points past it      = 3.000e18 / 2102400   -> 72% at 100%
-//	kink 8000 bps, reserve 3333 bps (the holders' 1/3, ECONOMICS.md)
+//	kink 8000 bps, reserve 3333 bps (the holders' 1/3, docs/governance/ECONOMICS.md)
 package main
 
 import (

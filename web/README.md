@@ -88,7 +88,7 @@ ballotVoted`. Subscribe to wallet changes with `ftb.on('accountChanged', fn)` an
 - Contract hashes are configured, never hard-coded, so the adapter cannot be pointed at a surprise
   contract by the code itself.
 - TestNet first. Do not point at MainNet contracts holding value until the contracts are audited
-  (see `../AUDIT_REPORT.md`) and these flows are tested.
+  (see `../docs/audits/AUDIT_REPORT.md`) and these flows are tested.
 - The swap path reuses the external Flamingo router; confirm its ABI against the deployed manifest
   before using the `swap` builder.
 

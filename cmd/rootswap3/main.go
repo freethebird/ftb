@@ -1,4 +1,4 @@
-// rootswap3 wires the v2 claim tree (ftb_claim_list_v2.csv — salvage pass, whale-cluster
+// rootswap3 wires the v2 claim tree (data/migration/ftb_claim_list_v2.csv — salvage pass, whale-cluster
 // flags, unflagged #8, and the dev wallet NQzqB9AB…CwRD; root 0x9a36b6a0…, 5,194 wallets,
 // 526,782,179.10 FLM-equiv = ratioDen exactly) onto TestNet. The migrator binds its root
 // write-once at configure, so this is a redeploy under a renamed manifest (FtbMigratorR3 —

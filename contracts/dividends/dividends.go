@@ -1,4 +1,4 @@
-// Package dividends is the FTB holders' share of the fee constitution (ECONOMICS.md):
+// Package dividends is the FTB holders' share of the fee constitution (docs/governance/ECONOMICS.md):
 // the dividends module that lend's sweep and the treasury's excess returns pay into.
 // FTB is dividend-bearing through staking — the xSUSHI pattern: stake FTB, and every
 // distribution raises the per-share accumulator; claim any time; unstake after a short

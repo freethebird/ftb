@@ -8,10 +8,10 @@ The FTB migration claims are computed from the FLM + FLOCKS holder state at **bl
 12,782,704**, one block before the exploit mint (tx
 `0x5e310782aac17676a80572e073ba0d70a7d533caff60b38a4e23740ddec22030`, block 12,782,705).
 
-- Claim list (4,830 wallets): [`../ftb_claim_list.csv`](../ftb_claim_list.csv)
-- Findings and classifications: [`../FTB_Snapshot_Findings.md`](../FTB_Snapshot_Findings.md)
-- Full top-20 ownership analysis: [`../FLM_Top20_Ownership.md`](../FLM_Top20_Ownership.md)
-- Wallet #15 deep dive: [`../FLM_15_NUN32i_DeepDive.md`](../FLM_15_NUN32i_DeepDive.md)
+- Claim list (4,830 wallets): [`ftb_claim_list.csv`](../data/migration/ftb_claim_list.csv)
+- Findings and classifications: [`FTB_Snapshot_Findings.md`](../docs/migration/FTB_Snapshot_Findings.md)
+- Full top-20 ownership analysis: [`FLM_Top20_Ownership.md`](../docs/migration/FLM_Top20_Ownership.md)
+- Wallet #15 deep dive: [`FLM_15_NUN32i_DeepDive.md`](../docs/migration/FLM_15_NUN32i_DeepDive.md)
 
 ## Reproduce
 

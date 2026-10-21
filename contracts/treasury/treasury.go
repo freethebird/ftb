@@ -1,4 +1,4 @@
-// Package treasury is the FTB development treasury (ECONOMICS.md): a contract, not a
+// Package treasury is the FTB development treasury (docs/governance/ECONOMICS.md): a contract, not a
 // wallet. It holds the treasury slice of protocol revenue — 1/9 of interest and swap fees,
 // carved from the holders' third, LPs untouched — and pays it out only through the
 // governance pipeline:
