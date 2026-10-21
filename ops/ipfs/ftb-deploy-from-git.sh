@@ -50,7 +50,7 @@ IPNS="$(asipfs key list -l | awk -v k="$IPFS_KEY" '$2==k{print $1}')"
 [ -n "$IPNS" ] || { echo "FATAL: IPNS key '$IPFS_KEY' not found in the node keystore" >&2; exit 1; }
 printf '{"project":"ftb","commit":"%s","published":"%s","ipns":"%s"}\n' \
   "$COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$IPNS" > "$STAGE/beat.json"
-chown -R ipfs:ipfs "$STAGE"
+chown -R ipfs:ipfs "$STAGE_PARENT"
 
 # 3. Add + pin + republish IPNS to the 'ftb' key (default CID version, matching the live site)
 ROOT_CID="$(asipfs add -r -Q --pin "$STAGE" | tr -d '[:space:]')"
