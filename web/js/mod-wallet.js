@@ -17,6 +17,7 @@
     var account = FtbState.account;
     $('idstate').textContent = account ? ('[ ' + short(account) + ' @ ' + NET + ' ]') : '[ no wallet ]';
     $('connectBtn').textContent = account ? 'connected' : 'connect ->';
+    $('connectBtn').classList.toggle('connected', !!account); // red when disconnected, green when connected
     var d = $('disconnectBtn'); if (d) d.hidden = !account;
   }
 

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>free the bird — analytics</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="p2-shell.css">
+<style>
+/* analytics — page-specific (shell + tokens come from p2-shell.css) */
+.apage{max-width:980px; margin:0 auto; padding:26px 22px 64px}
+/* footer spans the same wide column as .apage so its edges align with the content above */
+.foot3{max-width:980px}
+.atitle{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); margin:0}
+.asub{color:var(--ink-2); font-size:var(--fs-small); max-width:72ch; margin:6px 0 0; line-height:1.7}
+.astatus{color:var(--faint); font-size:var(--fs-meta); margin:12px 0 0; word-break:break-all}
+.ansec{margin-top:30px}
+.anh{font-size:var(--fs-meta); letter-spacing:.09em; text-transform:uppercase; color:var(--faint); border-bottom:1px solid var(--hair); padding-bottom:6px; margin-bottom:14px}
+.antiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--hair); border:1px solid var(--hair)}
+.antile{background:var(--paper); padding:14px 16px}
+.anlabel{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.06em; text-transform:uppercase}
+.anval{font-size:var(--fs-lead); font-family:var(--disp); margin-top:6px; line-height:1.15; word-break:break-all}
+.anballot{border:1px solid var(--hair); background:var(--panel); padding:14px 16px; margin-bottom:12px}
+.anbq{font-size:var(--fs-body); margin-bottom:10px}
+.anopt{display:grid; grid-template-columns:130px 1fr 54px; align-items:center; gap:10px; margin:6px 0}
+.anoptname{color:var(--ink-2); font-size:var(--fs-small)}
+.anbarwrap{background:var(--paper); border:1px solid var(--hair); height:12px; overflow:hidden}
+.anbar{display:block; height:100%; width:0; background:var(--ink); transition:width .45s ease}
+.anoptv{text-align:right; font-size:var(--fs-small); color:var(--ink-2)}
+.anfoot{color:var(--faint); font-size:var(--fs-meta); margin-top:8px}
+.ancharts{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.anchartcard{border:1px solid var(--hair); background:var(--panel); padding:14px 16px}
+.anchartcard .anlabel{display:flex; justify-content:space-between; align-items:center}
+.illus{color:var(--dn); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--dn); padding:1px 5px; border-radius:2px}
+.anchart{margin-top:10px}
+.annote{border:1px dashed var(--data-bd); background:var(--paper); padding:14px 16px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.7}
+.annote b{color:var(--ink)}
+@media (max-width:640px){ .ancharts{grid-template-columns:1fr} .anopt{grid-template-columns:96px 1fr 48px} }
+</style>
+</head>
+<body>
+<div style="background:#151515;color:#a9a9a9;border-bottom:1px solid #e0655c;font:12px 'Space Mono',monospace;padding:6px 14px;text-align:center;letter-spacing:.04em">proposal2 — local design preview · new modules in progress · not the live site</div>
+<header class="topbar">
+  <div class="topbar-main">
+    <div class="brand">
+      <a class="bird3" href="proposal2.html" aria-label="Free the Bird">
+        <svg viewBox="0 0 220 130" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M14 84 C 46 30, 82 26, 110 62 C 138 26, 174 30, 206 84"/>
+          <circle cx="110" cy="66" r="7"/>
+          <line x1="110" y1="73" x2="110" y2="112"/>
+        </svg>
+      </a>
+      <a class="wordmark" href="proposal2.html">FTB</a>
+    </div>
+    <div class="topright">
+      <span class="netswitch" role="group" aria-label="network">
+        <span class="cur net-test">testnet</span><a class="net-main" href="mainnet.html">mainnet</a>
+      </span>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="sections">
+    <div class="tabs-main">
+    <a href="proposal2.html#trade">trade</a>
+    <a href="proposal2.html#earn">earn</a>
+    <a href="proposal2.html#lend">lend</a>
+    <a href="proposal2.html#vote">vote</a>
+    <a href="proposal2.html#board">board</a>
+    <a href="proposal2.html#claim">claim</a>
+    <a href="proposal2.html#verify">verify</a>
+    <a href="donate.html">donate</a>
+    <a class="cur" aria-current="page" href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a href="discord-bond.html">discord</a>
+    </div>
+    <span class="tabsep" aria-hidden="true"></span>
+    <div class="tabs-ext">
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    </div>
+  </nav>
+</header>
+<div class="statusline">
+  <span class="rpc" id="rpcNote">rpc: connecting...</span>
+</div>
+<div class="launchbar" id="launchbar">TESTNET: LIVE &nbsp;·&nbsp; MAIN-NET NOV 7 &nbsp;·&nbsp; <span class="tminus" id="tminus">T-…</span></div>
+
+<main id="anRoot" class="apage">
+  <h1 class="atitle">analytics</h1>
+  <p class="asub">The network at a glance — read straight from the chain. No tracker, no indexer, no server: every figure here is a live contract read or a locally-sampled ratio, and nothing about your visit leaves your browser.</p>
+  <div class="astatus"><span id="rpcNote">rpc: connecting…</span></div>
+
+  <section class="ansec">
+    <div class="anh">network</div>
+    <div class="antiles">
+      <div class="antile"><div class="anlabel">block height</div><div class="anval" id="anBlock">-</div></div>
+      <div class="antile"><div class="anlabel">ftb supply</div><div class="anval" id="anSupply">-</div></div>
+      <div class="antile"><div class="anlabel">hard cap</div><div class="anval" id="anCap">-</div></div>
+      <div class="antile"><div class="anlabel">% minted</div><div class="anval" id="anMinted">-</div></div>
+      <div class="antile"><div class="anlabel">holders · snapshot</div><div class="anval" id="anHolders">-</div></div>
+    </div>
+  </section>
+
+  <section class="ansec">
+    <div class="anh">protocol</div>
+    <div class="antiles">
+      <div class="antile"><div class="anlabel">tvl · tokens</div><div class="anval" id="anTvl">-</div></div>
+      <div class="antile"><div class="anlabel">lend supply apy</div><div class="anval" id="anSupplyApy">-</div></div>
+      <div class="antile"><div class="anlabel">lend borrow apy</div><div class="anval" id="anBorrowApy">-</div></div>
+      <div class="antile"><div class="anlabel">utilization</div><div class="anval" id="anUtil">-</div></div>
+      <div class="antile"><div class="anlabel">total borrows</div><div class="anval" id="anBorrows">-</div></div>
+      <div class="antile"><div class="anlabel">ftb staked</div><div class="anval" id="anStaked">-</div></div>
+      <div class="antile"><div class="anlabel">treasury · ftb</div><div class="anval" id="anTreasury">-</div></div>
+    </div>
+  </section>
+
+  <section class="ansec">
+    <div class="anh">governance · live ballots</div>
+    <div id="anBallots"><div class="annote">reading ballots…</div></div>
+  </section>
+
+  <section class="ansec">
+    <div class="anh">ratios — asset against asset · no fiat, no oracle</div>
+    <div class="ancharts">
+      <div class="anchartcard">
+        <div class="anlabel"><span>gas / ftb</span><span class="illus">illustrative</span></div>
+        <div class="anchart" id="anChartGasFtb"></div>
+      </div>
+      <div class="anchartcard">
+        <div class="anlabel"><span>neo / ftb</span><span class="illus">illustrative</span></div>
+        <div class="anchart" id="anChartNeoFtb"></div>
+      </div>
+    </div>
+    <p class="asub" style="margin-top:10px">Ratio trends sample live pool reserves client-side. The shapes above are illustrative in this preview; real series accrue as the pools are read. Deep history needs an indexer — see below.</p>
+  </section>
+
+  <section class="ansec">
+    <div class="anh">not shown here — and why</div>
+    <div class="annote">
+      <b>Page visits &amp; unique users</b> — not measured. The site is static, pinned on IPFS, and runs no tracker; nothing about your visit leaves your browser. Honest by architecture, in keeping with the project's stealth posture.<br><br>
+      <b>Trade volumes, transaction counts, per-category breakdowns, full price history</b> — ThorChain-style panels like these are served by an <b>indexer</b> (ThorChain runs Midgard) that aggregates chain history off a backend. FTB deliberately has no indexer and no server. These light up only if a self-hosted, privacy-respecting indexer is added — a separate infrastructure decision, not a front-end one.
+    </div>
+  </section>
+</main>
+
+<footer class="foot3">
+  <span class="disp" style="font-size:20px">free the bird</span><br>
+  <span class="muted">// night shift</span><br>
+  Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
+  MIT code, public proofs - a gift to the Flamingo community.
+</footer>
+
+<script src="config.js"></script>
+<script src="ftb-dapi.js"></script>
+<script src="js/ftb-rpc.js"></script>
+<script src="js/ftb-state.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/mod-analytics.js"></script>
+</body>
+</html>

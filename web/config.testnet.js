@@ -23,6 +23,9 @@ window.FTB_CONFIG = {
     // treasury escrows proposal budgets; dividends pays the holders' 2/9 to stakers
     treasury:  '0xa0bcfb4de8898d12a5535151fd80050c46391033', // R4 reset: fresh state (FtbTreasuryR2)
     dividends: '0xa1f8fcbdfee1446cd47d46d773d8b6a7f2542c63', // R4 reset: fresh state (FtbDividendsR2)
+    // Discord bond system (deployed 22 Oct 2026; separate from the listing bondvault above):
+    dbondvault: '0x62f053d7f360d286e6ee0551155d7724564fea2b', // FtbDiscordBond -- Discord entry-bond vault
+    accusation: '0xfada35e4dd4fd8ce22c7badf2d6449b449aaeda9', // FtbBondAccusation -- the bond's own dispute ballot
     // bNEO (NeoBurger) - ratio-board listing only; lend collateral is native NEO + GAS.
     bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
     // router is the community AMM (reused audited Flamingo); pairs recompiled vs token v2

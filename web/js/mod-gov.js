@@ -130,25 +130,20 @@
   }
 
   // compact a long option label for the glance tile (the full label stays in the menu):
-  // month names and duration units shorten; everything else passes through.
-  var ABBR = { january: 'jan', february: 'feb', march: 'mar', april: 'apr', june: 'jun', july: 'jul', august: 'aug', september: 'sep', october: 'oct', november: 'nov', december: 'dec', months: 'mo', month: 'mo', years: 'yr', year: 'yr', weeks: 'wk', week: 'wk', days: 'd', day: 'd' };
-  function shortOpt(s) {
-    return String(s).toLowerCase().trim().split(/\s+/).map(function (w) { return ABBR[w] || w; }).join(' ');
-  }
 
   // the stat-band "active ballots" tile: one line per ballot, leader bright / runner-up muted
   function paintBallotsTile(all) {
     var host = $('tBallots'); if (!host) return;
     host.innerHTML = '';
     BL.forEach(function (b, bi) {
-      var vals = all[bi] || [], opts = b.options || [];
+      var vals = all[bi] || [];
       var total = vals.reduce(function (s, v) { return s + v; }, 0n);
       var shares = vals.map(function (v) { return total > 0n ? Number(v * 10000n / total) / 100 : 0; });
       var lead = 0; shares.forEach(function (p, i) { if (p > shares[lead]) lead = i; });
       var other = lead === 0 ? 1 : 0;
       function ps(p) { return (p >= 99.95 ? '100' : (Math.round(p * 10) / 10)) + '%'; }
       var line = el('div', 'tnline');
-      line.appendChild(document.createTextNode(('00' + (bi + 1)).slice(-3) + ' · ' + shortOpt(opts[lead] || '-') + ' ' + ps(shares[lead]) + ' '));
+      line.appendChild(document.createTextNode(('00' + (bi + 1)).slice(-3) + ' ' + ps(shares[lead]) + ' '));
       line.appendChild(el('span', 'ag', '/ ' + ps(shares[other] || 0)));
       host.appendChild(line);
     });

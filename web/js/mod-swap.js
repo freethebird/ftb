@@ -251,7 +251,10 @@
     var e = $('tFtbPx'); if (!e) return;
     var v = ftbPx.gas || ftbPx.other;
     if (!v) return;
-    e.textContent = fiatFmt(v.usd, '$') + ' · ' + fiatFmt(v.cny, '¥');
+    e.innerHTML = '';
+    var _u = document.createElement('div'); _u.className = 'tnline'; _u.textContent = fiatFmt(v.usd, '$');
+    var _c = document.createElement('div'); _c.className = 'tnline'; _c.textContent = fiatFmt(v.cny, '¥');
+    e.appendChild(_u); e.appendChild(_c);
     e.title = '1 FTB - derived from the ' + (ftbPx.gas ? 'GAS/FTB' : 'FTB/NEO') +
       ' pool ratio x the coingecko reference rate. display only, never a protocol input.';
     paintTvlFiat(); // the fiat TVL tile depends on this price

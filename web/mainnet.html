@@ -27,6 +27,8 @@
   --mono:'Space Mono',"Courier New",Courier,"DejaVu Sans Mono","Liberation Mono",monospace;
   --disp:'Space Mono',"Courier New",monospace;
   --keybg:#101010; --keyfg:#33ff33;
+  --amber:#ffb12a;   /* orange phosphor - testnet */
+  --rd:#ff4136;      /* red phosphor */
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -52,10 +54,11 @@ a:hover, button:hover{background:var(--keyfg); color:var(--keybg)}
 .topbar .wordmark{font-family:var(--disp); font-size:26px}
 .topright{margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .netswitch{display:flex; font-size:11px; letter-spacing:.14em; text-transform:uppercase}
-.netswitch .cur, .netswitch a{padding:.45em .8em; border:1px solid var(--keyfg); margin-left:-1px}
-.netswitch .cur{background:var(--keyfg); color:var(--keybg)}
-.netswitch a{background:var(--keybg); color:var(--keyfg); text-decoration:none}
-.netswitch a:hover{background:var(--keyfg); color:var(--keybg)}
+.netswitch .cur, .netswitch a{padding:.45em .8em; border:1px solid; margin-left:-1px; background:var(--keybg); text-decoration:none}
+.netswitch .net-test{border-color:var(--amber); color:var(--amber)}
+.netswitch .net-main{border-color:var(--keyfg); color:var(--keyfg)}
+.netswitch .net-test.cur, .netswitch a.net-test:hover{background:var(--amber); color:var(--keybg)}
+.netswitch .net-main.cur, .netswitch a.net-main:hover{background:var(--keyfg); color:var(--keybg)}
 .netswitch :first-child{margin-left:0}
 .launchbar{border-bottom:1px solid var(--ink); background:var(--paper); color:var(--ink);
   text-align:center; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
@@ -85,7 +88,7 @@ a:hover, button:hover{background:var(--keyfg); color:var(--keybg)}
   <a class="wordmark" href="index.html">FTB</a>
   <div class="topright">
     <span class="netswitch" role="group" aria-label="network">
-      <a href="index.html">testnet</a><span class="cur">mainnet</span>
+      <a class="net-test" href="index.html">testnet</a><span class="cur net-main">mainnet</span>
     </span>
   </div>
 </header>

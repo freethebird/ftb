@@ -72,6 +72,11 @@
   function hexToB64(hex) { return bytesToB64(hexToBytes(hex)); }
   function b64ToHex(s) { return bytesToHex(b64ToBytes(s)); }
   function reverseHex(hex) { return bytesToHex(hexToBytes(hex).reverse()); }
+  // ASCII string -> hex. Discord ids are decimal-digit snowflakes; the bond vault
+  // indexes them by these exact bytes, matching the bot's []byte(discordID).
+  function asciiToHex(s) { s = String(s); var h = ''; for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); if (c > 255) throw new Error('non-byte character in id'); h += c.toString(16).padStart(2, '0'); } return h; }
+  function strBytes(s) { return (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(String(s)) : new Uint8Array(unescape(encodeURIComponent(String(s))).split('').map(function (c) { return c.charCodeAt(0); })); }
+  function sha256hex(s) { return bytesToHex(sha256(typeof s === 'string' ? strBytes(s) : s)); }
 
   // decimal string <-> base units (BigInt-safe, no floats)
   function toBaseUnits(dec, decimals) {
@@ -483,6 +488,45 @@
     return plan;
   };
 
+  // ---- Discord bond system: FtbDiscordBond vault + FtbBondAccusation ballot ----
+  // Post the entry bond: a NEP-17 transfer of exactly bondAmount FTB into the Discord
+  // bond vault, tagged with the member's Discord user-id bytes as the payment data. The
+  // vault's OnNEP17Payment reads data as the discordId; the bot's getBondByDiscord looks
+  // it up by the same bytes. CalledByEntry: the FTB token witness-checks the sender.
+  FtbDapi.prototype.postBond = function (user, amountBase, discordId) {
+    return this._w(this._need('ftb'), 'transfer',
+      [A.h160(user), A.h160(this._need('dbondvault')), A.int(amountBase), A.bytesHex(asciiToHex(discordId))],
+      'Post a ' + fromBaseUnits(amountBase) + ' FTB Discord bond, tagged to Discord id ' + discordId);
+  };
+  // File an accusation against a bonded member (member-signed: CheckWitness(filer)).
+  // evidenceHex is a 32-byte (64-hex) hash of the evidence bundle.
+  FtbDapi.prototype.fileCase = function (filer, accusedBondId, reasonCode, evidenceHex) {
+    return this._w(this._need('accusation'), 'fileCase',
+      [A.h160(filer), A.int(accusedBondId), A.int(reasonCode), A.bytesHex(evidenceHex)],
+      'File accusation against bond #' + accusedBondId + ' (reason code ' + reasonCode + ')');
+  };
+  // Vote on an open case (member-signed: CheckWitness(voter)); liquidate=true burns the bond.
+  FtbDapi.prototype.voteCase = function (voter, caseId, liquidate) {
+    return this._w(this._need('accusation'), 'vote',
+      [A.h160(voter), A.int(caseId), A.bool(!!liquidate)],
+      'Vote ' + (liquidate ? 'LIQUIDATE' : 'dismiss') + ' on accusation case #' + caseId);
+  };
+  // Resolve a case after its window closes (permissionless; anyone can finalize).
+  FtbDapi.prototype.resolveCase = function (caseId) {
+    return this._w(this._need('accusation'), 'resolve', [A.int(caseId)],
+      'Resolve accusation case #' + caseId);
+  };
+  // ---- Discord bond reads ----
+  FtbDapi.prototype.bondAmount = function () { return this.read(this._need('dbondvault'), 'bondAmount', []).then(decodeInt); };
+  FtbDapi.prototype.banBps = function () { return this.read(this._need('dbondvault'), 'banBps', []).then(decodeInt); };
+  FtbDapi.prototype.votingWindow = function () { return this.read(this._need('dbondvault'), 'votingWindow', []).then(decodeInt); };
+  FtbDapi.prototype.totalActiveBondedStake = function () { return this.read(this._need('dbondvault'), 'totalActiveBondedStake', []).then(decodeInt); };
+  FtbDapi.prototype.bondIdOfDiscord = function (discordId) { return this.read(this._need('dbondvault'), 'getBondByDiscord', [A.bytesHex(asciiToHex(discordId))]).then(decodeInt); };
+  FtbDapi.prototype.getBondRaw = function (bondId) { return this.read(this._need('dbondvault'), 'getBond', [A.int(bondId)]); };
+  FtbDapi.prototype.isBondedVoter = function (wallet) { return this.read(this._need('dbondvault'), 'isBondedVoter', [A.h160(wallet)]).then(decodeBool); };
+  FtbDapi.prototype.listOpenCases = function () { return this.read(this._need('accusation'), 'listOpenCases', []); };
+  FtbDapi.prototype.getCaseRaw = function (caseId) { return this.read(this._need('accusation'), 'getCase', [A.int(caseId)]); };
+
   // build an explicit CustomContracts signer for swap, from the connected address
   FtbDapi.prototype.signerFor = function (address, allowedContracts, opts) {
     // NeoLine expects the signer account as the little-endian script hash hex (verified). Pass
@@ -530,7 +574,8 @@
     addressToScriptHashHex: addressToScriptHashHex,
     scriptHashToAddress: scriptHashToAddress,
     decodeInt: decodeInt, decodeBool: decodeBool, decodeHash160: decodeHash160,
-    ftbOf: ftbOf
+    ftbOf: ftbOf,
+    asciiToHex: asciiToHex, sha256hex: sha256hex
   };
 
   global.FtbDapi = FtbDapi;

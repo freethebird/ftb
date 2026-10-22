@@ -57,7 +57,7 @@ for src in SRCS:
     parts.append(f"<script>\n/* inlined from {src} */\n{(WEB / src).read_text()}\n</script>")
 shim = "\n".join(parts)
 
-old = "\n".join(f'<script src="{s}"></script>' for s in SRCS)
+old = "\n".join(f'<script defer src="{s}"></script>' for s in SRCS)
 assert old in tpl, "script tag block not found in index.html — has the load list changed?"
 out = tpl.replace(old, shim)
 OUT.write_text(out)

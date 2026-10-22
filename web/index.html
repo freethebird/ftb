@@ -51,6 +51,8 @@
   --panel:#151515;   /* subtle fill */
   --ok:#33ff33;      /* the one phosphor green - same as the menu keys, everywhere */
   --dn:#e0655c;      /* negative drift */
+  --amber:#ffb12a;   /* orange phosphor - testnet + external links */
+  --rd:#ff4136;      /* red phosphor - connect / disconnect */
   --sel:#ededed;     /* hover/selection ground */
   --sel-ink:#0a0a0a; /* hover/selection mark */
   --mono:'Space Mono',"Courier New",Courier,"DejaVu Sans Mono","Liberation Mono",monospace;
@@ -530,10 +532,11 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 /* ---- network switch: two flush keys, current network engaged ---- */
 .netswitch{display:flex; font-size:11px; letter-spacing:.14em; text-transform:uppercase}
-.netswitch .cur, .netswitch a{padding:.45em .8em; border:1px solid var(--keyfg); margin-left:-1px}
-.netswitch .cur{background:var(--keyfg); color:var(--keybg)}
-.netswitch a{background:var(--keybg); color:var(--keyfg); text-decoration:none}
-.netswitch a:hover{background:var(--keyfg); color:var(--keybg)}
+.netswitch .cur, .netswitch a{padding:.45em .8em; border:1px solid; margin-left:-1px; background:var(--keybg); text-decoration:none}
+.netswitch .net-test{border-color:var(--amber); color:var(--amber)}
+.netswitch .net-main{border-color:var(--ok); color:var(--ok)}
+.netswitch .net-test.cur, .netswitch a.net-test:hover{background:var(--amber); color:var(--keybg)}
+.netswitch .net-main.cur, .netswitch a.net-main:hover{background:var(--ok); color:var(--keybg)}
 .netswitch :first-child{margin-left:0}
 
 /* ---- claim + verify ---- */
@@ -557,6 +560,16 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 .tabs a:hover, .cta:hover, .cta.solid:hover, .cta:not(.solid):hover, .ctabs a:hover{
   background:var(--keyfg); color:var(--keybg);
 }
+/* ---- color roles: amber (testnet / external) + red (wallet) ---- */
+.tabs a.ext{color:var(--amber); border-color:var(--amber)}
+.tabs a.ext:hover{background:var(--amber); color:var(--keybg); border-color:var(--amber)}
+#connectBtn{color:var(--rd); border-color:var(--rd)}
+#connectBtn:hover{background:var(--rd); color:var(--keybg)}
+#connectBtn.connected{background:var(--ok); color:var(--keybg); border-color:var(--ok)}
+#connectBtn.connected:hover{background:var(--ok); color:var(--keybg); opacity:.9}
+#disconnectBtn{color:var(--rd); border-color:var(--rd)}
+#disconnectBtn:hover{background:var(--rd); color:var(--keybg)}
+.navico{width:1.15em; height:1.15em; vertical-align:-.22em; display:inline-block}
 /* the big CTAs are the same key, just full-width */
 .ticket .go, .go{font-size:12px; padding:.7em .8em}
 /* brand marks stay bare, phosphor on hover */
@@ -625,7 +638,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     </div>
     <div class="topright">
       <span class="netswitch" role="group" aria-label="network">
-        <span class="cur">testnet</span><a href="mainnet.html">mainnet</a>
+        <span class="cur net-test">testnet</span><a class="net-main" href="mainnet.html">mainnet</a>
       </span>
       <button id="connectBtn">connect -&gt;</button>
       <button id="disconnectBtn" hidden>disconnect</button>
@@ -642,6 +655,9 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       <a href="#board">board</a>
       <a href="#claim">claim</a>
       <a href="#verify">verify</a>
+      <a href="donate.html">donate</a>
+      <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+      <a href="discord-bond.html">discord</a>
     </div>
     <span class="tabsep" aria-hidden="true"></span>
     <div class="tabs-ext">
@@ -692,7 +708,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <div class="tile"><div class="tl">tvl locked (tokens)</div><div class="tnstack" id="tTvl"><div class="tnline">-</div></div></div>
     <!-- TVL in fiat: on-chain TVL x the external reference rate. display only, blank when the rate source is unreachable (Art 10). -->
     <div class="tile"><div class="tl">tvl locked (usd / cny)</div><div class="tnstack" id="tTvlFiat"><div class="tnline">-</div></div></div>
-    <div class="tile"><div class="tl">ftb price</div><div class="tn" id="tFtbPx">-</div></div>
+    <div class="tile"><div class="tl">ftb price</div><div class="tnstack" id="tFtbPx"><div class="tnline">-</div></div></div>
     <!-- active ballots: mod-gov writes one line per ballot (leader bright / runner-up muted) -->
     <div class="tile"><div class="tl">active ballots</div><div class="tnstack" id="tBallots"><div class="tnline">-</div></div></div>
   </div>

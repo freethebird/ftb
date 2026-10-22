@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>free the bird — discord bond</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="p2-shell.css">
+<style>
+/* discord bond — page-specific (shell + tokens from p2-shell.css) */
+.bpage{max-width:var(--col); margin:0 auto; padding:26px 22px 64px}
+.btitle{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); margin:0}
+.bsub{color:var(--ink-2); font-size:var(--fs-small); max-width:66ch; margin:6px 0 0; line-height:1.75}
+.bscaffold{display:inline-block; color:var(--dn); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--dn); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
+.blive{display:inline-block; color:var(--ok); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--ok); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
+.bsec{margin-top:30px; border:1px solid var(--hair); background:var(--panel); padding:20px}
+.bh{font-size:var(--fs-meta); letter-spacing:.09em; text-transform:uppercase; color:var(--faint); margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; gap:10px}
+.bstep{color:var(--faint)}
+.brow{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px}
+.bfield{display:block; margin-top:12px}
+.bfield label{display:block; color:var(--faint); font-size:var(--fs-meta); letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px}
+.bfield input, .bfield select{width:100%; background:var(--paper); border:1px solid var(--data-bd); color:var(--ink); font-family:var(--mono); font-size:13px; padding:9px 11px}
+.bamount{font-family:var(--disp); font-size:var(--fs-num); color:var(--ink)}
+.bkey{display:inline-block; background:var(--keybg); color:var(--keyfg); border:1px solid var(--keyfg); padding:8px 14px; font-family:var(--mono); font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
+.bkey:hover{background:var(--keyfg); color:var(--keybg)}
+.bkey.ghost{background:transparent; color:var(--ink-2); border-color:var(--hair)}
+.bkey.ghost:hover{background:var(--sel); color:var(--sel-ink)}
+.bprev{margin-top:12px; border:1px dashed var(--data-bd); background:var(--paper); padding:12px 14px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.65}
+.bprev b{color:var(--ink)}
+.bnote{color:var(--faint); font-size:var(--fs-meta); margin-top:10px; line-height:1.6}
+.bstat{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:4px}
+.bstat .k{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.05em; text-transform:uppercase}
+.bstat .v{font-family:var(--disp); font-size:var(--fs-num); color:var(--ink); margin-top:2px}
+.bcase{border:1px solid var(--hair); background:var(--paper); padding:14px; margin-top:12px}
+.bcase .bchead{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline}
+.bcase .bcid{color:var(--faint); font-size:var(--fs-meta)}
+.bcreason{color:var(--ink); font-size:var(--fs-small); margin:8px 0}
+.bvote{display:grid; grid-template-columns:110px 1fr 90px; align-items:center; gap:10px; margin:6px 0}
+.bvname{font-size:var(--fs-small); color:var(--ink-2)}
+.bvwrap{height:12px; background:var(--panel); border:1px solid var(--hair); overflow:hidden}
+.bvbar{display:block; height:100%}
+.bvbar.liq{background:var(--dn)} .bvbar.keep{background:var(--ink)}
+.bvv{text-align:right; font-size:var(--fs-small); color:var(--ink-2)}
+.bbanner{border:1px dashed var(--data-bd); background:var(--paper); padding:14px 16px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.7; margin-top:30px}
+.bbanner b{color:var(--ink)}
+.bhash{font-family:var(--mono); font-size:11px; color:var(--ink-2); word-break:break-all; line-height:1.9}
+.bhash b{color:var(--ink)}
+@media (max-width:560px){ .bvote{grid-template-columns:86px 1fr 78px} .bstat{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div style="background:#151515;color:#a9a9a9;border-bottom:1px solid #4a7; font:12px 'Space Mono',monospace;padding:6px 14px;text-align:center;letter-spacing:.04em">proposal2 preview · discord bond wired to live testnet contracts</div>
+<header class="topbar">
+  <div class="topbar-main">
+    <div class="brand">
+      <a class="bird3" href="proposal2.html" aria-label="Free the Bird">
+        <svg viewBox="0 0 220 130" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M14 84 C 46 30, 82 26, 110 62 C 138 26, 174 30, 206 84"/>
+          <circle cx="110" cy="66" r="7"/>
+          <line x1="110" y1="73" x2="110" y2="112"/>
+        </svg>
+      </a>
+      <a class="wordmark" href="proposal2.html">FTB</a>
+    </div>
+    <div class="topright">
+      <span class="netswitch" role="group" aria-label="network">
+        <span class="cur net-test">testnet</span><a class="net-main" href="mainnet.html">mainnet</a>
+      </span>
+      <button id="connectBtn">connect -&gt;</button>
+      <button id="disconnectBtn" hidden>disconnect</button>
+      <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="sections">
+    <div class="tabs-main">
+    <a href="proposal2.html#trade">trade</a>
+    <a href="proposal2.html#earn">earn</a>
+    <a href="proposal2.html#lend">lend</a>
+    <a href="proposal2.html#vote">vote</a>
+    <a href="proposal2.html#board">board</a>
+    <a href="proposal2.html#claim">claim</a>
+    <a href="proposal2.html#verify">verify</a>
+    <a href="donate.html">donate</a>
+    <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a class="cur" aria-current="page" href="discord-bond.html">discord</a>
+    </div>
+    <span class="tabsep" aria-hidden="true"></span>
+    <div class="tabs-ext">
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    </div>
+  </nav>
+</header>
+<div class="statusline">
+  <span class="idstate" id="idstate">[ no wallet ]</span>
+  <span class="rpc" id="rpcNote">rpc: connecting...</span>
+</div>
+<div class="launchbar" id="launchbar">TESTNET: LIVE &nbsp;·&nbsp; MAIN-NET NOV 7 &nbsp;·&nbsp; <span class="tminus" id="tminus">T-…</span></div>
+
+<main id="dbRoot" class="bpage">
+  <h1 class="btitle">discord bond<span class="blive">live · testnet</span></h1>
+  <div class="brow" style="margin-top:12px"><a class="bkey" href="https://discord.gg/qvQptfkMV6" target="_blank" rel="noopener">Join the Discord ↗</a></div>
+  <p class="bsub">Entry to the FTB Discord is <b>bonded</b>. Post a <b><span id="dbBondAmt">1000 FTB</span></b> bond, verify your deposit, and you're in. The bond is your skin in the game: if you scam a member, the community can file an accusation and vote to <b>liquidate and burn</b> your bond. Honest actors get their bond back on a clean exit; scammers lose it to the fire.</p>
+
+  <section class="bsec">
+    <div class="bh"><span>1 · post your bond</span><span class="bstep">connect → sign → bond id</span></div>
+    <div class="brow">
+      <span class="bamount" id="dbBondAmtBig">1000 FTB</span>
+      <span class="bnote">fixed bond · held in the Discord bond vault · refundable on a clean exit · read live from the chain</span>
+    </div>
+    <div class="bfield">
+      <label for="dbDiscord">your discord user id</label>
+      <input id="dbDiscord" type="text" inputmode="numeric" placeholder="e.g. 1562152641440649359" autocomplete="off">
+    </div>
+    <p class="bnote">In Discord: Settings → Advanced → <b>Developer Mode</b> on, then right-click your name → <b>Copy User ID</b>. Your bond is tagged with this id so the bot matches it to you.</p>
+    <div class="brow">
+      <button class="bkey" id="dbDepositBtn" type="button">review &amp; sign -&gt;</button>
+    </div>
+    <div class="bprev" id="dbDepositMsg" hidden></div>
+  </section>
+
+  <section class="bsec">
+    <div class="bh"><span>2 · verify for the server</span><span class="bstep">prove the deposit</span></div>
+    <p class="bnote" style="margin-top:0">Once your deposit confirms on-chain, run <b>/verify</b> in the <b>#verify</b> channel — the bot reads your bond by your Discord id and grants your <b>Bonded</b> role. You can check your bond status here first:</p>
+    <div class="brow">
+      <button class="bkey ghost" id="dbCheckBtn" type="button">check my bond -&gt;</button>
+    </div>
+    <div class="bprev" id="dbCheckMsg" hidden></div>
+    <p class="bnote">No personal data leaves your browser — only the public bond record tied to the Discord id you entered above.</p>
+  </section>
+
+  <section class="bsec">
+    <div class="bh"><span>bond vault · live</span><span class="bstep">read from chain</span></div>
+    <div class="bstat">
+      <div><div class="k">bond amount</div><div class="v" id="dbStatBond">—</div></div>
+      <div><div class="k">ban threshold</div><div class="v" id="dbStatBan">—</div></div>
+      <div><div class="k">total bonded stake</div><div class="v" id="dbStatStake">—</div></div>
+    </div>
+    <p class="bnote">These are the governance-set parameters, read live from the bond-vault contract. The ban threshold is the share of bonded stake that must vote "liquidate" to burn a bond.</p>
+  </section>
+
+  <section class="bsec">
+    <div class="bh"><span>accusations · community vote</span><span class="bstep">the bond's own ballot — not governance</span></div>
+    <p class="bnote" style="margin-top:0">This is the bond's <b>own</b> dispute ballot, separate from protocol governance. Any bonded member can file; bonded members vote <b>liquidate</b> (burn the bond, remove the member) or <b>dismiss</b>. Liquidate above the threshold sends the bond to the burn address.</p>
+    <div id="dbCases"><p class="bnote">Loading open cases…</p></div>
+
+    <div class="bh" style="margin-top:22px"><span>file an accusation</span><span class="bstep">bonded members only</span></div>
+    <div class="bfield"><label for="dbAcc">accused bond id</label><input id="dbAcc" type="text" inputmode="numeric" placeholder="e.g. 41" autocomplete="off"></div>
+    <div class="bfield"><label for="dbReason">reason</label>
+      <select id="dbReason">
+        <option value="0">unspecified</option>
+        <option value="1">rate / flood</option>
+        <option value="2">near-duplicate spam</option>
+        <option value="3">mass-mention</option>
+        <option value="4">link-flood</option>
+        <option value="5">invite-spam</option>
+        <option value="6">post-join burst</option>
+      </select>
+    </div>
+    <div class="bfield"><label for="dbEvidence">evidence (tx hash, chat export url, or a 64-hex hash)</label><input id="dbEvidence" type="text" placeholder="hashed to 32 bytes on-chain; the text itself is not stored" autocomplete="off"></div>
+    <div class="brow"><button class="bkey" id="dbFileBtn" type="button">file accusation -&gt;</button></div>
+    <div class="bprev" id="dbFileMsg" hidden></div>
+  </section>
+
+  <div class="bbanner">
+    <b>On-chain.</b> Deposits, cases, votes and burns all run through two contracts on Neo N3 TestNet — no admin key moves a bond.
+    <div class="bhash" style="margin-top:8px">
+      <b>vault</b> 0x62f053d7f360d286e6ee0551155d7724564fea2b<br>
+      <b>ballot</b> 0xfada35e4dd4fd8ce22c7badf2d6449b449aaeda9<br>
+      <b>FTB</b> 0x1ff1f51e63179867367ae8982af583e01e7cbdbd
+    </div>
+  </div>
+</main>
+
+<!-- ================= modal: review & sign ================= -->
+<div id="ov" class="overlay" hidden role="dialog" aria-modal="true" aria-label="review and sign">
+  <div class="panel" tabindex="-1">
+    <button class="x" data-close aria-label="close">[ close ]</button>
+    <h2 class="disp" id="ovTitle">review</h2>
+    <p class="muted small" style="max-width:54ch" id="ovDesc">review before you sign. your wallet shows the exact invocation; this panel shows the same thing in words.</p>
+    <section class="path">
+      <h3 id="ovSec">// details</h3>
+      <div class="warn" id="ovWarn"></div>
+      <div id="ovBody"></div>
+      <div class="row" style="margin-top:.6rem">
+        <button id="ovGo">sign in wallet</button>
+        <button class="linkish" data-close>cancel</button>
+      </div>
+      <div id="ovMsg"></div>
+    </section>
+  </div>
+</div>
+
+<!-- ================= modal: own RPC ================= -->
+<div id="ovRpc" class="overlay" hidden role="dialog" aria-modal="true" aria-label="use your own node">
+  <div class="panel" tabindex="-1">
+    <button class="x" data-close aria-label="close">[ close ]</button>
+    <h2 class="disp">your node</h2>
+    <p class="muted small" style="max-width:54ch">paste the URL of a Neo N3 RPC node you control. a user on their own node cannot be censored. stored only in this browser.</p>
+    <section class="path">
+      <h3>// endpoint</h3>
+      <input id="ownRpcIn" placeholder="https://your.node.example:443" autocomplete="off">
+      <div class="row" style="margin-top:.6rem">
+        <button id="ownRpcGo">use it</button>
+        <button class="linkish" id="ownRpcReset">reset to list</button>
+      </div>
+      <div id="ownRpcMsg"></div>
+    </section>
+  </div>
+</div>
+
+<footer class="foot3">
+  <span class="disp" style="font-size:20px">free the bird</span><br>
+  <span class="muted" id="shiftLine">// night shift</span><br>
+  Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
+  MIT code, public proofs - a gift to the Flamingo community.
+</footer>
+
+<script src="config.js"></script>
+<script src="ftb-dapi.js"></script>
+<script src="js/ftb-rpc.js"></script>
+<script src="js/ftb-state.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/mod-wallet.js"></script>
+<script src="js/mod-discord-bond.js"></script>
+</body>
+</html>
