@@ -34,6 +34,20 @@
     tick(); setInterval(tick, 1000);
   })();
 
+  // ---------- sticky-header height -> --stick (anchor offset tracks the real bar) ----------
+  // The sticky top bar changes height as the nav / controls wrap at narrow widths and when
+  // the wallet state flips; publishing its measured height into --stick keeps every
+  // [id]{scroll-margin-top} jump correct, instead of a fixed guess per breakpoint.
+  (function () {
+    var bar = document.querySelector('.topbar'); if (!bar) return;
+    var root = document.documentElement;
+    function sync() { root.style.setProperty('--stick', Math.round(bar.getBoundingClientRect().height) + 'px'); }
+    sync();
+    if (window.ResizeObserver) { new ResizeObserver(sync).observe(bar); }
+    window.addEventListener('resize', sync, { passive: true });
+    window.addEventListener('orientationchange', sync);
+  })();
+
   // ---------- modal plumbing ----------
   Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) {
     b.addEventListener('click', function () { b.closest('.overlay').hidden = true; });

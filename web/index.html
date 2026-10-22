@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
 <!-- F6 remediation: Content-Security-Policy. All scripts are first-party ('self'); no inline
      or remote script may run, so an injected <script> (e.g. via the config-label ticker) cannot
      execute. Styles/fonts are self + inline + data: (the page embeds its font as a data: URL);
@@ -65,7 +66,7 @@
 
 *{box-sizing:border-box}
 html,body{margin:0}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%; -webkit-tap-highlight-color:transparent}
 body{
   background:var(--paper); color:var(--ink);
   font-family:var(--mono); font-size:15px; line-height:1.65;
@@ -100,9 +101,10 @@ textarea,input{
 .idstate{letter-spacing:.04em; color:var(--ink-2); white-space:nowrap}
 
 /* menu jumps: land each module just below the sticky bar, fully visible.
-   the two-row bar is ~91px on desktop and taller as the nav wraps, so the
-   offset steps up at the same breakpoints the bar grows (see media queries) */
-[id]{scroll-margin-top:calc(98px + env(safe-area-inset-top,0px))}
+   the bar's height varies - the nav and controls wrap at narrow widths and the
+   wallet state can add a row - so shell.js measures it into --stick and the
+   offset tracks it exactly, instead of guessing a number per breakpoint. */
+[id]{scroll-margin-top:calc(var(--stick,98px) + 12px + env(safe-area-inset-top,0px))}
 
 main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   padding-top:calc(54px + env(safe-area-inset-top,0px))}
@@ -147,7 +149,8 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .crow .linkish{font-size:12px; white-space:nowrap; align-self:center}
 /* ---- verify (v0.10 redesign): one provenance pane, grouped contracts / integrity ---- */
 .vprov .vgh{grid-column:1 / -1; color:var(--ink); letter-spacing:.14em; text-transform:uppercase;
-  font-size:11px; border-bottom:1px solid var(--hair); padding-bottom:5px; margin-top:9px}
+  font-size:11px; border-bottom:1px solid var(--hair); padding-bottom:5px; margin-top:9px;
+  white-space:normal}
 .vprov .vgh:first-child{margin-top:0}
 @media (max-width:640px){
   .crow{grid-template-columns:1fr auto}
@@ -215,10 +218,37 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .brow-act{grid-column:1 / -1; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid var(--hair); padding-top:10px}
 .brow-act button{font-size:12px}
 @media (max-width:640px){
-  .ballotmenu .poolrow > summary{grid-template-columns:2.6em 1fr 1.2em; row-gap:.2rem}
-  .ballotmenu .bres{grid-column:2; justify-self:start}
+  /* ballot rows wrap instead of forcing the middle column wide: phones were
+     overflowing because the 1fr column grew to the nowrap question/result width */
+  .ballotmenu .poolrow > summary{grid-template-columns:2.6em minmax(0,1fr) 1.2em; row-gap:.2rem}
+  .ballotmenu .bq{white-space:normal; overflow:visible; text-overflow:clip}
+  .ballotmenu .bres{grid-column:2; justify-self:start; white-space:normal}
   .ballotmenu .bdid{grid-column:2; justify-self:start}
-  .bdetail{grid-template-columns:1fr}
+  /* beat the 2-col base rule's (0,3,0) specificity so the option bars stack ABOVE
+     the donut+turnout instead of being crushed into a sliver that overlaps the pie */
+  .poolrow .pr-detail.bdetail{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  /* dividends / stat rows: the markup carries an inline repeat(4,1fr); on phones that
+     squeezes long figures (e.g. "1,470,000 FTB") into ~67px columns. Stack them as
+     full-width rows - label left, value right - so every figure stays readable.
+     !important is required to beat the element's inline grid-template-columns. */
+  .flockstats{grid-template-columns:1fr !important; gap:0}
+  .flockstats .fs{display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+    border-top:1px solid var(--hair); padding:9px 0; min-width:0}
+  .flockstats .fs:first-child{border-top:0}
+  .flockstats .fs .l{flex-shrink:0}
+  .flockstats .fs .v{text-align:right; min-width:0; overflow-wrap:anywhere}
+  /* any pool / fee row in a .poollist (token ratios, pools, fee split - NOT ballots):
+     when the pair + ratio + change can't fit one line on a phone, drop the ratio and the
+     change onto their own lines below the pair label. Was clipping e.g.
+     "1 GAS = 42.2106 FTB" -> "1 GA..." and "66.7%" -> "66...". */
+  .poollist:not(.ballotmenu) .poolrow > summary{grid-template-columns:1fr 1.2em; row-gap:.15rem; align-items:baseline}
+  .poollist:not(.ballotmenu) .poolrow > summary .pr-pair{grid-column:1; grid-row:1}
+  .poollist:not(.ballotmenu) .poolrow > summary .pr-caret{grid-column:2; grid-row:1; justify-self:end}
+  .poollist:not(.ballotmenu) .poolrow > summary .pr-ratio{grid-column:1 / -1; grid-row:2; justify-self:start;
+    white-space:normal; overflow:visible; text-overflow:clip}
+  .poollist:not(.ballotmenu) .poolrow > summary .pr-chg{grid-column:1 / -1; grid-row:3; justify-self:start}
 }
 .poolrow:hover .pr-caret{color:var(--keyfg)}
 .poolrow .pr-detail{padding:10px 14px 12px; display:flex; flex-direction:column; gap:7px}
@@ -377,7 +407,6 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 
 @media (max-width:460px){
   .idstate{display:none}
-  .tiles{grid-template-columns:1fr}  /* phones: one tile per row, every figure always fits */
   .trow{grid-template-columns:1fr auto; gap:.3rem}  /* keep label|max top row; line + pills still stack */
   .trow input{text-align:left}
   .entry{grid-template-columns:1.9em 1fr}
@@ -419,6 +448,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
   border:0}
 .topbar .wordmark:hover{background:transparent; color:var(--ink)}
 .tabs{display:flex; align-items:center; gap:3px; flex-wrap:wrap}
+.tabs-main, .tabs-ext{display:contents}  /* transparent on desktop; become grouped blocks on phones */
 /* thin divider between the in-page sections and the external links (↗) */
 .tabs .tabsep{width:1px; align-self:center; height:1.5em; background:var(--hair); margin:0 6px}
 .tabs a{border:1px solid transparent; padding:5px 11px; font-size:12px;
@@ -541,14 +571,39 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 .tabs a:first-child, .ctabs a:first-child, .ctabs span.cur:first-child{margin-left:0}
 
 @media (max-width:860px){
-  .tradegrid, .earngrid, .govgrid, .govcols{grid-template-columns:1fr}
-  .tiles{grid-template-columns:1fr 1fr}
+  .tradegrid, .earngrid, .govgrid, .govcols{grid-template-columns:minmax(0,1fr)}  /* min:0 so full-width cards shrink below content on phones, not overflow */
+  .tiles{grid-template-columns:1fr 1fr}   /* tablet: two tiles per row */
   .topbar{padding:8px 12px}
   .statusline{padding:6px 12px}
-  [id]{scroll-margin-top:calc(126px + env(safe-area-inset-top,0px))}
+}
+@media (max-width:600px){
+  /* phone header: four separated, centered groups that scroll away (not pinned):
+     1) network toggle  2) connect / own-node  3) nav (5 tabs per row, grows later)  4) links.
+     each group sits on its own band, divided by hairlines. */
+  .topbar{position:static; gap:0}
+  [id]{scroll-margin-top:calc(14px + env(safe-area-inset-top,0px))}  /* nothing sticky now */
+  .topbar-main{flex-direction:column; align-items:stretch; gap:0}
+  .brand{justify-content:center; padding-bottom:8px}
+  .topright{width:100%; justify-content:center; flex-wrap:wrap; gap:0 10px; padding:0}
+  .topright .netswitch{flex-basis:100%; justify-content:center; padding:8px 0;
+    border-top:1px solid var(--hair); border-bottom:1px solid var(--hair)}
+  #connectBtn, #disconnectBtn, #ownRpcBtn{margin:8px 0}
+  .tabs{flex-direction:column; align-items:stretch; gap:0; min-width:0}
+  .tabs-main{display:grid; grid-template-columns:repeat(5,1fr); gap:5px;
+    width:100%; padding:8px 0 0; border-top:1px solid var(--hair)}
+  .tabs-main a{text-align:center; padding:6px 3px; min-width:0; letter-spacing:.04em}
+  .tabs .tabsep{display:block; width:auto; height:auto; background:none; border:0;
+    margin:9px 0 3px; padding:0; text-align:center}
+  .tabs .tabsep::before{content:"links"; font-size:9.5px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--faint)}
+  .tabs-ext{display:flex; justify-content:center; flex-wrap:wrap; gap:8px}
+  /* the launch strip wraps to a second line rather than truncating the countdown */
+  .launchbar{white-space:normal; overflow:visible; text-overflow:clip; line-height:1.45}
 }
 @media (max-width:460px){
-  [id]{scroll-margin-top:calc(168px + env(safe-area-inset-top,0px))}
+  .idstate{display:none}
+  /* phones: one tile per row - re-asserted after the 860 tablet rule so it wins */
+  .tiles{grid-template-columns:1fr}
 }
 
 </style>
@@ -579,17 +634,21 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   </div>
   <!-- nav: its own full-width row, left-aligned, so the top line stays symmetric -->
   <nav class="tabs" aria-label="sections">
-    <a href="#trade">trade</a>
-    <a href="#earn">earn</a>
-    <a href="#lend">lend</a>
-    <a href="#vote">vote</a>
-    <a href="#board">board</a>
-    <a href="#claim">claim</a>
-    <a href="#verify">verify</a>
+    <div class="tabs-main">
+      <a href="#trade">trade</a>
+      <a href="#earn">earn</a>
+      <a href="#lend">lend</a>
+      <a href="#vote">vote</a>
+      <a href="#board">board</a>
+      <a href="#claim">claim</a>
+      <a href="#verify">verify</a>
+    </div>
     <span class="tabsep" aria-hidden="true"></span>
-    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
-    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
-    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    <div class="tabs-ext">
+      <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
+      <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
+      <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    </div>
   </nav>
 </header>
 
@@ -1039,19 +1098,19 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   </div>
 </div>
 
-<script src="config.js"></script>
-<script src="ftb-dapi.js"></script>
-<script src="js/ftb-rpc.js"></script>
-<script src="js/ftb-state.js"></script>
-<script src="js/shell.js"></script>
-<script src="js/mod-token.js"></script>
-<script src="js/mod-swap.js"></script>
-<script src="js/mod-earn.js"></script>
-<script src="js/mod-lend.js"></script>
-<script src="js/mod-gov.js"></script>
-<script src="js/mod-board.js"></script>
-<script src="js/mod-claim.js"></script>
-<script src="js/mod-verify.js"></script>
-<script src="js/mod-wallet.js"></script>
+<script defer src="config.js"></script>
+<script defer src="ftb-dapi.js"></script>
+<script defer src="js/ftb-rpc.js"></script>
+<script defer src="js/ftb-state.js"></script>
+<script defer src="js/shell.js"></script>
+<script defer src="js/mod-token.js"></script>
+<script defer src="js/mod-swap.js"></script>
+<script defer src="js/mod-earn.js"></script>
+<script defer src="js/mod-lend.js"></script>
+<script defer src="js/mod-gov.js"></script>
+<script defer src="js/mod-board.js"></script>
+<script defer src="js/mod-claim.js"></script>
+<script defer src="js/mod-verify.js"></script>
+<script defer src="js/mod-wallet.js"></script>
 </body>
 </html>
