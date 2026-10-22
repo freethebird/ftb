@@ -14,6 +14,13 @@ web/config.js
 # testnet deploy wallet password
 cmd/deploy/.pass
 
+# canonical bibles are internal doctrine - developer reference, never published
+CANONICAL_BIBLE_*.md
+
+# agent/Claude output bundles (tarballs, binaries) - never commit
+**/Claude outputs/
+cmd/*/Claude outputs/
+
 # os / editor noise
 .DS_Store
 
@@ -30,3 +37,16 @@ web/beat.json
 /ammdeploy
 /rootswap3
 /launch2
+
+# internal doctrine / audit lineage - mandatory for our work, never published
+/PROJECT_AUDIT_AND_THREAT_MODEL_2026-10-14.md
+/DECISIONS.md
+/SESSION_2026-10-20.md
+/UIUX_USECASES_EXPORT_2026-10-21.md
+docs/audits/
+web/FTB-IAR-v0.13.md
+web/QA_AUDIT_v0.13.md
+web/WEB_AUDIT.md
+web/QA_GATE.md
+web/invocations.md
+web/archive/PROPOSAL1_MO_AUDIT.md
