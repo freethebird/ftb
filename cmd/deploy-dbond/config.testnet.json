@@ -1,0 +1,14 @@
+{
+  "rpc": "https://testnet1.neo.coz.io:443",
+  "wallet": "cmd/deploy/testnet.wallet.json",
+  "password": "",
+  "password_env": "FTB_DEPLOY_PASS",
+  "contracts_dir": "build",
+
+  "ftb": "0x1ff1f51e63179867367ae8982af583e01e7cbdbd",
+  "governance": "NeNEyksWAkbJdEXqVta2X1N3rx1hmzwReP",
+  "burn": "0x000000000000000000000000000000000000dead",
+  "bond_amount": 100000000000,
+  "ban_bps": 2000,
+  "voting_window": 20
+}

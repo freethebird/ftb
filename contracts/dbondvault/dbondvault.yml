@@ -1,0 +1,62 @@
+name: FtbDiscordBond
+safemethods:
+  - getBond
+  - getBondByDiscord
+  - isBondedVoter
+  - stakeOf
+  - bondAmount
+  - banBps
+  - votingWindow
+  - totalActiveBondedStake
+events:
+  - name: Configured
+    parameters:
+      - name: accusation
+        type: Hash160
+      - name: governance
+        type: Hash160
+      - name: bondAmount
+        type: Integer
+      - name: banBps
+        type: Integer
+      - name: window
+        type: Integer
+  - name: Bonded
+    parameters:
+      - name: bondId
+        type: Integer
+      - name: owner
+        type: Hash160
+      - name: discordId
+        type: ByteArray
+      - name: amount
+        type: Integer
+  - name: Refunded
+    parameters:
+      - name: bondId
+        type: Integer
+      - name: owner
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: Liquidated
+    parameters:
+      - name: bondId
+        type: Integer
+      - name: owner
+        type: Hash160
+      - name: amount
+        type: Integer
+  - name: ParamsUpdated
+    parameters:
+      - name: bondAmount
+        type: Integer
+      - name: banBps
+        type: Integer
+      - name: window
+        type: Integer
+# DEPLOY: pin to the FTB token hash (methods: transfer) before mainnet — closes O3.
+permissions:
+  - contract: '*'
+    methods:
+      - transfer

@@ -1,0 +1,53 @@
+name: FtbBondAccusation
+safemethods:
+  - getCase
+  - listOpenCases
+  - isBondedVoter
+events:
+  - name: Configured
+    parameters:
+      - name: vault
+        type: Hash160
+  - name: CaseFiled
+    parameters:
+      - name: caseId
+        type: Integer
+      - name: accusedBondId
+        type: Integer
+      - name: reasonCode
+        type: Integer
+      - name: evidenceHash
+        type: ByteArray
+      - name: filer
+        type: Hash160
+  - name: Voted
+    parameters:
+      - name: caseId
+        type: Integer
+      - name: voter
+        type: Hash160
+      - name: liquidate
+        type: Boolean
+      - name: weight
+        type: Integer
+  - name: CaseResolved
+    parameters:
+      - name: caseId
+        type: Integer
+      - name: accusedBondId
+        type: Integer
+      - name: status
+        type: Integer
+# DEPLOY: pin to the deployed FtbDiscordBond hash before mainnet.
+permissions:
+  - contract: '*'
+    methods:
+      - isBondedVoter
+      - stakeOf
+      - getBond
+      - totalActiveBondedStake
+      - banBps
+      - votingWindow
+      - condemn
+      - lockForCase
+      - unlockForCase
