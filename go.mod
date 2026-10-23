@@ -2,6 +2,12 @@ module github.com/freethebird/ftb
 
 go 1.26.0
 
+// Toolchain floor: go1.27.3 patches crypto/x509 GO-2026-6809 (the `make vuln` /
+// govulncheck gate). Pinned here so the conformance gate uses the fixed stdlib
+// reproducibly, independent of any developer's system Go. Does not affect NEF output
+// (that comes from the neo-go compiler binary, not the host toolchain).
+toolchain go1.27.3
+
 // Pin to the current neo-go. `go mod tidy` will resolve the exact patch and deps.
 // neo-go provides the Go->NeoVM contract compiler, the SDK, and the node, so this
 // single dependency covers contracts, backend, and node (one language end to end).

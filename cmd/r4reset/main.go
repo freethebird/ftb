@@ -43,9 +43,8 @@ import (
 const defaultRegistry = "0x0d59f3bb8018f5668ac4448249f21927fe961614"
 const defaultRoot = "9a36b6a0faf6adddf727788e5a35ba9db48db14958043637fad67fb468243003"
 
-// deploySet: artifact name in build/ -> registry key it answers to ("" = core, re-pointed
-// separately below). Order is readability only; hashes are content-derived.
-var coreArtifacts = []string{"ftb_token", "ftb_migrator"}
+// deploySet: artifact name in build/ -> registry key it answers to. Order is readability
+// only; hashes are content-derived.
 var moduleArtifacts = map[string]string{ // artifact -> registry key
 	"lend_r2":      "lend",
 	"bondvault_r2": "bondvault",

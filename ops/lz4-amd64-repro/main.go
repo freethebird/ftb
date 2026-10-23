@@ -19,7 +19,7 @@ import (
 
 func main() {
 	for _, fn := range []string{"payload-neo-csharp.bin", "payload-neo-go.bin"} {
-		d, err := os.ReadFile(fn)
+		d, err := os.ReadFile(fn) // #nosec G304 -- repro tool: fn ranges over a fixed in-code list, not external input
 		if err != nil {
 			fmt.Println("read:", err)
 			os.Exit(1)
@@ -28,7 +28,7 @@ func main() {
 		dst := make([]byte, want)
 		n, err := lz4.UncompressBlock(d[4:], dst)
 		status := "OK"
-		if err != nil || uint32(n) != want {
+		if err != nil || uint32(n) != want { // #nosec G115 -- repro tool: n is a small decompressed length, bounded by want
 			status = "FAIL"
 		}
 		fmt.Printf("%-22s want=%d got=%d err=%v  -> %s\n", fn, want, n, err, status)
