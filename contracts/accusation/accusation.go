@@ -46,6 +46,7 @@ const (
 	prefixCase     = "c" // c<id>            -> serialized Case
 	prefixVoted    = "v" // v<id>|<voter>    -> 1
 	prefixOpenBond = "o" // o<bondId>        -> case id (guards one open case per bond)
+	prefixCooldown = "x" // x<bondId>        -> block after which the bond may be re-filed
 )
 
 const (
@@ -56,6 +57,7 @@ const (
 	keyOpenCases  = "L"
 )
 
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return
@@ -100,6 +102,9 @@ func FileCase(filer interop.Hash160, accusedBondID, reasonCode int, evidenceHash
 	if storage.Get(ctx, openBondKey(accusedBondID)) != nil {
 		panic("a case is already open for this bond")
 	}
+	if ledger.CurrentIndex() < reFileCooldownOf(ctx, accusedBondID) {
+		panic("bond is in post-dismissal cooldown")
+	}
 	owner, amount, status := accusedFields(vault, accusedBondID)
 	if status != 1 { // dbondvault statusActive
 		panic("accused bond is not active")
@@ -116,6 +121,9 @@ func FileCase(filer interop.Hash160, accusedBondID, reasonCode int, evidenceHash
 		denom = 0
 	}
 	threshold := banBps * denom / 10000
+	if threshold <= 0 {
+		panic("insufficient bonded stake to open a case")
+	}
 
 	id := storageInt(ctx, keyNextCase)
 	c := Case{
@@ -175,6 +183,9 @@ func Vote(voter interop.Hash160, caseID int, liquidate bool) {
 		c.AgainstStake += weight
 	}
 	storage.Put(ctx, caseKey(caseID), std.Serialize(c))
+	// Lock the voter's own bond from refund until the case deadline, so the stake
+	// backing this vote cannot be pulled and recycled into another wallet.
+	contract.Call(vault, "lockVoter", contract.All, voter, c.Deadline)
 	runtime.Notify("Voted", caseID, voter, liquidate, weight)
 }
 
@@ -188,11 +199,12 @@ func Resolve(caseID int) {
 	if c.Status != caseOpen {
 		panic("case already resolved")
 	}
-	reached := c.ForStake >= c.Threshold
-	if !reached && ledger.CurrentIndex() <= c.Deadline {
-		panic("voting still open")
+	// Full window must close before any resolution, so "against" voters are never
+	// cut off by an early liquidation once "for" crosses the threshold (M1).
+	if ledger.CurrentIndex() <= c.Deadline {
+		panic("voting window still open")
 	}
-	pass := reached && c.ForStake > c.AgainstStake
+	pass := c.ForStake >= c.Threshold && c.ForStake > c.AgainstStake
 	if pass {
 		c.Status = caseLiquidated
 	} else {
@@ -207,6 +219,10 @@ func Resolve(caseID int) {
 	if pass {
 		contract.Call(vault, "condemn", contract.All, c.AccusedBondID)
 	} else {
+		// Post-dismissal cooldown (= voting window) so a dismissed accusation cannot be
+		// re-filed immediately to keep the bond locked indefinitely (M2).
+		window := contract.Call(vault, "votingWindow", contract.ReadOnly).(int)
+		storage.Put(ctx, cooldownKey(c.AccusedBondID), ledger.CurrentIndex()+window)
 		contract.Call(vault, "unlockForCase", contract.All, c.AccusedBondID)
 	}
 	runtime.Notify("CaseResolved", caseID, c.AccusedBondID, c.Status)
@@ -291,8 +307,17 @@ func storageInt(ctx storage.Context, key string) int {
 	return v.(int)
 }
 
+func reFileCooldownOf(ctx storage.Context, bondID int) int {
+	v := storage.Get(ctx, cooldownKey(bondID))
+	if v == nil {
+		return 0
+	}
+	return v.(int)
+}
+
 func caseKey(id int) []byte     { return append([]byte(prefixCase), []byte(std.Itoa(id, 10))...) }
 func openBondKey(id int) []byte { return append([]byte(prefixOpenBond), []byte(std.Itoa(id, 10))...) }
+func cooldownKey(id int) []byte { return append([]byte(prefixCooldown), []byte(std.Itoa(id, 10))...) }
 
 func votedKey(id int, voter interop.Hash160) []byte {
 	k := append([]byte(prefixVoted), []byte(std.Itoa(id, 10))...)

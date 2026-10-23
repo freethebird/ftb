@@ -14,6 +14,7 @@ package dbondvault
 import (
 	"github.com/nspcc-dev/neo-go/pkg/interop"
 	"github.com/nspcc-dev/neo-go/pkg/interop/contract"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/ledger"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/std"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
@@ -39,10 +40,11 @@ type Bond struct {
 
 // per-id / per-key storage prefixes.
 const (
-	prefixBond    = "b" // b<id>        -> serialized Bond
-	prefixDiscord = "d" // d<discordId> -> bond id
-	prefixWallet  = "w" // w<wallet>    -> bond id (one active bond per wallet)
-	prefixGuard   = "g" // g<id>        -> 1 while an accusation case is open
+	prefixBond     = "b" // b<id>        -> serialized Bond
+	prefixDiscord  = "d" // d<discordId> -> bond id
+	prefixWallet   = "w" // w<wallet>    -> bond id (one active bond per wallet)
+	prefixGuard    = "g" // g<id>        -> 1 while an accusation case is open
+	prefixVoteLock = "r" // r<wallet>    -> block until which refund is locked (open vote)
 )
 
 // singleton storage keys.
@@ -62,6 +64,8 @@ const (
 
 // _deploy records the deploy owner (passed as deploy data). The owner's only
 // power is the one-time Configure; it holds no authority afterwards.
+//
+//lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
 func _deploy(data any, isUpdate bool) {
 	if isUpdate {
 		return
@@ -79,6 +83,9 @@ func Configure(ftb, accusation, governance, burn interop.Hash160, bondAmount, ba
 	owner := storage.Get(ctx, keyOwner).(interop.Hash160)
 	if !runtime.CheckWitness(owner) {
 		panic("configure: owner witness required")
+	}
+	if len(ftb) != 20 || len(accusation) != 20 || len(governance) != 20 || len(burn) != 20 {
+		panic("configure: ftb, accusation, governance and burn must be 20-byte hashes")
 	}
 	validateParams(bondAmount, banBps, window)
 	storage.Put(ctx, keyFTB, ftb)
@@ -148,6 +155,9 @@ func Refund(bondID int) {
 	if storage.Get(ctx, guardKey(bondID)) != nil {
 		panic("bond locked: an accusation case is open")
 	}
+	if ledger.CurrentIndex() < voteLockOf(ctx, b.Owner) {
+		panic("bond locked: an open vote is pending")
+	}
 	// CEI: write state before the external transfer.
 	b.Status = statusRefunded
 	storage.Put(ctx, bondKey(bondID), std.Serialize(b))
@@ -190,6 +200,17 @@ func UnlockForCase(bondID int) {
 	ctx := storage.GetContext()
 	requireAccusation(ctx)
 	storage.Delete(ctx, guardKey(bondID))
+}
+
+// LockVoter extends a voter's refund lock to untilBlock. Ballot only. Called when
+// a bonded member votes, so the stake backing a vote cannot be refunded before the
+// case closes (blocks vote manufacturing via refund-and-rebond). Never shortens.
+func LockVoter(wallet interop.Hash160, untilBlock int) {
+	ctx := storage.GetContext()
+	requireAccusation(ctx)
+	if untilBlock > voteLockOf(ctx, wallet) {
+		storage.Put(ctx, voteLockKey(wallet), untilBlock)
+	}
 }
 
 // SetParams updates the governed parameters. ONLY the governance timelock may
@@ -308,6 +329,14 @@ func storageInt(ctx storage.Context, key string) int {
 	return v.(int)
 }
 
+func voteLockOf(ctx storage.Context, w interop.Hash160) int {
+	v := storage.Get(ctx, voteLockKey(w))
+	if v == nil {
+		return 0
+	}
+	return v.(int)
+}
+
 func storageHash(ctx storage.Context, key string) interop.Hash160 {
 	return storage.Get(ctx, key).(interop.Hash160)
 }
@@ -316,3 +345,7 @@ func bondKey(id int) []byte              { return append([]byte(prefixBond), []b
 func guardKey(id int) []byte             { return append([]byte(prefixGuard), []byte(std.Itoa(id, 10))...) }
 func discordKey(d []byte) []byte         { return append([]byte(prefixDiscord), d...) }
 func walletKey(w interop.Hash160) []byte { return append([]byte(prefixWallet), w...) }
+
+func voteLockKey(w interop.Hash160) []byte {
+	return append([]byte(prefixVoteLock), w...)
+}
