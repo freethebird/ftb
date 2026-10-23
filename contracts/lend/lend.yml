@@ -5,6 +5,7 @@ safemethods:
   - collateralOf
   - maxBorrow
   - isUnhealthy
+  - healthFactor
   - sharesOf
   - totalShares
   - totalBorrows
@@ -71,6 +72,20 @@ events:
         type: Integer
   - name: UpgradeCancelled
     parameters: []
+  - name: GuardsSet
+    parameters:
+      - name: maxRefStep
+        type: Integer
+      - name: breaker
+        type: Integer
+  - name: BadDebtWritten
+    parameters:
+      - name: borrower
+        type: Hash160
+      - name: residual
+        type: Integer
+      - name: absorbed
+        type: Integer
 permissions:
   - contract: '*'
     methods:

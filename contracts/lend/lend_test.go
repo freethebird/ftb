@@ -118,6 +118,37 @@ func (s *sys) ftbBal(t *testing.T, who util.Uint160, want int) {
 	s.e.NewInvoker(s.ftb, s.owner).Invoke(t, stackitem.Make(want), "balanceOf", who.BytesBE())
 }
 
+// ---- volatility-protection test helpers (claude/ftb-liquidation-model-study.md) ----
+//
+// The lagged reference only converges toward spot on WRITE paths, at maxRefStepBps of itself per
+// block. Tests whose subject is the seize math (not the transient-dump protection — that is
+// TestVolatility*) must settle the reference to a sustained new price first; these helpers do so
+// deterministically.
+
+// fastGuards widens the per-block reference step so a short settle fully converges the reference.
+func (s *sys) fastGuards(t *testing.T) {
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setGuards", 1000, 2500)
+}
+
+// newKeeper is a large, safe borrower whose write paths advance the shared reference — standing in
+// for the aggregate market activity that pulls it toward a sustained price. Create it AFTER the
+// pool has supply: it borrows a dust amount so its 0/0 withdraw has a (ref-advancing) health check.
+func (s *sys) newKeeper(t *testing.T) neotest.Signer {
+	k := s.e.NewAccount(t)
+	s.fundNeo(t, k.ScriptHash(), 1000)
+	s.postNeo(t, k, 1000)
+	s.e.NewInvoker(s.lend, k).Invoke(t, stackitem.Null{}, "borrow", k.ScriptHash().BytesBE(), 1*dec)
+	return k
+}
+
+// settle drives the stored reference to the current spot: it mines blocks, then has the keeper
+// touch a write path (a 0/0 withdrawCollateral — runs the ref-advancing health check, moves no
+// collateral, applies no breaker). With fastGuards the reference converges fully.
+func (s *sys) settle(t *testing.T, keeper neotest.Signer) {
+	s.e.GenerateNewBlocks(t, 20)
+	s.e.NewInvoker(s.lend, keeper).Invoke(t, stackitem.Null{}, "withdrawCollateral", keeper.ScriptHash().BytesBE(), 0, 0)
+}
+
 func TestSupplyBorrowRepay(t *testing.T) {
 	s := setup(t)
 	supplier := s.e.NewAccount(t)
@@ -190,12 +221,14 @@ func TestGasCollateralValues(t *testing.T) {
 
 func TestLiquidationOnPriceDrop(t *testing.T) {
 	s := setup(t)
+	s.fastGuards(t)
 	supplier := s.e.NewAccount(t)
 	borrower := s.e.NewAccount(t)
 	liquidator := s.e.NewAccount(t)
 
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
 	s.supply(t, supplier, 4000*dec)
+	keeper := s.newKeeper(t) // created after supply (it borrows a dust amount)
 
 	s.fundNeo(t, borrower.ScriptHash(), 100)
 	s.postNeo(t, borrower, 100)
@@ -203,15 +236,20 @@ func TestLiquidationOnPriceDrop(t *testing.T) {
 	lendBorrower := s.e.NewInvoker(s.lend, borrower)
 	lendOwner := s.e.NewInvoker(s.lend, s.owner)
 
-	// borrow 2500 (within the 3000 cap at price 50)
+	// borrow 2500 (within the 3000 cap at price 50); this seeds the reference at 50
 	lendBorrower.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2500*dec)
 	lendOwner.Invoke(t, stackitem.Make(false), "isUnhealthy", borrower.ScriptHash().BytesBE())
 
-	// NEO price falls 50 -> 20. Collateral value 2000, threshold 75% = 1500, debt 2500 -> unhealthy
+	// NEO price falls 50 -> 20. The lagged reference still protects the position (max basis), so the
+	// raw drop alone does NOT mark it liquidatable — the transient-dump protection, covered fully by
+	// TestVolatilityDumpBreakerAndRecovery. A sustained move (settle) pulls the reference down.
 	s.setPrice(t, s.neo, 20*dec)
+	lendOwner.Invoke(t, stackitem.Make(false), "isUnhealthy", borrower.ScriptHash().BytesBE())
+	s.settle(t, keeper)
+	// at the converged price: collateral value 2000, threshold 75% = 1500, debt 2500 -> unhealthy
 	lendOwner.Invoke(t, stackitem.Make(true), "isUnhealthy", borrower.ScriptHash().BytesBE())
 
-	// liquidator repays 1000 FTB and seizes NEO at an 8% bonus:
+	// liquidator repays 1000 FTB and seizes NEO at an 8% bonus (seize uses spot, not the reference):
 	// seizeFTB = 1080, at price 20 that is exactly 54 whole NEO
 	s.mintFTB(t, liquidator.ScriptHash(), 2000*dec)
 	s.e.NewInvoker(s.ftb, liquidator).Invoke(t, stackitem.Make(true), "transfer",
@@ -227,15 +265,18 @@ func TestLiquidationOnPriceDrop(t *testing.T) {
 	lendOwner.Invoke(t, stackitem.Make(0), "liquidationsOf", liquidator.ScriptHash().BytesBE())
 }
 
-// When NEO alone cannot cover the seize, the remainder spills into GAS.
+// When NEO alone cannot cover the seize, the remainder spills into GAS. (The sustained drop is
+// settled first; the breaker/lag protection itself is covered by TestVolatility*.)
 func TestLiquidationSpillsIntoGas(t *testing.T) {
 	s := setup(t)
+	s.fastGuards(t)
 	supplier := s.e.NewAccount(t)
 	borrower := s.e.NewAccount(t, 200*dec) // posts 100 GAS as collateral, keeps the rest for fees
 	liquidator := s.e.NewAccount(t)
 
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
 	s.supply(t, supplier, 4000*dec)
+	keeper := s.newKeeper(t)
 
 	// 10 NEO (500 FTB) + 100 GAS (500 FTB) = 1000 FTB; LTV 60% -> borrow 600
 	s.fundNeo(t, borrower.ScriptHash(), 10)
@@ -247,6 +288,7 @@ func TestLiquidationSpillsIntoGas(t *testing.T) {
 	// NEO 50 -> 20 (10 NEO = 200), GAS 5 -> 2 (100 GAS = 200): cv 400 < debt 600 -> underwater
 	s.setPrice(t, s.neo, 20*dec)
 	s.setPrice(t, s.gas, 2*dec)
+	s.settle(t, keeper) // converges the NEO reference; the liquidation itself converges the GAS one
 
 	// liquidator repays 300: seize = 300 * 1.08 = 324 FTB. NEO covers only 200 -> all 10 NEO
 	// seized, and the remaining 124 FTB spills into GAS at 2 FTB/GAS -> exactly 62 GAS.
@@ -316,23 +358,27 @@ func TestDebtFreeWithdrawDuringOraclePause(t *testing.T) {
 }
 
 // FTB-07: when a position is NOT underwater, a single liquidation is capped at half the debt.
+// (The sustained dip is settled first; the transient-dump protection is covered by TestVolatility*.)
 func TestCloseFactorCapsLiquidation(t *testing.T) {
 	s := setup(t)
+	s.fastGuards(t)
 	supplier := s.e.NewAccount(t)
 	borrower := s.e.NewAccount(t)
 	liquidator := s.e.NewAccount(t)
 
 	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
 	s.supply(t, supplier, 4000*dec)
+	keeper := s.newKeeper(t)
 
 	// borrower posts 100 NEO at price 50 (value 5000) and borrows 2500 (within 60% LTV = 3000)
 	s.fundNeo(t, borrower.ScriptHash(), 100)
 	s.postNeo(t, borrower, 100)
 	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2500*dec)
 
-	// price dips 50 -> 30: collateral value 3000 (>= debt 2500, so NOT underwater); threshold
-	// 75% = 2250, debt 2500 -> unhealthy. Close factor caps one repay at 2500/2 = 1250.
+	// price dips 50 -> 30 (sustained): collateral value 3000 (>= debt 2500, so NOT underwater);
+	// threshold 75% = 2250, debt 2500 -> unhealthy. Close factor caps one repay at 2500/2 = 1250.
 	s.setPrice(t, s.neo, 30*dec)
+	s.settle(t, keeper)
 
 	// liquidator offers 2000 FTB, but only 1250 is accepted; the rest is refunded
 	s.mintFTB(t, liquidator.ScriptHash(), 2000*dec)
@@ -639,5 +685,164 @@ func TestSweepIntoRealDividendsModule(t *testing.T) {
 	after := dividendsBalance(t, s, holder.ScriptHash())
 	if new(big.Int).Sub(after, before).Cmp(pending) != 0 {
 		t.Fatalf("claim paid %s, pending was %s", new(big.Int).Sub(after, before), pending)
+	}
+}
+
+// ---- volatility-protective liquidation model (claude/ftb-liquidation-model-study.md) ----
+
+// A sharp upward move (a pump) past the breaker pauses NEW borrows while the reference lags, so an
+// inflate-then-borrow attack cannot size a loan against a transiently-inflated collateral price.
+func TestVolatilityPumpBreakerPausesBorrow(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lb := s.e.NewInvoker(s.lend, borrower)
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 1000*dec) // seeds the reference at 50
+
+	// NEO spot pumps 2x; with the default (slow) guards the reference lags far below, so the upside
+	// breaker fires and borrows are paused
+	s.setPrice(t, s.neo, 100*dec)
+	lb.InvokeFail(t, "borrows paused", "borrow", borrower.ScriptHash().BytesBE(), 1*dec)
+}
+
+// A smaller pump, inside the breaker band, does NOT pause borrows — but sizing still uses the
+// lagged reference, not the pumped spot, so extra borrow that only the spot price would allow is
+// still rejected on LTV. This is the softer half of the pump protection.
+func TestVolatilityPumpLagBluntsBorrow(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lb := s.e.NewInvoker(s.lend, borrower)
+	// borrow near the cap at the seeded price (ref 50 -> max borrow 100*50*0.6 = 3000)
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2900*dec)
+
+	// NEO pumps 50 -> 60 (+20%, inside the 25% breaker). Sizing still uses min(spot, ref) ~ 50, so
+	// a further 200 (which only the spot price of 60 would allow) exceeds the reference-based LTV.
+	s.setPrice(t, s.neo, 60*dec)
+	lb.InvokeFail(t, "exceeds LTV", "borrow", borrower.ScriptHash().BytesBE(), 200*dec)
+}
+
+// A sharp downward move (a dump): the max-basis valuation keeps a healthy position from reading
+// liquidatable, AND the downside breaker hard-pauses liquidations — so a flash-dump cannot
+// mass-liquidate users. Once the move is sustained and the reference catches down, protection
+// lifts and the liquidation proceeds normally.
+func TestVolatilityDumpBreakerAndRecovery(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	liquidator := s.e.NewAccount(t)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	keeper := s.newKeeper(t)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lb := s.e.NewInvoker(s.lend, borrower)
+	lo := s.e.NewInvoker(s.lend, s.owner)
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2500*dec) // seeds the reference at 50
+
+	// NEO dumps 50 -> 30 with the default (slow) guards: the reference lags, so the max-basis health
+	// view still reads healthy and the downside breaker pauses liquidations
+	s.setPrice(t, s.neo, 30*dec)
+	lo.Invoke(t, stackitem.Make(false), "isUnhealthy", borrower.ScriptHash().BytesBE())
+	s.mintFTB(t, liquidator.ScriptHash(), 2000*dec)
+	s.e.NewInvoker(s.ftb, liquidator).InvokeFail(t, "liquidations paused", "transfer",
+		liquidator.ScriptHash().BytesBE(), s.lend.BytesBE(), 1000*dec, []any{"liq", borrower.ScriptHash()})
+
+	// sustain the move: the reference catches down to 30, protection lifts, liquidation proceeds
+	s.fastGuards(t)
+	s.settle(t, keeper)
+	lo.Invoke(t, stackitem.Make(true), "isUnhealthy", borrower.ScriptHash().BytesBE())
+	s.e.NewInvoker(s.ftb, liquidator).Invoke(t, stackitem.Make(true), "transfer",
+		liquidator.ScriptHash().BytesBE(), s.lend.BytesBE(), 1000*dec, []any{"liq", borrower.ScriptHash()})
+	lo.Invoke(t, stackitem.Make(1), "liquidationsOf", borrower.ScriptHash().BytesBE())
+}
+
+// SetGuards is owner-only and bounds both knobs so a mis-set can neither disable the protection
+// (maxRefStep 1..1000) nor freeze the market permanently (breaker 500..9000 bps).
+func TestSetGuardsBounds(t *testing.T) {
+	s := setup(t)
+	lo := s.e.NewInvoker(s.lend, s.owner)
+	lo.InvokeFail(t, "bad guard params", "setGuards", 0, 2500)
+	lo.InvokeFail(t, "bad guard params", "setGuards", 1001, 2500)
+	lo.InvokeFail(t, "bad guard params", "setGuards", 3, 499)
+	lo.InvokeFail(t, "bad guard params", "setGuards", 3, 9001)
+	lo.Invoke(t, stackitem.Null{}, "setGuards", 1, 500)     // lower edges accepted
+	lo.Invoke(t, stackitem.Null{}, "setGuards", 1000, 9000) // upper edges accepted
+	other := s.e.NewAccount(t)
+	s.e.NewInvoker(s.lend, other).InvokeFail(t, "only owner", "setGuards", 3, 2500)
+}
+
+// HealthFactor returns a large sentinel when debt-free, and the liquidation-basis collateral value
+// times the liquidation threshold as a bps multiple of debt otherwise (>= 10000 is healthy).
+func TestHealthFactor(t *testing.T) {
+	s := setup(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	s.mintFTB(t, supplier.ScriptHash(), 4000*dec)
+	s.supply(t, supplier, 4000*dec)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lo := s.e.NewInvoker(s.lend, s.owner)
+
+	// debt-free -> sentinel (returns before any oracle read)
+	lo.Invoke(t, stackitem.Make(2147483647), "healthFactor", borrower.ScriptHash().BytesBE())
+
+	// borrow 2500 at price 50: HF = (100*50) * 7500 / 2500 = 15000 bps (1.5x)
+	s.e.NewInvoker(s.lend, borrower).Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 2500*dec)
+	lo.Invoke(t, stackitem.Make(15000), "healthFactor", borrower.ScriptHash().BytesBE())
+}
+
+// O4: when a liquidation exhausts a borrower's collateral and debt remains, that residual is
+// written off immediately — charged to the holders' reserve first (their first-loss buffer), the
+// rest socialized to suppliers — so no uncollectible debt lingers accruing in the pool.
+func TestO4BadDebtWriteOff(t *testing.T) {
+	s := setup(t)
+	s.fastGuards(t)
+	supplier := s.e.NewAccount(t)
+	borrower := s.e.NewAccount(t)
+	liquidator := s.e.NewAccount(t)
+	// a real rate so interest accrues into the holders' reserve (the first-loss buffer O4 taps first)
+	s.e.NewInvoker(s.lend, s.owner).Invoke(t, stackitem.Null{}, "setRates", 10_000_000_000_000, 0, 0, 8000, 3333)
+	s.mintFTB(t, supplier.ScriptHash(), 10000*dec)
+	s.supply(t, supplier, 10000*dec)
+	keeper := s.newKeeper(t)
+	s.fundNeo(t, borrower.ScriptHash(), 100)
+	s.postNeo(t, borrower, 100)
+	lb := s.e.NewInvoker(s.lend, borrower)
+	lo := s.e.NewInvoker(s.lend, s.owner)
+	lb.Invoke(t, stackitem.Null{}, "borrow", borrower.ScriptHash().BytesBE(), 3000*dec) // max LTV at price 50
+
+	// accrue interest so the reserve is non-zero. The borrower sits at the LTV cap, so trigger
+	// accrual from the keeper (which has ample headroom) rather than the borrower.
+	s.e.GenerateNewBlocks(t, 100)
+	s.e.NewInvoker(s.lend, keeper).Invoke(t, stackitem.Null{}, "borrow", keeper.ScriptHash().BytesBE(), 1)
+	reserveBefore := readBig(t, s, "reserveAccrued")
+	requirePositive(t, "reserveAccrued before write-off", reserveBefore)
+
+	// NEO collapses 50 -> 10: 100 NEO now worth 1000, far below the ~3000 debt (deeply underwater)
+	s.setPrice(t, s.neo, 10*dec)
+	s.settle(t, keeper)
+	lo.Invoke(t, stackitem.Make(true), "isUnhealthy", borrower.ScriptHash().BytesBE())
+
+	// liquidator repays 1000: seizeFTB 1080 > NEO value 1000 -> all 100 NEO seized, collateral
+	// exhausted, and the residual debt is written off (reserve first)
+	s.mintFTB(t, liquidator.ScriptHash(), 1000*dec)
+	s.e.NewInvoker(s.ftb, liquidator).Invoke(t, stackitem.Make(true), "transfer",
+		liquidator.ScriptHash().BytesBE(), s.lend.BytesBE(), 1000*dec, []any{"liq", borrower.ScriptHash()})
+
+	s.neoBal(t, liquidator.ScriptHash(), 100)                                              // seized every NEO
+	lo.Invoke(t, stackitem.Make(0), "collateralOf", borrower.ScriptHash().BytesBE(), true) // collateral exhausted
+	lo.Invoke(t, stackitem.Make(0), "debtOf", borrower.ScriptHash().BytesBE())             // residual written off
+	reserveAfter := readBig(t, s, "reserveAccrued")
+	if reserveAfter.Cmp(reserveBefore) >= 0 {
+		t.Fatalf("reserve must be drawn down first for bad debt: before %s, after %s", reserveBefore, reserveAfter)
 	}
 }

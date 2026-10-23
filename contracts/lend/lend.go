@@ -53,6 +53,12 @@ const (
 	// delay makes any upgrade visible and contestable. (Renouncing/moving the owner to
 	// governance is the Tier-3 step; this closes the no-delay hole in code now.)
 	upgradeDelay = 5760 // ~1 day @ 15s
+	// Volatility guards (governable via SetGuards; 0 in storage => these defaults). The lagged
+	// reference tracks spot at most defMaxRefStep bps of itself per block, so a ~25% gap closes
+	// in a few hours @15s blocks; defBreaker is the spot-vs-reference deviation that hard-pauses
+	// borrows on a pump / liquidations on a dump. See claude/ftb-liquidation-model-study.md.
+	defMaxRefStep = 3    // bps of ref per block
+	defBreaker    = 2500 // 25%
 )
 
 var (
@@ -78,6 +84,13 @@ var (
 	keyUpgNef = []byte{0x25} // pending upgrade NEF (C2 self-timelock)
 	keyUpgMan = []byte{0x26} // pending upgrade manifest
 	keyUpgEta = []byte{0x27} // earliest height ApplyUpgrade may land
+
+	keyRefNeo     = []byte{0x50} // lagged reference price for NEO (volatility guard)
+	keyRefGas     = []byte{0x51} // lagged reference price for GAS
+	keyRefBlkNeo  = []byte{0x52} // last block refNEO was advanced
+	keyRefBlkGas  = []byte{0x53} // last block refGAS was advanced
+	keyMaxRefStep = []byte{0x54} // governed: max ref move per block, bps of ref (0 => default)
+	keyBreaker    = []byte{0x55} // governed: deviation bps that pauses the one-sided action (0 => default)
 
 	prefixShares = []byte{0x30}
 	prefixBNorm  = []byte{0x31}
@@ -160,6 +173,22 @@ func SetRates(base, slope1, slope2, kink, reserveBps int) {
 	storage.Put(ctx, keyKink, kink)
 	storage.Put(ctx, keyResBps, reserveBps)
 	runtime.Notify("RatesSet", base, slope1, slope2, kink, reserveBps)
+}
+
+// SetGuards tunes the volatility protection (claude/ftb-liquidation-model-study.md): maxRefStep
+// is the bps of the lagged reference the price may move per block (smaller = longer protective
+// window); breaker is the spot-vs-reference deviation in bps that pauses borrows on a pump and
+// liquidations on a dump. Owner only; both bounded so a mis-set can neither disable the
+// protection nor freeze the market permanently.
+func SetGuards(maxRefStep, breaker int) {
+	requireOwner()
+	if maxRefStep <= 0 || maxRefStep > 1000 || breaker < 500 || breaker > 9000 {
+		panic("bad guard params")
+	}
+	ctx := storage.GetContext()
+	storage.Put(ctx, keyMaxRefStep, maxRefStep)
+	storage.Put(ctx, keyBreaker, breaker)
+	runtime.Notify("GuardsSet", maxRefStep, breaker)
 }
 
 // ---- self-timelocked upgrade (C2 remediation) ----
@@ -324,7 +353,7 @@ func WithdrawCollateral(user interop.Hash160, neoAmt, gasAmt int) {
 	// their own collateral. Audit item FTB-10.
 	if d := DebtOf(user); d > 0 {
 		// oracle resolved once per transaction, not once per price read
-		if d > collateralValueFrom(oracleHash(), user)*getInt(keyLTV)/bps {
+		if d > collatValue(oracleHash(), user, false, false, true)*getInt(keyLTV)/bps {
 			panic("would be undercollateralized")
 		}
 	}
@@ -349,7 +378,7 @@ func Borrow(user interop.Hash160, amount int) {
 	if amount > cashAvailable() {
 		panic("not enough liquidity")
 	}
-	if DebtOf(user)+amount > collateralValueFrom(oracleHash(), user)*getInt(keyLTV)/bps {
+	if DebtOf(user)+amount > collatValue(oracleHash(), user, false, true, true)*getInt(keyLTV)/bps {
 		panic("exceeds LTV")
 	}
 	ctx := storage.GetContext()
@@ -387,7 +416,7 @@ func liquidateIn(liquidator interop.Hash160, repay int, borrower interop.Hash160
 		panic("liquidate: self-liquidation")
 	}
 	orc := oracleHash() // resolved once per transaction, not once per price read
-	cv := collateralValueFrom(orc, borrower)
+	cv := collatValue(orc, borrower, true, true, true)
 	debt := DebtOf(borrower)
 	if debt <= cv*getInt(keyLiq)/bps {
 		panic("borrower healthy")
@@ -426,6 +455,24 @@ func liquidateIn(liquidator interop.Hash160, repay int, borrower interop.Hash160
 	}
 	storage.Put(ctx, colKey(borrower, true), cn-seizeN)
 	storage.Put(ctx, colKey(borrower, false), cg-seizeG)
+	// O4: if the seizure exhausts the borrower's collateral and debt remains, that residual is
+	// bad debt. Write it off now — charged to the holders' reserve first (their fee and
+	// first-loss buffer), the remainder socialized to suppliers via totBorrow — so no
+	// uncollectible interest lingers in the pool or keeps accruing into the reserve.
+	if cn-seizeN == 0 && cg-seizeG == 0 {
+		residual := DebtOf(borrower)
+		if residual > 0 {
+			resv := getIntCtx(ctx, keyResAccrued)
+			absorbed := residual
+			if absorbed > resv {
+				absorbed = resv
+			}
+			storage.Put(ctx, keyResAccrued, resv-absorbed)
+			storage.Put(ctx, keyTotBorrow, getIntCtx(ctx, keyTotBorrow)-residual)
+			storage.Put(ctx, bnormKey(borrower), 0)
+			runtime.Notify("BadDebtWritten", borrower, residual, absorbed)
+		}
+	}
 	if seizeN > 0 {
 		send(interop.Hash160(neo.Hash), liquidator, seizeN)
 	}
@@ -510,26 +557,46 @@ func SweepDividends() {
 // ---- views (safe) ----
 
 func DebtOf(user interop.Hash160) int { return getInt(bnormKey(user)) * bidx() / scale }
+
+// CollateralValue is the conservative borrow-basis value (min(spot,ref)) of a user's
+// collateral — what new borrows are sized against.
 func CollateralValue(user interop.Hash160) int {
-	return collateralValueFrom(oracleHash(), user)
+	return collatValue(oracleHash(), user, false, false, false)
 }
 
-// collateralValueFrom prices both collateral assets against an already-resolved oracle, so
-// hot paths pay the registry lookup once per transaction instead of once per price read.
-// NEO is whole-unit (0 decimals): value = wholeNeo * price. GAS is 8 decimals: /dec.
-func collateralValueFrom(orc, user interop.Hash160) int {
+// collatValue prices a user's NEO+GAS collateral under the volatility protection
+// (claude/ftb-liquidation-model-study.md). forLiquidation selects max(spot,ref) over
+// min(spot,ref); applyBreaker enables the one-sided pause panic (pump→borrows, dump→
+// liquidations); advance updates the lagged reference and so is set only on write paths —
+// views pass false and read the stored reference.
+func collatValue(orc, user interop.Hash160, forLiquidation, applyBreaker, advance bool) int {
 	v := 0
 	if n := col(user, true); n > 0 {
-		v += n * priceFrom(orc, interop.Hash160(neo.Hash))
+		v += n * guardedPrice(orc, true, forLiquidation, applyBreaker, advance)
 	}
 	if g := col(user, false); g > 0 {
-		v += g * priceFrom(orc, interop.Hash160(gas.Hash)) / dec
+		v += g * guardedPrice(orc, false, forLiquidation, applyBreaker, advance) / dec
 	}
 	return v
 }
 func MaxBorrow(user interop.Hash160) int { return CollateralValue(user) * getInt(keyLTV) / bps }
+
+// IsUnhealthy uses the liquidation basis (max(spot,ref)) — the valuation liquidateIn enforces —
+// so a transient dump does not mark a position liquidatable.
 func IsUnhealthy(user interop.Hash160) bool {
-	return DebtOf(user) > CollateralValue(user)*getInt(keyLiq)/bps
+	return DebtOf(user) > collatValue(oracleHash(), user, true, false, false)*getInt(keyLiq)/bps
+}
+
+// HealthFactor is the liquidation-basis collateral value times the liquidation threshold as a
+// multiple of debt, in bps: >= bps healthy, < bps liquidatable. It reflects the same
+// max(spot,ref) valuation the contract acts on, so a warning bot sees exactly what will fire.
+// A debt-free user returns a large sentinel.
+func HealthFactor(user interop.Hash160) int {
+	d := DebtOf(user)
+	if d <= 0 {
+		return 2147483647
+	}
+	return collatValue(oracleHash(), user, true, false, false) * getInt(keyLiq) / d
 }
 func SharesOf(user interop.Hash160) int { return getInt(shareKey(user)) }
 func TotalShares() int                  { return getInt(keyTotShares) }
@@ -611,6 +678,105 @@ func priceFrom(orc, asset interop.Hash160) int {
 		panic("price: oracle returned non-positive")
 	}
 	return p
+}
+
+// ---- volatility protection: lagged reference + dual valuation + breakers ----
+// Design: claude/ftb-liquidation-model-study.md.
+
+func maxRefStepBps() int {
+	s := getInt(keyMaxRefStep)
+	if s <= 0 {
+		return defMaxRefStep
+	}
+	return s
+}
+func breakerBps() int {
+	b := getInt(keyBreaker)
+	if b <= 0 {
+		return defBreaker
+	}
+	return b
+}
+func assetHash(isNeo bool) interop.Hash160 {
+	if isNeo {
+		return interop.Hash160(neo.Hash)
+	}
+	return interop.Hash160(gas.Hash)
+}
+func refKey(isNeo bool) []byte {
+	if isNeo {
+		return keyRefNeo
+	}
+	return keyRefGas
+}
+func refBlkKey(isNeo bool) []byte {
+	if isNeo {
+		return keyRefBlkNeo
+	}
+	return keyRefBlkGas
+}
+
+// touchRef advances one asset's reference toward spot by at most maxRefStepBps of the
+// reference per block elapsed. Write path only; idempotent within a block.
+func touchRef(isNeo bool, spot int) {
+	ctx := storage.GetContext()
+	rk := refKey(isNeo)
+	ref := getIntCtx(ctx, rk)
+	now := ledger.CurrentIndex()
+	if ref <= 0 {
+		storage.Put(ctx, rk, spot)
+		storage.Put(ctx, refBlkKey(isNeo), now)
+		return
+	}
+	blocks := now - getIntCtx(ctx, refBlkKey(isNeo))
+	if blocks <= 0 {
+		return
+	}
+	mv := ref * maxRefStepBps() * blocks / bps
+	if spot > ref {
+		ref += mv
+		if ref > spot {
+			ref = spot
+		}
+	} else if spot < ref {
+		ref -= mv
+		if ref < spot {
+			ref = spot
+		}
+	}
+	storage.Put(ctx, rk, ref)
+	storage.Put(ctx, refBlkKey(isNeo), now)
+}
+
+// guardedPrice returns the protected unit price: min(spot,ref) for borrow, max(spot,ref) for
+// liquidation. applyBreaker panics the one-sided pause (pump→borrows, dump→liquidations);
+// advance updates the reference (write paths only).
+func guardedPrice(orc interop.Hash160, isNeo, forLiquidation, applyBreaker, advance bool) int {
+	spot := priceFrom(orc, assetHash(isNeo))
+	if advance {
+		touchRef(isNeo, spot)
+	}
+	ref := getInt(refKey(isNeo))
+	if ref <= 0 {
+		ref = spot
+	}
+	b := breakerBps()
+	if forLiquidation {
+		if applyBreaker && spot*bps <= ref*(bps-b) {
+			panic("breaker: abnormal downward move, liquidations paused")
+		}
+		if ref > spot {
+			return ref
+		}
+		return spot
+	}
+	if applyBreaker && spot*bps >= ref*(bps+b) {
+		panic("breaker: abnormal upward move, borrows paused")
+	}
+	if ref < spot {
+		return ref
+	}
+	return spot
 }
 func oracleHash() interop.Hash160 {
 	h := contract.Call(regHash(), "get", contract.ReadOnly, "oracle")
