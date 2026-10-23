@@ -71,7 +71,7 @@
       // then a live on-chain confirmation once the tx lands in a block.
       // "ok & refresh" closes the panel and forces a module refresh.
       msg.innerHTML = '';
-      msg.appendChild(el('div', 'err ok', 'approved and relayed - ' + (plan.summary || 'see your wallet')));
+      msg.appendChild(el('div', 'small muted', 'signed and relayed - ' + (plan.summary || 'see your wallet') + '. Not final yet - waiting for the chain to confirm it actually went through.'));
       if (txid) msg.appendChild(el('div', 'keybox', 'tx: ' + txid));
       var st = el('div', 'small muted', 'waiting for a block - this panel updates itself, no need to refresh.');
       msg.appendChild(st);
@@ -90,9 +90,18 @@
           var ex = log && log.executions && log.executions[0];
           if (!ex) return;
           clearInterval(iv);
-          if (ex.vmstate === 'HALT') {
+          // HALT alone is NOT success: a NEP-17 transfer (and other bool-returning calls)
+          // can HALT and return FALSE - e.g. the wallet lacks the full amount, so no tokens
+          // move and onNEP17Payment never runs. Treat an explicit Boolean false as a failure,
+          // or the page reports a no-op deposit as "confirmed".
+          var top = ex.stack && ex.stack[0];
+          var returnedFalse = top && top.type === 'Boolean' && (top.value === false || top.value === 'false');
+          if (ex.vmstate === 'HALT' && !returnedFalse) {
             st.textContent = 'confirmed on-chain - the modules now show it.';
             st.className = 'err ok';
+          } else if (ex.vmstate === 'HALT') {
+            st.textContent = 'the chain ran it but it did not go through - the call returned false. For a bond deposit that almost always means the wallet is short of the full bond amount (you need the whole bond in FTB), or you have already bonded with this wallet or Discord id.';
+            st.className = 'err';
           } else {
             st.textContent = 'the chain rejected it: ' + (ex.exception || ex.vmstate);
             st.className = 'err';
