@@ -1,16 +1,17 @@
 // Command verifybot is the FTB bond verification bot.
 //
-// A user runs /verify and fills a modal with the PUBLIC data of their bond
-// deposit (tx id, wallet, bond id). The bot checks that data against the
-// bond-vault contract on-chain (read-only) and, on a match, grants the Bonded
-// role and announces the new bonded member. It handles only public data, holds
-// no key, and never moves a bond.
+// A member runs /verify; the bot looks up their bond by their Discord user ID
+// in the bond-vault contract (read-only) and, on an active match, grants the
+// Bonded role and announces the new member. No input, no paste: the bond is
+// tagged to the member's immutable Discord ID at deposit, and a slash command
+// is cryptographically from that member, so the ID itself is the proof. The bot
+// holds no key and never moves a bond.
 //
 // Privilege: this bot needs Manage Roles (to grant the Bonded role). The Bonded
 // role must sit BELOW the bot's own top role. It does not read message content.
 //
-// Standby: if the vault contract hash is unset the bot still runs and validates
-// input, but tells the user verification is not live yet (earned-or-standby).
+// Standby: if the vault contract hash is unset the bot still runs but tells the
+// member verification isn't live yet (earned-or-standby).
 package main
 
 import (
@@ -19,12 +20,12 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/nspcc-dev/neo-go/pkg/encoding/address"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 
 	"github.com/freethebird/ftb/discord/internal/config"
@@ -32,15 +33,12 @@ import (
 	"github.com/freethebird/ftb/discord/internal/store"
 )
 
-const modalID = "ftb_verify_modal"
-
 type app struct {
 	cfg   *config.Config
 	store *store.Store
 
 	chain      *neo.Client // nil if chain unreachable / not needed
 	vaultHash  util.Uint160
-	ftbToken   util.Uint160
 	bondAmount *big.Int
 
 	lim *limiter
@@ -69,20 +67,12 @@ func main() {
 		log.Fatalf("bond amount: %v", err)
 	}
 
-	// Dial the chain. Required when the vault is live; best-effort in standby.
+	// The chain is only needed once the vault is live; in standby we skip the
+	// dial entirely (no RPC, nothing to read).
 	if cfg.VaultConfigured() {
 		if a.vaultHash, err = neo.ParseScriptHash(cfg.Contracts.VaultHash); err != nil {
 			log.Fatalf("vault hash: %v", err)
 		}
-		if cfg.Neo.FTBTokenHash != "" {
-			if a.ftbToken, err = neo.ParseScriptHash(cfg.Neo.FTBTokenHash); err != nil {
-				log.Fatalf("ftb token hash: %v", err)
-			}
-		}
-	}
-	// The chain is only needed once the vault is live; in standby we skip the
-	// dial entirely (no RPC, nothing to read).
-	if cfg.VaultConfigured() {
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.Neo.Timeout())
 		cl, derr := neo.Dial(ctx, cfg.Neo.RPCEndpoint, cfg.Neo.Timeout())
 		cancel()
@@ -123,7 +113,7 @@ func main() {
 	// Register the /verify command on the guild (instant, unlike global).
 	cmd := &discordgo.ApplicationCommand{
 		Name:        cfg.Discord.VerifyCommandName,
-		Description: "Verify your 100 FTB bond deposit to get the Bonded role",
+		Description: "Verify your FTB bond and get the Bonded role",
 	}
 	if _, err := dg.ApplicationCommandCreate(dg.State.User.ID, cfg.Discord.GuildID, cmd); err != nil {
 		log.Fatalf("register /%s: %v", cfg.Discord.VerifyCommandName, err)
@@ -135,150 +125,91 @@ func main() {
 }
 
 func (a *app) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	switch i.Type {
-	case discordgo.InteractionApplicationCommand:
-		if i.ApplicationCommandData().Name == a.cfg.Discord.VerifyCommandName {
-			a.showModal(s, i)
-		}
-	case discordgo.InteractionModalSubmit:
-		if i.ModalSubmitData().CustomID == modalID {
-			a.handleModal(s, i)
-		}
+	if i.Type != discordgo.InteractionApplicationCommand {
+		return
+	}
+	if i.ApplicationCommandData().Name == a.cfg.Discord.VerifyCommandName {
+		a.handleVerify(s, i)
 	}
 }
 
-func (a *app) showModal(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseModal,
-		Data: &discordgo.InteractionResponseData{
-			CustomID: modalID,
-			Title:    "Verify your FTB bond",
-			Components: []discordgo.MessageComponent{
-				row(&discordgo.TextInput{
-					CustomID: "txid", Label: "Deposit transaction id (0x…)",
-					Style: discordgo.TextInputShort, Required: true, MinLength: 64, MaxLength: 66,
-					Placeholder: "0x…",
-				}),
-				row(&discordgo.TextInput{
-					CustomID: "wallet", Label: "Your wallet address (N…)",
-					Style: discordgo.TextInputShort, Required: true, MinLength: 30, MaxLength: 40,
-					Placeholder: "N…",
-				}),
-				row(&discordgo.TextInput{
-					CustomID: "bondid", Label: "Bond id",
-					Style: discordgo.TextInputShort, Required: true, MinLength: 1, MaxLength: 20,
-					Placeholder: "e.g. 42",
-				}),
-			},
-		},
-	})
-	if err != nil {
-		log.Printf("show modal: %v", err)
-	}
-}
-
-func (a *app) handleModal(s *discordgo.Session, i *discordgo.InteractionCreate) {
+// handleVerify is the whole /verify flow, zero input. It acknowledges within
+// Discord's 3-second window (deferred + ephemeral), does the read-only chain
+// work and the role grant, then edits the reply with the outcome.
+func (a *app) handleVerify(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	u := interactionUser(i)
 	if u == nil {
 		return
 	}
 	if !a.lim.allow(u.ID) {
-		reply(s, i, "You're going a bit fast — try again in a few seconds.")
+		respondEphemeral(s, i, "You're going a bit fast — try again in a few seconds.")
 		return
 	}
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral},
+	}); err != nil {
+		log.Printf("defer: %v", err)
+		return
+	}
+	msg := a.verifyAndGrant(s, u)
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: &msg}); err != nil {
+		log.Printf("followup edit: %v", err)
+	}
+}
 
-	data := i.ModalSubmitData()
-	txStr := strings.TrimSpace(modalValue(data, "txid"))
-	walletStr := strings.TrimSpace(modalValue(data, "wallet"))
-	bondStr := strings.TrimSpace(modalValue(data, "bondid"))
-
-	// Validate shapes first (cheap, no chain).
-	txHash, err := neo.ParseTxHash(txStr)
-	if err != nil {
-		reply(s, i, "That transaction id doesn't look right — paste the deposit tx hash (0x + 64 hex).")
-		return
-	}
-	wallet, err := neo.ParseAddress(walletStr)
-	if err != nil {
-		reply(s, i, "That wallet address doesn't look like a Neo N3 address (starts with N).")
-		return
-	}
-	bondID, ok := new(big.Int).SetString(bondStr, 10)
-	if !ok || bondID.Sign() <= 0 {
-		reply(s, i, "Bond id must be a positive number.")
-		return
-	}
-
+// verifyAndGrant does the read-only lookup and the role grant, returning the
+// member-facing message. Every check is on public, on-chain data.
+func (a *app) verifyAndGrant(s *discordgo.Session, u *discordgo.User) string {
 	if !a.cfg.VaultConfigured() {
-		reply(s, i, "Thanks — your details look well-formed. The bond vault isn't live yet (standby), so I can't confirm on-chain just now. Re-run /verify once the vault contract is deployed and you'll get the Bonded role.")
-		return
+		return "The bond vault isn't live yet (standby). Run /verify once the vault contract is deployed and you'll get the Bonded role."
 	}
 	if a.chain == nil {
-		reply(s, i, "The chain is briefly unreachable — give it a minute and run /verify again.")
-		return
+		return "The chain is briefly unreachable — give it a minute and run /verify again."
 	}
-
 	m := &a.cfg.Contracts.Methods
+
+	bondID, found, err := a.chain.GetBondByDiscord(a.vaultHash, m.GetBondByDiscord, u.ID)
+	if err != nil {
+		log.Printf("getBondByDiscord(%s): %v", u.ID, err)
+		return "I couldn't read the vault just now — try again shortly."
+	}
+	if !found {
+		return "No active bond is tagged to this Discord account yet. Post your bond on the bond page, then run /verify."
+	}
 
 	bond, found, err := a.chain.GetBond(a.vaultHash, m.GetBond, bondID)
 	if err != nil {
 		log.Printf("getBond(%s): %v", bondID, err)
-		reply(s, i, "I couldn't read the vault just now — try again shortly.")
-		return
+		return "I couldn't read your bond just now — try again shortly."
 	}
-	if !found {
-		reply(s, i, "No active bond with that id exists in the vault.")
-		return
+	if !found || bond.Status != neo.BondActive {
+		return "Your bond isn't active (it may have been refunded or liquidated), so I can't grant the role."
 	}
-
-	// All checks are on public data and must all pass.
-	if bond.Status != neo.BondActive {
-		reply(s, i, "That bond is "+bond.Status.String()+", so it can't be used to verify.")
-		return
-	}
-	if !bond.Owner.Equals(wallet) {
-		reply(s, i, "That bond isn't owned by the wallet you entered.")
-		return
-	}
+	// The reverse index already keys by Discord ID; confirm it as defence in depth.
 	if bond.DiscordID != u.ID {
-		reply(s, i, "That bond is tagged to a different Discord account. Post the bond from this account, or contact a mod.")
-		return
+		return "That bond is tagged to a different Discord account. Contact a mod."
 	}
-	if a.bondAmount.Cmp(bond.AmountBase) != 0 {
-		reply(s, i, "That bond isn't the required "+a.cfg.Contracts.BondAmount+" FTB.")
-		return
-	}
-	if !bond.DepositTx.Equals(txHash) {
-		reply(s, i, "That transaction id doesn't match the deposit recorded for this bond.")
-		return
+	if a.bondAmount != nil && bond.AmountBase != nil && a.bondAmount.Cmp(bond.AmountBase) != 0 {
+		return "Your bond isn't the required " + a.cfg.Contracts.BondAmount + " FTB. Contact a mod."
 	}
 
-	// Secondary corroboration (advisory): confirm the deposit tx really moved
-	// the bond amount from wallet to vault. Logged, not gating — GetBond is
-	// authoritative — but a mismatch is worth surfacing in logs.
-	if a.ftbToken != (util.Uint160{}) {
-		okTransfer, terr := a.chain.VerifyDepositTransfer(txHash, a.ftbToken, a.vaultHash, wallet, a.bondAmount)
-		if terr != nil {
-			log.Printf("deposit-transfer check (bond %s): %v", bondID, terr)
-		} else if !okTransfer {
-			log.Printf("WARNING: bond %s passed getBond but no matching NEP-17 Transfer found in tx %s", bondID, txStr)
-		}
-	}
-
-	// Grant the role.
 	if err := s.GuildMemberRoleAdd(a.cfg.Discord.GuildID, u.ID, a.cfg.Discord.BondedRoleID); err != nil {
 		log.Printf("role add for %s: %v", u.ID, err)
-		reply(s, i, "You're verified on-chain, but I couldn't assign the Bonded role (a permissions issue). A mod will sort it out.")
-		return
+		return "You're verified on-chain, but I couldn't assign the Bonded role (a permissions issue). A mod will sort it out."
 	}
 
 	_ = a.store.Put(store.Record{
-		DiscordID: u.ID, Username: u.Username, Wallet: walletStr,
-		BondID: bondID.String(), TxID: txStr, VerifiedAt: store.NowMillis(),
+		DiscordID:  u.ID,
+		Username:   u.Username,
+		Wallet:     address.Uint160ToString(bond.Owner),
+		BondID:     bondID.String(),
+		TxID:       txDisplay(bond.DepositTx),
+		VerifiedAt: store.NowMillis(),
 	})
 
 	a.announce(s, u, bondID.String())
-	reply(s, i, "✅ Verified — you now hold the Bonded role. Welcome aboard. Spam while bonded and your 100 FTB can be put to a liquidation vote, so keep it clean.")
+	return "✅ Verified — you now hold the Bonded role. Welcome aboard. Spam while bonded and your bond can be put to a liquidation vote, so keep it clean."
 }
 
 func (a *app) announce(s *discordgo.Session, u *discordgo.User, bondID string) {
@@ -293,10 +224,6 @@ func (a *app) announce(s *discordgo.Session, u *discordgo.User, bondID string) {
 
 // ---- helpers ----
 
-func row(c discordgo.MessageComponent) discordgo.ActionsRow {
-	return discordgo.ActionsRow{Components: []discordgo.MessageComponent{c}}
-}
-
 func interactionUser(i *discordgo.InteractionCreate) *discordgo.User {
 	if i.Member != nil && i.Member.User != nil {
 		return i.Member.User
@@ -304,41 +231,21 @@ func interactionUser(i *discordgo.InteractionCreate) *discordgo.User {
 	return i.User
 }
 
-func modalValue(data discordgo.ModalSubmitInteractionData, customID string) string {
-	for _, comp := range data.Components {
-		var inner []discordgo.MessageComponent
-		switch ar := comp.(type) {
-		case *discordgo.ActionsRow:
-			inner = ar.Components
-		case discordgo.ActionsRow:
-			inner = ar.Components
-		default:
-			continue
-		}
-		for _, c := range inner {
-			switch ti := c.(type) {
-			case *discordgo.TextInput:
-				if ti.CustomID == customID {
-					return ti.Value
-				}
-			case discordgo.TextInput:
-				if ti.CustomID == customID {
-					return ti.Value
-				}
-			}
-		}
-	}
-	return ""
-}
-
-func reply(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+func respondEphemeral(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{Content: msg, Flags: discordgo.MessageFlagsEphemeral},
-	})
-	if err != nil {
-		log.Printf("reply: %v", err)
+	}); err != nil {
+		log.Printf("respond: %v", err)
 	}
+}
+
+func txDisplay(h util.Uint256) string {
+	var zero util.Uint256
+	if h == zero {
+		return ""
+	}
+	return "0x" + h.StringLE()
 }
 
 func standbyLabel(configured bool) string {
