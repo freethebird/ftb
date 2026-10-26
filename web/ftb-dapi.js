@@ -498,6 +498,13 @@
       [A.h160(user), A.h160(this._need('dbondvault')), A.int(amountBase), A.bytesHex(asciiToHex(discordId))],
       'Post a ' + fromBaseUnits(amountBase) + ' FTB Discord bond, tagged to Discord id ' + discordId);
   };
+  // Reclaim a clean bond to its owner (member-signed: CheckWitness(owner)). Only while the bond
+  // is active and not locked by an open accusation case or an open vote. The signer must be the
+  // bond owner; the vault pays the bond back to them and frees the Discord id + wallet to bond again.
+  FtbDapi.prototype.refundBond = function (bondId) {
+    return this._w(this._need('dbondvault'), 'refund', [A.int(bondId)],
+      'Reclaim your Discord bond #' + bondId + ' back to your wallet');
+  };
   // File an accusation against a bonded member (member-signed: CheckWitness(filer)).
   // evidenceHex is a 32-byte (64-hex) hash of the evidence bundle.
   FtbDapi.prototype.fileCase = function (filer, accusedBondId, reasonCode, evidenceHex) {

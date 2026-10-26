@@ -27,6 +27,7 @@
   var REASONS = ['unspecified', 'rate / flood', 'near-duplicate', 'mass-mention', 'link-flood', 'invite-spam', 'post-join burst'];
 
   var bondAmountBase = null; // BigInt, once read from the chain
+  var myBondId = null;       // bond id for the connected user's Discord id; set by checkMyBond
 
   function noop() {}
   function val(id) { var e = $(id); return e ? String(e.value || '').trim() : ''; }
@@ -59,6 +60,7 @@
 
   function checkMyBond() {
     var vault = need('dbondvault'), id = val('dbDiscord');
+    myBondId = null; if ($('dbRefundRow')) $('dbRefundRow').hidden = true;
     if (!rpcReady()) { setText('dbCheckMsg', 'Connecting to a node - try again in a moment.'); return; }
     if (!vault) { setText('dbCheckMsg', 'The bond vault is not configured on this site yet.'); return; }
     if (!/^\d{5,}$/.test(id)) { setText('dbCheckMsg', 'Enter your Discord user id above first (all digits).'); return; }
@@ -71,6 +73,7 @@
         var amount = BigInt(v[1].value), status = Number(BigInt(v[3].value));
         setText('dbCheckMsg', 'Bond #' + bid + ' - ' + (BOND_STATUS[status] || ('status ' + status)) +
           ' - ' + fmt(amount) + ' FTB. ' + (status === 1 ? 'Now run /verify in #verify to get your Bonded role.' : ''));
+        if (status === 1) { myBondId = bid; if ($('dbRefundRow')) $('dbRefundRow').hidden = false; }
       });
     }).catch(function (e) { setText('dbCheckMsg', 'Could not read your bond: ' + errText(e)); });
   }
@@ -149,6 +152,22 @@
     setText('dbDepositMsg', 'Review the panel, then sign in your wallet.');
   }
 
+  function startRefund() {
+    if (!window.FtbShell) return;
+    if (!connected()) { nudgeConnect('dbRefundMsg'); return; }
+    if (myBondId === null) { setText('dbRefundMsg', 'Check your bond above first, then reclaim it.'); return; }
+    var plan;
+    try { plan = FtbState.dapi.refundBond(myBondId.toString()); }
+    catch (e) { setText('dbRefundMsg', errText(e)); return; }
+    FtbShell.showPlan('reclaim your discord bond',
+      'Refunds bond #' + myBondId + ' back to your wallet and frees your Discord id and wallet to bond again. Works only while the bond is active and not locked by an open accusation case or an open vote.',
+      [['bond', '#' + myBondId],
+       ['back to', short(FtbState.account)],
+       ['what you sign', plan.summary]],
+      plan);
+    setText('dbRefundMsg', 'Review the panel, then sign in your wallet.');
+  }
+
   function startFile() {
     if (!window.FtbShell) return;
     if (!connected()) { nudgeConnect('dbFileMsg'); return; }
@@ -211,6 +230,7 @@
   function on(id, fn) { var e = $(id); if (e) e.addEventListener('click', fn); }
   on('dbDepositBtn', startDeposit);
   on('dbCheckBtn', checkMyBond);
+  on('dbRefundBtn', startRefund);
   on('dbFileBtn', startFile);
 
   function refreshAll() { refreshStats(); refreshCases(); }
