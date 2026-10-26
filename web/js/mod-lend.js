@@ -31,6 +31,23 @@
     });
   }
 
+  // Graduated liquidation risk. The chain does not expose the liquidation
+  // threshold as a call, so we warn off the 60% borrow line (maxBorrow), which
+  // falls with the collateral price: debt / maxBorrow says how close the position
+  // is to that line (and, past 1.0, how far the collateral has already slipped
+  // below it). isUnhealthy — past the real liquidation line — always wins.
+  function riskLevel(bad, debt, maxB) {
+    if (bad) return { label: 'LIQUIDATABLE', color: '#ff4d4d', note: 'below the liquidation line — repay or add collateral now, or anyone can liquidate this position' };
+    if (debt <= 0n) return { label: 'no loan', color: '', note: 'no debt — nothing to liquidate' };
+    if (maxB <= 0n) return { label: 'check', color: '#e0a000', note: 'collateral has no fresh price' };
+    var r = Number(debt * 10000n / maxB) / 10000; // debt / 60%-borrow line
+    if (r > 1) return { label: 'AT RISK', color: '#ff6a00', note: Math.round((r - 1) * 100) + '% over the 60% borrow line — repay or add collateral before a further drop liquidates you' };
+    var drop = Math.max(0, Math.round((1 - r) * 100));
+    if (r > 0.9) return { label: 'WATCH', color: '#e0a000', note: 'near the 60% borrow line — about a ' + drop + '% collateral drop reaches it' };
+    if (r > 0.75) return { label: 'healthy', color: '#7bdc7b', note: 'about a ' + drop + '% collateral buffer to the 60% line' };
+    return { label: 'safe', color: '#33cc66', note: 'about a ' + drop + '% collateral buffer to the 60% line' };
+  }
+
   function loadLend() {
     var lend = C.lend;
     if (!lend || lend.indexOf('0x0000') === 0 || !FtbRpc.current()) { var off0 = $('lendOff'); if (off0) off0.hidden = false; return; }
@@ -48,10 +65,17 @@
     if (!acct) return;
     var act = $('lendAct'); if (act) act.hidden = false;
     var hu = [{ type: 'Hash160', value: acct }];
-    readVal(lend, 'isUnhealthy', hu).then(function (v) {
+    Promise.all([
+      readVal(lend, 'isUnhealthy', hu),
+      FtbRpc.readInt(lend, 'debtOf', hu).catch(function () { return 0n; }),
+      FtbRpc.readInt(lend, 'maxBorrow', hu).catch(function () { return 0n; })
+    ]).then(function (vs) {
       var e = $('pHealth'); if (!e) return;
-      var bad = (v === true || v === 'true' || v === '1');
-      e.textContent = bad ? 'LIQUIDATABLE' : 'healthy';
+      var bad = (vs[0] === true || vs[0] === 'true' || vs[0] === '1');
+      var rk = riskLevel(bad, vs[1], vs[2]);
+      e.textContent = rk.label;
+      e.style.color = rk.color || '';
+      e.title = rk.note;
     }).catch(function () {});
   }
 
@@ -536,15 +560,24 @@
             var head = r.maxB - r.debt; if (head < 0n) head = 0n;
             // maxB is collateral × 60%, so ltv% = debt / maxB × 60
             var ltv = r.maxB > 0n ? (Number(r.debt * 10000n / r.maxB) * 0.006).toFixed(1) : '0.0';
-            meta.appendChild(el('span', null, 'ltv ' + ltv + '% of 60% · headroom ' + fmt(head) + ' FTB'));
+            var rkm = riskLevel(r.bad, r.debt, r.maxB);
+            meta.appendChild(el('span', null, 'ltv ' + ltv + '% of 60% · headroom ' + fmt(head) + ' FTB' + (rkm.note ? ' · ' + rkm.note : '')));
           }
           // the health slot carries four states: liquidatable (actionable NOW) wins,
           // then a liquidation mark that never fades, then the live states.
-          var tag = r.bad
-            ? el('span', 'tag pub', 'LIQUIDATABLE')
-            : (r.liqs > 0n
-              ? el('span', 'tag pub', 'liquidated ×' + r.liqs.toString())
-              : (r.debt > 0n ? el('span', 'tag', 'healthy') : el('span', 'tag', 'collateral only - claimable')));
+          var tag;
+          if (r.bad) {
+            tag = el('span', 'tag pub', 'LIQUIDATABLE');
+          } else if (r.liqs > 0n) {
+            tag = el('span', 'tag pub', 'liquidated ×' + r.liqs.toString());
+          } else if (r.debt > 0n) {
+            var rkt = riskLevel(false, r.debt, r.maxB);
+            tag = el('span', (rkt.label === 'AT RISK' || rkt.label === 'WATCH') ? 'tag pub' : 'tag', rkt.label);
+            tag.style.color = rkt.color || '';
+            tag.title = rkt.note;
+          } else {
+            tag = el('span', 'tag', 'collateral only - claimable');
+          }
           meta.appendChild(tag);
           var btnWrap = el('div', 'read');
           if (mine && !r.bad) {
