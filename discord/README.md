@@ -7,7 +7,7 @@ defines the interface they must conform to).
 
 | Bot | Binary | Job | Discord privilege |
 |-----|--------|-----|-------------------|
-| **Verify** | `ftb-verifybot` | `/verify` → modal (tx id / wallet / bond id) → check the deposit on-chain → grant the **Bonded** role | Guilds; **Manage Roles** |
+| **Verify** | `ftb-verifybot` | `/verify` → look up the caller's bond by their Discord ID on-chain → grant the **Bonded** role | Guilds; **Manage Roles** |
 | **Sentinel** | `ftb-sentinelbot` | watch messages → detect spam → if the spammer is **bonded**, post a keyless accusation to the liquidation-ballot channel | Guilds, Guild Messages, **Message Content** (privileged) |
 
 Neither bot holds a wallet or a key. The verify bot only *reads* the chain and
@@ -45,7 +45,7 @@ move, file against, or liquidate a bond — only the vote does.
 ## Layout
 
 ```
-cmd/verifybot      Bot 1 — verification (slash command + modal + role grant)
+cmd/verifybot      Bot 1 — verification (slash command, zero-input, + role grant)
 cmd/sentinelbot    Bot 2 — spam detection + keyless accusation
 internal/config    env secrets + JSON ops config; standby flags (std-lib only)
 internal/neo       read-only Neo N3 seam: vault, ballot, NEP-17 corroboration
@@ -93,7 +93,8 @@ Create **two** bot applications (one token each) so privileges stay separate.
 
 - **Verify bot:** scope `applications.commands` + `bot`; permission **Manage
   Roles**. The **Bonded** role must sit *below* the verify bot's own top role in
-  the role list, or Discord refuses the grant. No Message Content intent.
+  the role list, or Discord refuses the grant. No Message Content intent. `/verify`
+  takes no input: the bond is looked up by the caller's immutable Discord user ID.
 - **Sentinel bot:** scope `bot`; enable the **Message Content** privileged
   intent in the Developer Portal (Bot → Privileged Gateway Intents). It needs
   read access to the channels it should watch and send access to the ballot /
