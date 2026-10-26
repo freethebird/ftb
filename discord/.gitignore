@@ -1,0 +1,14 @@
+# build output
+/bin/
+
+# local runtime config & secrets (never commit)
+config.json
+*.local.json
+
+# verify bot's local cache
+ftb-bonds.json
+.ftb-bonds-*.tmp
+
+# go
+*.test
+*.out

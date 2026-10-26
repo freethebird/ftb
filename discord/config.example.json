@@ -1,0 +1,58 @@
+{
+  "discord": {
+    "guild_id": "000000000000000000",
+    "bonded_role_id": "000000000000000000",
+    "bonded_members_channel_id": "000000000000000000",
+    "liquidation_ballot_channel_id": "000000000000000000",
+    "mod_alert_channel_id": "000000000000000000",
+    "verify_command_name": "verify",
+    "ignore_role_ids": ["000000000000000000"]
+  },
+  "neo": {
+    "rpc_endpoint": "https://rpc.ftb-node.example:443",
+    "ftb_token_hash": "",
+    "ftb_decimals": 8,
+    "timeout_millis": 8000
+  },
+  "contracts": {
+    "vault_hash": "",
+    "ballot_hash": "",
+    "bond_amount": "1000",
+    "methods": {
+      "get_bond": "getBond",
+      "get_bond_by_discord": "getBondByDiscord",
+      "bond_amount": "bondAmount",
+      "get_case": "getCase",
+      "list_open_cases": "listOpenCases",
+      "is_bonded_voter": "isBondedVoter",
+      "file_case": "fileCase",
+      "vote": "vote"
+    }
+  },
+  "handoff": {
+    "sign_base_url": "https://freethebird.co/sign"
+  },
+  "spam": {
+    "window_seconds": 10,
+    "rate_messages": 6,
+    "rate_weight": 1.0,
+    "duplicate_count": 3,
+    "duplicate_similarity": 0.85,
+    "duplicate_weight": 1.0,
+    "max_mentions": 5,
+    "mention_weight": 1.0,
+    "max_links": 4,
+    "link_weight": 0.5,
+    "invite_weight": 1.0,
+    "join_grace_minutes": 10,
+    "join_burst_weight": 1.0,
+    "score_threshold": 2.0,
+    "auto_moderate": false,
+    "auto_timeout_minutes": 60,
+    "delete_flagged_messages": false
+  },
+  "store": {
+    "path": "ftb-bonds.json",
+    "refresh_seconds": 60
+  }
+}

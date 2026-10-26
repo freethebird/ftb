@@ -1,6 +1,6 @@
 NEOGO_VERSION ?= v0.123.0
 
-.PHONY: all tools fmt vet build test test-race vuln nefhash deepcheck conformance clean
+.PHONY: all tools fmt vet build test test-race vuln nefhash deepcheck conformance discord clean
 
 ## fmt + vet + build + test, the whole audit in one command
 all: fmt vet build test
@@ -56,8 +56,22 @@ deepcheck:
 
 ## the Article 1 guarantee in one named gate: every check, every build
 ## (the Go canon's `make conformance` analog; a failure anywhere is a build failure)
-conformance: fmt vet build test test-race vuln nefhash deepcheck
+conformance: fmt vet build test test-race vuln nefhash deepcheck discord
 	@echo "conformance: all gates green"
+
+## the Discord bots are a nested module (discord/, own go.mod) so their Discord +
+## SDK deps stay out of the contract module. Run their gate in that subdir.
+discord:
+	@out="$$(cd discord && gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt needed in discord/:"; echo "$$out"; exit 1; fi
+	cd discord && go vet ./...
+	cd discord && go build ./...
+	cd discord && go test ./...
+	cd discord && go test -race ./...
+	cd discord && govulncheck ./...
+	cd discord && staticcheck ./...
+	cd discord && gosec -quiet ./...
+	@out="$$(cd discord && deadcode -test ./... | grep -v '^internal/neo/')"; if [ -n "$$out" ]; then echo "deadcode in discord/ (internal/neo is the interface-first spec, kept):"; echo "$$out"; exit 1; fi
+	@echo "discord: bots module clean (fmt vet build test race vuln staticcheck gosec deadcode)"
 
 clean:
 	rm -rf build
