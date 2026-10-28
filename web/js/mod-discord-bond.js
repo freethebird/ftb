@@ -226,6 +226,69 @@
   }
   var pendingVote = null;
 
+  // ---------------- live bonds board (#dbWall) ----------------
+  // The vault is immutable and exposes no enumeration, but bond ids are dense
+  // from 1 and getBond(id) returns every record (even refunded) until the first
+  // null, so we walk ids in parallel batches until that null, keep the actives,
+  // and render bond # + Discord id (public data only). Read-only, no wallet.
+  var WALL_BATCH = 20, WALL_MAX = 400, wallSeq = 0;
+  function b64Digits(b64) {
+    try { return (window.atob ? atob(b64) : '').replace(/[^\d]/g, ''); }
+    catch (e) { return ''; }
+  }
+  function renderBondWall() {
+    var vault = need('dbondvault'), box = $('dbWall');
+    if (!box || !vault || !rpcReady()) return;
+    var active = [], seq = ++wallSeq;
+    (function step(start) {
+      if (seq !== wallSeq) return;
+      var ids = [], i;
+      for (i = start; i < start + WALL_BATCH && i <= WALL_MAX; i++) ids.push(i);
+      if (!ids.length) { paintWall(active, true); return; }
+      Promise.all(ids.map(function (id) {
+        return FtbRpc.read(vault, 'getBond', [A.int(String(id))]).then(function (st) {
+          var v = st && st[0] && st[0].value;
+          if (!v || !v.length) return { id: id, end: true };
+          return { id: id, status: Number(BigInt(v[3].value)), discord: b64Digits(v[2].value) };
+        }).catch(function () { return { id: id, err: true }; });
+      })).then(function (rows) {
+        if (seq !== wallSeq) return;
+        var ended = false, errored = false;
+        rows.forEach(function (r) {
+          if (r.end) { ended = true; return; }
+          if (r.err) { errored = true; return; }
+          if (r.status === 1 && r.discord) active.push({ id: r.id, discord: r.discord });
+        });
+        if (ended || errored || start + WALL_BATCH > WALL_MAX) {
+          paintWall(active, !ended && !errored);
+        } else {
+          step(start + WALL_BATCH);
+        }
+      });
+    })(1);
+  }
+  function paintWall(active, capped) {
+    var box = $('dbWall'); if (!box) return;
+    active.sort(function (a, b) { return a.id - b.id; });
+    box.textContent = '';
+    var head = el('div', 'bwrow bwhead');
+    head.appendChild(el('span', 'bwnum', 'bond'));
+    head.appendChild(el('span', 'bwid', 'discord user id'));
+    box.appendChild(head);
+    if (!active.length) {
+      box.appendChild(el('p', 'bnote', 'No active bonds yet — post the first one above.'));
+    } else {
+      active.forEach(function (b) {
+        var r = el('div', 'bwrow');
+        r.appendChild(el('span', 'bwnum', '#' + b.id));
+        r.appendChild(el('span', 'bwid', b.discord));
+        box.appendChild(r);
+      });
+      if (capped) box.appendChild(el('p', 'bnote', 'Showing the first ' + WALL_MAX + ' bonds.'));
+    }
+    setText('dbWallCount', active.length + (active.length === 1 ? ' active bond' : ' active bonds'));
+  }
+
   // ---------------- wiring ----------------
   function on(id, fn) { var e = $(id); if (e) e.addEventListener('click', fn); }
   on('dbDepositBtn', startDeposit);
@@ -233,7 +296,7 @@
   on('dbRefundBtn', startRefund);
   on('dbFileBtn', startFile);
 
-  function refreshAll() { refreshStats(); refreshCases(); }
+  function refreshAll() { refreshStats(); refreshCases(); renderBondWall(); }
   FtbState.on('rpc', refreshAll);
   FtbState.on('refresh', refreshAll);
   FtbState.on('account', function () { /* writes re-check connect at click time */ });

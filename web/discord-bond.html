@@ -47,6 +47,12 @@
 .bhash{font-family:var(--mono); font-size:11px; color:var(--ink-2); word-break:break-all; line-height:1.9}
 .bhash b{color:var(--ink)}
 @media (max-width:560px){ .bvote{grid-template-columns:86px 1fr 78px} .bstat{grid-template-columns:1fr} }
+.bwall{margin-top:4px; border:1px solid var(--hair); background:var(--paper)}
+.bwrow{display:grid; grid-template-columns:96px 1fr; gap:12px; padding:9px 14px; border-top:1px solid var(--hair); align-items:center}
+.bwrow:first-child{border-top:0}
+.bwhead{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.06em; text-transform:uppercase}
+.bwnum{font-family:var(--mono); font-size:13px; color:var(--ink-2)}
+.bwid{font-family:var(--mono); font-size:13px; color:var(--ink); word-break:break-all}
 </style>
 </head>
 <body>
@@ -166,6 +172,12 @@
     <div class="bfield"><label for="dbEvidence">evidence (tx hash, chat export url, or a 64-hex hash)</label><input id="dbEvidence" type="text" placeholder="hashed to 32 bytes on-chain; the text itself is not stored" autocomplete="off"></div>
     <div class="brow"><button class="bkey" id="dbFileBtn" type="button">file accusation -&gt;</button></div>
     <div class="bprev" id="dbFileMsg" hidden></div>
+  </section>
+
+  <section class="bsec" id="dbWallSec">
+    <div class="bh"><span>active bonds &middot; <span id="dbWallCount">&mdash;</span></span><span class="bstep">read live from the vault</span></div>
+    <p class="bnote" style="margin-top:0">Every member holding an active bond, by bond number &mdash; Discord user id only, no wallet, no personal data. Proof the room is real: each one has skin in the game.</p>
+    <div id="dbWall" class="bwall"><p class="bnote" style="padding:12px 14px;margin:0">Loading active bonds&hellip;</p></div>
   </section>
 
   <div class="bbanner">
