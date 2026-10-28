@@ -37,6 +37,16 @@
 .annote{border:1px dashed var(--data-bd); background:var(--paper); padding:14px 16px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.7}
 .annote b{color:var(--ink)}
 @media (max-width:640px){ .ancharts{grid-template-columns:1fr} .anopt{grid-template-columns:96px 1fr 48px} }
+/* node status — public health badges (reads /status.json; mod-nodestatus.js) */
+.nsgrid{display:grid; gap:1px; background:var(--hair); border:1px solid var(--hair)}
+.nsrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 16px; background:var(--paper)}
+.nsname{font-size:var(--fs-small); color:var(--ink-2)}
+.nssub{color:var(--faint); font-size:var(--fs-meta); margin-left:7px}
+.nsbadge{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-small); font-family:var(--disp); color:var(--ink); white-space:nowrap}
+.nsdot{width:9px; height:9px; border-radius:50%; background:var(--faint); flex:none}
+.nsdot.nsup{background:var(--ink)}
+.nsdot.nsdn{background:var(--dn)}
+@media (max-width:640px){ .nsrow{flex-direction:column; align-items:flex-start; gap:6px} }
 </style>
 </head>
 <body>
@@ -88,6 +98,25 @@
   <h1 class="atitle">analytics</h1>
   <p class="asub">The network at a glance — read straight from the chain. No tracker, no indexer, no server: every figure here is a live contract read or a locally-sampled ratio, and nothing about your visit leaves your browser.</p>
   <div class="astatus"><span id="rpcNote">rpc: connecting…</span></div>
+
+  <section class="ansec">
+    <div class="anh">node status · self-hosted infrastructure</div>
+    <div class="nsgrid">
+      <div class="nsrow">
+        <span class="nsname">testnet node<span class="nssub">serves this dApp</span></span>
+        <span class="nsbadge"><span class="nsdot" aria-hidden="true" id="nsTestDot"></span><span id="nsTestTxt">…</span></span>
+      </div>
+      <div class="nsrow">
+        <span class="nsname">mainnet node<span class="nssub">block explorer · pre-launch</span></span>
+        <span class="nsbadge"><span class="nsdot" aria-hidden="true" id="nsMainDot"></span><span id="nsMainTxt">…</span></span>
+      </div>
+      <div class="nsrow">
+        <span class="nsname">self-healing watchdog</span>
+        <span class="nsbadge"><span class="nsdot" aria-hidden="true" id="nsWatchDot"></span><span id="nsWatchTxt">…</span></span>
+      </div>
+    </div>
+    <p class="anfoot" id="nsFoot">reading node status…</p>
+  </section>
 
   <section class="ansec">
     <div class="anh">network</div>
@@ -155,5 +184,6 @@
 <script src="js/ftb-state.js"></script>
 <script src="js/shell.js"></script>
 <script src="js/mod-analytics.js"></script>
+<script src="js/mod-nodestatus.js"></script>
 </body>
 </html>

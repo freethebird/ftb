@@ -139,6 +139,22 @@
   }
   function entryFor(addr) { return (proofsIdx && addr) ? (proofsIdx[addr] || null) : null; }
 
+  // ---------- node status (live heartbeat, never cached) ----------
+  // The node's own /status.json, written per-minute by ftb-status and served by Caddy
+  // OUTSIDE the IPFS bundle, so it reflects the live node between deploys. An artifact
+  // read, through this seam (R3) - not a module fetch and not a chain read. Live, so
+  // never cached: each call re-reads. The URL is config-only (R5); absent => reject, and
+  // the consuming module shows its named standby (R8).
+  var STATUS_URL = CFG.statusUrl || '';
+  function status() {
+    if (!STATUS_URL) return Promise.reject(new Error('no statusUrl configured'));
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var to = ctl ? setTimeout(function () { ctl.abort(); }, 8000) : null;
+    return fetch(STATUS_URL, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { if (!r.ok) throw new Error('status ' + r.status); return r.json(); })
+      .finally(function () { if (to) clearTimeout(to); });
+  }
+
   // ---------- the conversion seam (WEB-02) ----------
   // The preview reads migrator.quote() on-chain - the same integer arithmetic the
   // mint will apply (floor(amount × ratioNum / ratioDen), DECISIONS.md 18 Oct).
@@ -165,6 +181,7 @@
     emit: emit,
     proofs: proofs,
     entryFor: entryFor,
+    status: status,
     quoteFtb: quoteFtb,
     acctHash160: function () {
       return this.account ? '0x' + FtbDapi.util.addressToScriptHashHex(this.account, { le: true }) : null;

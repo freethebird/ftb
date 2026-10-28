@@ -46,6 +46,10 @@ window.FTB_CONFIG = {
     'https://w3s.link/ipns/k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq'
   ],
 
+  // live node health heartbeat: the node's /status.json, served by Caddy OUTSIDE the IPFS
+  // bundle (so it is live between deploys). Absolute, so mirrors read the node too.
+  statusUrl: 'https://freethebird.co/status.json',
+
   // the published migration proofs - the SAME pre-exploit snapshot binds MainNet:
   // same tree, same root, same electorate; the MainNet migrator is configured with it.
   proofsUrl: './proofs.json',

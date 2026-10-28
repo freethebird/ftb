@@ -60,6 +60,10 @@ window.FTB_CONFIG = {
     'https://w3s.link/ipns/k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq'
   ],
 
+  // live node health heartbeat: the node's /status.json, served by Caddy OUTSIDE the IPFS
+  // bundle (so it is live between deploys). Absolute, so mirrors read the node too.
+  statusUrl: 'https://freethebird.co/status.json',
+
   // the published migration proofs (also on IPFS; keep the CID in the repo)
   proofsUrl: './proofs.json',
   merkleRoot: '0x9a36b6a0faf6adddf727788e5a35ba9db48db14958043637fad67fb468243003',
