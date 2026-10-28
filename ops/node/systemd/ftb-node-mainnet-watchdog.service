@@ -1,0 +1,7 @@
+[Unit]
+Description=FTB MainNet neo-go stall detector (restart if block height frozen)
+After=ftb-node-mainnet.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ftb-mainnet-stallcheck.sh

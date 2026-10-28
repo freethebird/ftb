@@ -82,3 +82,64 @@ including all five VMs at once - can take the site down by going offline.
   arrives via the push script, never by hand.
 - If a VM is lost or seized: nothing is lost. Content persists by CID; the name is
   republishable from the backup key.
+
+## The node that serves the site (ftb-node, 1984 Reykjavik)
+
+The reference deployment runs the full stack on one box. Everything below is in git under
+`ops/ipfs/` (deploy pipeline) and `ops/node/` (monitoring + security), so the box is
+rebuildable from the repo. Install paths: scripts -> `/usr/local/bin/`, units ->
+`/etc/systemd/system/`, drop-ins -> their matching `*.d/` dirs.
+
+### Deploy pipeline (gated, self-healing)
+
+Full model in `ops/ipfs/DEPLOYS.md`. In one line: `main` integrates, `live` ships, and a
+publish-time gate (`ftb-deploy-gate.sh`) blocks a broken tree - syntax error, wrong config
+profile, bad `proofs.json`, missing assets, or a leaked secret - **before** anything is
+pinned, so a bad deploy never touches the live site. `ftb-autodeploy.timer` polls
+`origin/live` every 2 min and deploys advances through the gate; a gate reject is flagged in
+`/var/lib/ftb-deploy/gate-failed` and not retried until `live` moves.
+
+### Hardening
+
+- **SSH: key-only.** `ops/node/sshd-10-ftb-hardening.conf` -> `/etc/ssh/sshd_config.d/`:
+  password and keyboard-interactive auth off, root by key only - nothing to brute-force.
+- **Firewall.** ufw allows only 22 (SSH), 4001 (IPFS swarm), 80/443 (Caddy). neo-go RPC
+  (20332/10332), the IPFS API (5001) and gateway (8080) stay bound to localhost, reached only
+  through Caddy's `/rpc` and the gateway proxy.
+- **Auto-updates.** unattended-upgrades applies security patches. If `apt-get update` ever
+  errors on a third-party repo key, that silently stops security updates - fix the key first.
+- **Caddy.** `/rpc` -> 20332 (CORS, no-store), `/status.json` -> file_server (no-cache),
+  everything else -> the IPFS gateway. Static assets get a short `max-age`; HTML and
+  `beat.json` stay `no-cache` so a deploy propagates within a minute; HSTS is on; the
+  gateway's own `Cache-Control` is stripped so ours is the only one. `ops/node/caddy-restart.conf`
+  adds `Restart=on-abnormal` so Caddy returns after a crash or reboot.
+
+### Monitoring and self-healing
+
+- **Status feed.** `ops/node/ftb-status.py` (via `ftb-status.timer`, every 1 min) writes
+  `/var/lib/ftb-status/status.json` - both nodes' height/peers and the watchdog state - which
+  Caddy serves at `/status.json` and the analytics page renders live.
+- **Node watchdogs.** `ftb-mainnet-stallcheck.sh` (every 5 min) restarts the MainNet node if
+  its height has not advanced across ~10 min (2 checks). `ftb-testnet-stallcheck.py` (every
+  5 min) is peer-aware: it restarts the TestNet node only if it is frozen **and** behind its
+  peers by more than 50 blocks for ~10 min, so a quiet network at the tip never needlessly
+  restarts the node that serves the live dApp.
+
+### Keys and backups
+
+- **IPNS identity** (`ftb` key) is the site's stable name. An **encrypted** backup lives
+  off-box (`ipfs-identity-backup.enc`, AES-256) with the passphrase stored separately. If the
+  box is lost, content persists by CID and the name is republishable from the backup key.
+- **Deploy key** (`/etc/ftb/deploy_key`) is read-only - it pulls the repo, never pushes.
+
+### Recovery
+
+- **A gate blocked a deploy.** Read `/var/lib/ftb-deploy/gate-failed` for the reason and
+  commit; fix on `main`, re-point `live`. Nothing was published - the site is on the last-good
+  CID.
+- **Roll back the site.** `git branch -f live <good-commit> && git push --force-with-lease
+  origin live`; the node redeploys it. Or republish a past CID directly (see DEPLOYS.md).
+- **Restart a service.** `systemctl restart ftb-node` (TestNet) / `ftb-node-mainnet` / `ipfs`
+  / `caddy`. The watchdogs do this automatically for a stalled node.
+- **SSH lockout** (revert from an already-open session): `sudo rm
+  /etc/ssh/sshd_config.d/10-ftb-hardening.conf && sudo systemctl reload ssh`.

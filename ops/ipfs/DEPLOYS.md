@@ -98,38 +98,64 @@ republishes IPNS, and appends a row to this log.
 | auto | 2026-10-20 10:27 | `QmNhcU1L7838EcUmSvyG3bc3vnAiRpt75S2raqD24vG8ML` | `6faddff` | Deployed via ftb-push-ipfs.sh |
 | auto | 2026-10-20 10:51 | `Qmaz4rEoiUEn9nxtSpxZVmwJPbR8T8Wjz3VSVWMAaQ3MHM` | `1189789` | Deployed via ftb-push-ipfs.sh |
 
-## Deploy from git (git is the source of truth)
+## Deploy from git (gated; git is the source of truth)
 
-`freethebird.co` is **not** served from GitHub — it is the CID pinned on this node and
-published under IPNS. A `git push` updates the repo; it does **not** touch the site.
-`ftb-deploy-from-git.sh` makes the **node pull the canonical git and deploy itself**, so
-a push becomes a deploy and `ftb-push-ipfs.sh` (laptop rsync) becomes break-glass only.
+`freethebird.co` is **not** served from GitHub - it is the CID pinned on `ftb-node` and
+published under IPNS. A `git push` updates the repo; it does **not** touch the site. The
+node pulls the canonical git and deploys **itself**, through a publish-time gate, so a push
+to the blessed branch becomes a safe deploy. `ftb-push-ipfs.sh` (laptop rsync, above) is
+break-glass only.
 
-**One-time node setup** (run on `ftb-node` / 185.112.147.245, as root):
+### The model: `main` integrates, `live` ships
+
+- **`main`** is where work lands. Pushing to `main` does **nothing** to the site.
+- **`live`** is the only branch the node serves. Shipping is a *deliberate* act: point `live`
+  at the vetted `main` commit you want public, and push it.
+- Rollback is the same move in reverse.
 
 ```bash
-# 1. read-only deploy key so the node can pull the private repo (no personal key on the node)
-sudo mkdir -p /etc/ftb
-sudo ssh-keygen -t ed25519 -f /etc/ftb/deploy_key -N "" -C "ftb-node deploy"
-sudo cat /etc/ftb/deploy_key.pub
-#    → add at github.com/freethebird/ftb → Settings → Deploy keys → "Add deploy key"
-#      (paste the line; leave "Allow write access" UNCHECKED — read-only)
-
-# 2. install the node-side deploy script (from the repo)
-sudo install -m755 ops/ipfs/ftb-deploy-from-git.sh /usr/local/bin/ftb-deploy-from-git.sh
-
-# 3. first deploy (clones to /srv/ftb-src, then pins + publishes)
-sudo ftb-deploy-from-git.sh origin/main
-
-# 4. TestNet auto-follow: deploy within 5 min of any push to main (cron poll, no inbound port)
-printf '%s\n' \
- "*/5 * * * * root cd /srv/ftb-src && GIT_SSH_COMMAND='ssh -i /etc/ftb/deploy_key -o IdentitiesOnly=yes' git fetch -q origin && [ \"\$(git rev-parse HEAD)\" != \"\$(git rev-parse origin/main)\" ] && /usr/local/bin/ftb-deploy-from-git.sh origin/main" \
- | sudo tee /etc/cron.d/ftb-deploy
+# ship a reviewed main commit:
+git branch -f live <good-main-commit> && git push --force-with-lease origin live
+# roll back:
+git branch -f live <previous-good-commit> && git push --force-with-lease origin live
 ```
 
-**MainNet:** do **not** auto-follow a raw branch. Deploy a governance-tagged ref only —
-`sudo ftb-deploy-from-git.sh gov-N` — so the front end follows the vote by construction,
-and/or point the cron at a `release` ref that CI fast-forwards only on a green
-Gate-Manifest (a red build never reaches the site).
+### The gate (`ftb-deploy-gate.sh`) - nothing broken reaches the public
 
-After step 1–3, every `freethebird` push to `main` reaches `freethebird.co` on its own.
+Every deploy, manual or automatic, runs the gate on the fully-staged tree **before** the
+`ipfs add`. If any check fails the deploy aborts with the live site untouched - nothing has
+been published yet. The gate blocks: a JS **syntax error** (`node --check` on every module,
+the white-screen class); the wrong **config profile** (`config.js` must equal the intended
+profile and declare the right network - never ship a MainNet config to the TestNet site); a
+missing/invalid **`proofs.json`**; a broken **asset reference** (every `<script>`/`<link>` a
+page names must exist); and a **secret** leaking into the public, permanent bundle.
+
+### Auto-deploy (`ftb-autodeploy.sh` + `ftb-autodeploy.timer`)
+
+A systemd timer polls `origin/live` every 2 min. When it advances, it runs the gated deploy.
+A commit that fails the gate is attempted **once**, flagged in
+`/var/lib/ftb-deploy/gate-failed`, and **not retried** until `live` moves again - a bad
+commit cannot spin the deployer. State lives in `/var/lib/ftb-deploy/` (`live-sha` = last
+good deploy, `failed-sha` = last gate reject).
+
+### Node install (one-time, as root)
+
+```bash
+sudo install -m755 ops/ipfs/ftb-deploy-from-git.sh /usr/local/bin/ftb-deploy-from-git.sh
+sudo install -m755 ops/ipfs/ftb-deploy-gate.sh     /usr/local/bin/ftb-deploy-gate.sh
+sudo install -m755 ops/ipfs/ftb-autodeploy.sh      /usr/local/bin/ftb-autodeploy.sh
+sudo install -m644 ops/ipfs/systemd/ftb-autodeploy.* /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now ftb-autodeploy.timer
+# the gate needs a JS parser on the deployer (CLI only, no service):
+command -v node >/dev/null || sudo apt-get install -y nodejs
+# seed state so the first tick is a no-op:
+git -C /srv/ftb-src rev-parse origin/live | sudo tee /var/lib/ftb-deploy/live-sha
+```
+
+### Break-glass and MainNet
+
+- Manual deploy of any ref (still gated): `sudo ftb-deploy-from-git.sh <ref>`.
+- **MainNet:** a ref named `gov-*`, `release*`, or containing `mainnet` selects the MainNet
+  config profile. Deploy a governance-tagged ref only (`sudo ftb-deploy-from-git.sh gov-N`),
+  so the front end follows the vote by construction. Never auto-follow a raw branch to
+  production.

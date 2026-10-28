@@ -1,0 +1,8 @@
+[Unit]
+Description=FTB gated auto-deploy (watch origin/live, deploy on advance)
+After=network-online.target ipfs.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+TimeoutStartSec=300
+ExecStart=/usr/local/bin/ftb-autodeploy.sh

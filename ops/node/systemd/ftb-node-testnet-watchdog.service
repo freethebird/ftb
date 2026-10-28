@@ -1,0 +1,7 @@
+[Unit]
+Description=FTB TestNet neo-go stall detector (restart ftb-node if frozen behind peers)
+After=ftb-node.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ftb-testnet-stallcheck.py

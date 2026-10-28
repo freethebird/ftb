@@ -26,7 +26,7 @@ DEPLOY_LOG="${FTB_DEPLOY_LOG:-/var/log/ftb-deploys.md}"   # node-local; repo tre
 export GIT_SSH_COMMAND="ssh -i /etc/ftb/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 
 log(){ echo ">> $*"; }
-asipfs(){ sudo -u ipfs env IPFS_PATH="$IPFS_PATH" ipfs "$@"; }
+asipfs(){ sudo -u ipfs env IPFS_PATH="$IPFS_PATH" ipfs --api=/ip4/127.0.0.1/tcp/5001 "$@"; }
 
 # 1. Sync the canonical git via the read-only deploy key
 if [ ! -d "$REPO_DIR/.git" ]; then
@@ -59,6 +59,11 @@ IPNS="$(asipfs key list -l | awk -v k="$IPFS_KEY" '$2==k{print $1}')"
 printf '{"project":"ftb","commit":"%s","published":"%s","ipns":"%s"}\n' \
   "$COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$IPNS" > "$STAGE/beat.json"
 chown -R ipfs:ipfs "$STAGE_PARENT"
+
+# 2b. GATE - publish-time floor (ftb-deploy-gate.sh). With `set -e`, a failing
+#     gate aborts HERE, before anything is published, so the live site is untouched.
+/usr/local/bin/ftb-deploy-gate.sh "$STAGE" "$CFG_PROFILE"
+log "gate: PASS - publishing"
 
 # 3. Add + pin + republish IPNS to the 'ftb' key (default CID version, matching the live site)
 ROOT_CID="$(asipfs add -r -Q --pin "$STAGE" | tr -d '[:space:]')"
