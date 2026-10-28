@@ -267,6 +267,10 @@
       });
     })(1);
   }
+  function maskId(d) {
+    d = String(d || '');
+    return d.length > 8 ? d.slice(0, 4) + '...' + d.slice(-4) : d;
+  }
   function paintWall(active, capped) {
     var box = $('dbWall'); if (!box) return;
     active.sort(function (a, b) { return a.id - b.id; });
@@ -281,7 +285,7 @@
       active.forEach(function (b) {
         var r = el('div', 'bwrow');
         r.appendChild(el('span', 'bwnum', '#' + b.id));
-        r.appendChild(el('span', 'bwid', b.discord));
+        r.appendChild(el('span', 'bwid', maskId(b.discord)));
         box.appendChild(r);
       });
       if (capped) box.appendChild(el('p', 'bnote', 'Showing the first ' + WALL_MAX + ' bonds.'));
