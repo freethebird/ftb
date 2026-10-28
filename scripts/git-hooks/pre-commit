@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# FTB pre-commit gate — the LEAN + CONF floor of the Mandatory Process, enforced in git
+# (MO Article 6: every result is named in the open, never a silent pass). Blocks:
+#   - committed binaries / build outputs
+#   - oversized files (host large data on IPFS by CID, not in git)
+#   - JS eval / Function-constructor / npm-dependency surface (the web layer is dependency-free)
+#   - Go unsafe / cgo / assembly, and non-gofmt-clean Go
+#   - obvious secrets (private keys, cloud/VCS tokens)
+#
+# Install once per clone:   git config core.hooksPath scripts/git-hooks
+# Deliberate override:      git commit --no-verify   (record the reason)
+set -u
+fail=0
+note(){ printf 'GATE: %s\n' "$*" >&2; fail=1; }
+
+# staged adds/copies/modifies, NUL-safe
+mapfile -d '' -t FILES < <(git diff --cached --name-only --diff-filter=ACM -z)
+[ "${#FILES[@]}" -eq 0 ] && exit 0
+
+MAXBYTES=$((512*1024))   # 512 KiB soft cap
+is_allowed_large(){ case "$1" in web/proofs.json|*.sha256) return 0;; *) return 1;; esac; }
+
+for f in "${FILES[@]}"; do
+  [ -f "$f" ] || continue
+
+  # 1) binaries / build outputs — git marks binary diffs as "-\t-"
+  if git diff --cached --numstat -- "$f" | awk '$1=="-"&&$2=="-"{e=1} END{exit !e}'; then
+    note "binary/build output staged: $f (not committed — build artifacts stay out of git)"
+  fi
+
+  # 2) size budget
+  sz=$(wc -c < "$f" 2>/dev/null || echo 0)
+  if [ "$sz" -gt "$MAXBYTES" ] && ! is_allowed_large "$f"; then
+    note "oversized file: $f ($((sz/1024)) KiB > $((MAXBYTES/1024)) KiB) — host large data on IPFS by CID"
+  fi
+
+  # 3) obvious secrets (any staged text file)
+  if grep -nEI \
+      -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' \
+      -e 'AKIA[0-9A-Z]{16}' \
+      -e 'xox[baprs]-[0-9A-Za-z-]{10,}' \
+      -e 'ghp_[0-9A-Za-z]{36}' \
+      -e 'github_pat_[0-9A-Za-z_]{40,}' \
+      -e '(secret|private|access)[_-]?(key|token)[[:space:]]*[:=][[:space:]]*["'"'"'][A-Za-z0-9/+=_-]{24,}' \
+      "$f" >/dev/null 2>&1; then
+    note "possible secret in $f (private key or token) — commit was blocked"
+  fi
+
+  case "$f" in
+    *.js)
+      if grep -nE '\beval[[:space:]]*\(|new[[:space:]]+Function[[:space:]]*\(' "$f" >/dev/null 2>&1; then
+        note "JS eval()/Function constructor in $f (forbidden — injection seam)"
+      fi
+      if grep -nE "\brequire[[:space:]]*\(|^[[:space:]]*import[[:space:]].*from[[:space:]]+[\"'][^./]|^[[:space:]]*import[[:space:]]+[\"'][^./]" "$f" >/dev/null 2>&1; then
+        note "JS npm-dependency surface (require / bare import) in $f — the web layer is dependency-free"
+      fi
+      ;;
+    *.go)
+      if grep -nE '"unsafe"|^[[:space:]]*import[[:space:]]+"C"' "$f" >/dev/null 2>&1; then
+        note "Go unsafe/cgo in $f (forbidden)"
+      fi
+      if command -v gofmt >/dev/null 2>&1 && [ -n "$(gofmt -l "$f" 2>/dev/null)" ]; then
+        note "Go not gofmt-clean: $f (run: gofmt -w $f)"
+      fi
+      ;;
+    *.s|*.asm)
+      note "assembly staged: $f (forbidden)"
+      ;;
+  esac
+done
+
+if [ "$fail" -ne 0 ]; then
+  printf 'GATE: commit blocked. Fix the above, or override deliberately with: git commit --no-verify\n' >&2
+  exit 1
+fi
+exit 0
