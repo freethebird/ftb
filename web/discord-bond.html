@@ -53,6 +53,11 @@
 .bwhead{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.06em; text-transform:uppercase}
 .bwnum{font-family:var(--mono); font-size:13px; color:var(--ink-2)}
 .bwid{font-family:var(--mono); font-size:13px; color:var(--ink); word-break:break-all}
+.dbtick{display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:12.5px; letter-spacing:.03em; color:var(--ink-2); border:1px solid var(--hair); background:var(--paper); padding:6px 11px}
+.dbtick .dot{width:7px; height:7px; border-radius:50%; background:var(--ok); flex:0 0 auto; animation:dbpulse 2.2s ease-out infinite}
+.dbtick b{color:var(--ink)}
+@keyframes dbpulse{0%{box-shadow:0 0 0 0 rgba(123,220,123,.45)}70%{box-shadow:0 0 0 7px rgba(123,220,123,0)}100%{box-shadow:0 0 0 0 rgba(123,220,123,0)}}
+@media (prefers-reduced-motion: reduce){.dbtick .dot{animation:none}}
 </style>
 </head>
 <body>
@@ -106,7 +111,7 @@
 
 <main id="dbRoot" class="bpage">
   <h1 class="btitle">discord bond<span class="blive">live · testnet</span></h1>
-  <div class="brow" style="margin-top:12px"><a class="bkey" href="https://discord.gg/qvQptfkMV6" target="_blank" rel="noopener">Join the Discord ↗</a></div>
+  <div class="brow" style="margin-top:12px"><a class="bkey" href="https://discord.gg/qvQptfkMV6" target="_blank" rel="noopener">Join the Discord ↗</a><span class="dbtick"><span class="dot" aria-hidden="true"></span><span id="dbTopNum">counting&hellip;</span></span></div>
   <p class="bsub">Entry to the FTB Discord is <b>bonded</b>. Post a <b><span id="dbBondAmt">1000 FTB</span></b> bond, verify your deposit, and you're in. The bond is your skin in the game: if you scam a member, the community can file an accusation and vote to <b>liquidate and burn</b> your bond. Honest actors get their bond back on a clean exit; scammers lose it to the fire.</p>
 
   <section class="bsec">

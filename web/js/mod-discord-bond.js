@@ -286,7 +286,8 @@
       });
       if (capped) box.appendChild(el('p', 'bnote', 'Showing the first ' + WALL_MAX + ' bonds.'));
     }
-    setText('dbWallCount', active.length + (active.length === 1 ? ' active bond' : ' active bonds'));
+    var label = active.length + (active.length === 1 ? ' active bond' : ' active bonds');
+    setText('dbWallCount', label); setText('dbTopNum', label);
   }
 
   // ---------------- wiring ----------------
