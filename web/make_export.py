@@ -23,7 +23,7 @@ SRCS = (["config.js", "ftb-dapi.js"]
         + [f"js/{n}.js" for n in (
             "ftb-rpc", "ftb-state", "shell",
             "mod-token", "mod-swap", "mod-earn", "mod-lend", "mod-gov",
-            "mod-board", "mod-claim", "mod-verify", "mod-wallet")])
+            "mod-board", "mod-verify", "mod-wallet")])
 
 commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=WEB.parent,
                         capture_output=True, text=True).stdout.strip() or "unknown"

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>free the bird — claim</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="p2-shell.css">
+<style>
+/* claim — page-specific (shell + tokens from p2-shell.css) */
+.cpage{max-width:var(--col); margin:0 auto; padding:26px 22px 64px}
+.ctitle{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); margin:0}
+.clive{display:inline-block; color:var(--ok); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--ok); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
+.csub{color:var(--ink-2); font-size:var(--fs-small); max-width:66ch; margin:6px 0 0; line-height:1.75}
+.csub b{color:var(--ink)}
+.bsec{margin-top:26px; border:1px solid var(--hair); background:var(--panel); padding:20px}
+.bh{font-size:var(--fs-meta); letter-spacing:.09em; text-transform:uppercase; color:var(--faint); margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; gap:10px}
+.bstep{color:var(--faint)}
+.bfield{display:block}
+.bfield label{display:block; color:var(--faint); font-size:var(--fs-meta); letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px}
+.bfield input{width:100%; background:var(--paper); border:1px solid var(--data-bd); color:var(--ink); font-family:var(--mono); font-size:13px; padding:9px 11px}
+.brow{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px}
+.bkey{display:inline-block; background:var(--keybg); color:var(--keyfg); border:1px solid var(--keyfg); padding:8px 14px; font-family:var(--mono); font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
+.bkey:hover{background:var(--keyfg); color:var(--keybg)}
+.bkey.ghost{background:transparent; color:var(--ink-2); border-color:var(--hair)}
+.bkey.ghost:hover{background:var(--sel); color:var(--sel-ink)}
+.bprev{margin-top:12px; border:1px dashed var(--data-bd); background:var(--paper); padding:12px 14px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.65}
+.bprev.cxerr{border-color:var(--dn); color:var(--dn)}
+.bnote{color:var(--faint); font-size:var(--fs-meta); margin-top:10px; line-height:1.6}
+.cnotice{margin-top:18px; border:1px solid var(--amber); border-left-width:3px; background:var(--panel); padding:13px 16px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.7}
+.cnotice b{color:var(--amber)}
+
+/* status strip (migrated from the index claim card) */
+.claimstate{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem .9rem; font-size:12.5px; color:var(--ink-2)}
+.claimstate .linkish{margin-left:auto; font-size:12px}
+
+/* result */
+.cxresult{margin-top:4px; border:1px solid var(--hair); background:var(--paper); padding:16px 16px 14px}
+.cxbig{display:flex; align-items:baseline; gap:4px; flex-wrap:wrap}
+.cxftb{font-family:var(--disp); font-size:clamp(26px,7.4vw,var(--fs-disp)); line-height:1.05; color:var(--ink); word-break:break-word}
+.cxftbu{font-family:var(--disp); font-size:var(--fs-lead); color:var(--ink-2)}
+.cxsub{color:var(--ink-2); font-size:var(--fs-small); margin-top:8px; line-height:1.6}
+.cxsub b{color:var(--ink)}
+
+/* product bars */
+.cxbars{margin-top:14px; display:flex; flex-direction:column; gap:10px}
+.cxbar{display:grid; grid-template-columns:150px 1fr 190px; gap:12px; align-items:center}
+.cxblabel{display:flex; align-items:center; gap:8px; font-size:var(--fs-small); color:var(--ink-2)}
+.cxdot{width:9px; height:9px; flex:0 0 auto; border-radius:2px; background:var(--ink)}
+.cxtrack{height:12px; background:var(--panel); border:1px solid var(--hair); overflow:hidden}
+.cxfill{display:block; height:100%; background:var(--ink)}
+.cxbval{display:flex; align-items:baseline; justify-content:flex-end; gap:8px; white-space:nowrap}
+.cxbnum{font-family:var(--mono); font-size:13px; color:var(--ink)}
+.cxbpct{font-family:var(--mono); font-size:11px; color:var(--faint); min-width:52px; text-align:right}
+/* product colors */
+.cxdot.p-flm,.cxfill.p-flm{background:var(--ink)}
+.cxdot.p-flk,.cxfill.p-flk{background:var(--amber)}
+.cxdot.p-lp,.cxfill.p-lp{background:var(--ok)}
+.cxdot.p-ob,.cxfill.p-ob{background:var(--ink-2)}
+.cxdot.p-vt,.cxfill.p-vt{background:var(--dn)}
+.cxdot.p-gr,.cxfill.p-gr{background:var(--faint)}
+
+/* meta rows */
+.cxmeta{margin-top:16px; border-top:1px solid var(--hair); padding-top:12px; display:flex; flex-direction:column; gap:7px}
+.cxkv{display:grid; grid-template-columns:8.5em 1fr; gap:.4rem .9rem; align-items:baseline}
+.cxk{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint)}
+.cxv{font-family:var(--mono); font-size:12.5px; color:var(--ink-2); word-break:break-all}
+.cxhead{font-family:var(--disp); font-size:var(--fs-lead); color:var(--ink)}
+.cxnote{color:var(--faint); font-size:var(--fs-meta); line-height:1.6; margin-top:4px}
+.cxnote b{color:var(--ink-2)}
+.cxact{margin-top:16px}
+.cxact .bkey{width:100%; text-align:center}
+
+.crow{display:grid; grid-template-columns:8em 1fr auto; gap:.4rem .9rem; align-items:baseline; font-size:13px; color:var(--ink-2); line-height:1.55}
+.crow .cr-l{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.crow .cr-v b{color:var(--ink); font-weight:400}
+.crow .linkish{font-size:12px; white-space:nowrap}
+
+@media (max-width:560px){
+  .cxbar{grid-template-columns:1fr; gap:4px}
+  .cxbval{justify-content:flex-start}
+  .cxbpct{text-align:left}
+  .crow{grid-template-columns:1fr auto}
+  .crow .cr-l{grid-column:1 / 3}
+  .crow .cr-v{grid-column:1 / 3}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-main">
+    <div class="brand">
+      <a class="bird3" href="index.html" aria-label="Free the Bird">
+        <svg viewBox="0 0 220 130" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M14 84 C 46 30, 82 26, 110 62 C 138 26, 174 30, 206 84"/>
+          <circle cx="110" cy="66" r="7"/>
+          <line x1="110" y1="73" x2="110" y2="112"/>
+        </svg>
+      </a>
+      <a class="wordmark" href="index.html">FTB</a>
+    </div>
+    <div class="topright">
+      <span class="netswitch" role="group" aria-label="network">
+        <span class="cur net-test">testnet</span><a class="net-main" href="mainnet.html">mainnet</a>
+      </span>
+      <button id="connectBtn">connect -&gt;</button>
+      <button id="disconnectBtn" hidden>disconnect</button>
+      <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="sections">
+    <div class="tabs-main">
+    <a href="index.html#trade">trade</a>
+    <a href="index.html#earn">earn</a>
+    <a href="index.html#lend">lend</a>
+    <a href="index.html#vote">vote</a>
+    <a href="index.html#board">board</a>
+    <a class="cur" aria-current="page" href="claim.html">claim</a>
+    <a href="index.html#verify">verify</a>
+    <a href="donate.html">donate</a>
+    <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a href="discord-bond.html">discord</a>
+    </div>
+    <span class="tabsep" aria-hidden="true"></span>
+    <div class="tabs-ext">
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    </div>
+  </nav>
+</header>
+<div class="statusline">
+  <span class="idstate" id="idstate">[ no wallet ]</span>
+  <span class="rpc" id="rpcNote">rpc: connecting...</span>
+</div>
+<div class="launchbar" id="launchbar">TESTNET: LIVE &nbsp;·&nbsp; MAIN-NET NOV 7 &nbsp;·&nbsp; <span class="tminus" id="tminus">T-…</span></div>
+
+<main class="cpage">
+  <h1 class="ctitle">claim your FTB<span class="clive">v3 · final tree</span></h1>
+  <p class="csub">Paste any snapshot address to see exactly what it can claim — the total, the FTB it mints at the 100M cap, and the <b>breakdown by product</b>: direct FLM and FLOCKS, plus salvaged LP, order-book and lending-vault positions. This is the final <b>v3 / R5</b> tree, after the restorations and the #15 custody release.</p>
+
+  <div class="cnotice"><b>Check your claim now — claiming opens at MainNet launch.</b> Right now this page is a verification tool: it reads the published v3 / R5 tree in your browser, so you can confirm your exact entitlement and its breakdown today — no wallet and no connection needed. When the MainNet site goes live, this same tree is connected to the chain and the claim button activates.</div>
+
+  <!-- migration status (live from chain) -->
+  <section class="bsec">
+    <div class="bh"><span>migration status</span><span class="bstep">read live from chain</span></div>
+    <div class="claimstate">
+      <span class="tag pub" id="migState">reading</span>
+      <span id="supplyLine">supply -</span>
+      <span id="capLine">cap -</span>
+      <button class="linkish" id="refreshBtn">refresh -&gt;</button>
+    </div>
+  </section>
+
+  <!-- the breakdown explorer -->
+  <section class="bsec" id="cxSec">
+    <div class="bh"><span>your claim · by product</span><span class="bstep">paste any snapshot address</span></div>
+    <div class="bfield">
+      <label for="cxAddr">snapshot wallet address</label>
+      <input id="cxAddr" type="text" placeholder="N…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="brow">
+      <button class="bkey" id="cxGo" type="button">look up claim -&gt;</button>
+      <button class="bkey ghost" id="cxMine" type="button">use my wallet -&gt;</button>
+      <button class="go" id="claimGo" hidden>claim your ftb -&gt;</button>
+    </div>
+    <div class="bprev" id="cxMsg" hidden></div>
+    <div id="cxOut" hidden></div>
+    <p class="bnote">The breakdown reads only the public, published claim tree tied to the address you type — nothing leaves your browser. Signing a claim happens only for the wallet you connect, one claim per address, forever.</p>
+  </section>
+
+  <!-- the snapshot anchors (migrated) -->
+  <section class="bsec">
+    <div class="bh"><span>the snapshot</span><span class="bstep">reproducible &amp; public</span></div>
+    <div class="crow">
+      <span class="cr-l">snapshot</span>
+      <span class="cr-v">block 12,782,704 &middot; <b id="rootCount">-</b> &middot; root <b id="rootLine">-</b> &middot; the attacker and the flagged cluster are excluded by construction</span>
+      <button class="linkish" id="proofsBtn">proofs -&gt;</button>
+    </div>
+  </section>
+
+  <div class="bnote" style="margin-top:22px; max-width:66ch">
+    Reproduce the tree yourself: the leaves are the pre-exploit FLM + FLOCKS holdings plus salvaged LP / order-book / vault positions, summed per address and hashed into the published root. Every claim above shows its merkle proof; the migrator verifies it on-chain before minting, floored to the 100,000,000 FTB hard cap.
+  </div>
+</main>
+
+<!-- ================= modal: review & sign ================= -->
+<div id="ov" class="overlay" hidden role="dialog" aria-modal="true" aria-label="review and sign">
+  <div class="panel" tabindex="-1">
+    <button class="x" data-close aria-label="close">[ close ]</button>
+    <h2 class="disp" id="ovTitle">claim</h2>
+    <p class="muted small" style="max-width:54ch" id="ovDesc">review before you sign. your wallet shows the exact invocation; this panel shows the same thing in words.</p>
+    <section class="path">
+      <h3 id="ovSec">// details</h3>
+      <div class="warn" id="ovWarn"></div>
+      <div id="ovBody"></div>
+      <div class="row" style="margin-top:.6rem">
+        <button id="ovGo">sign in wallet</button>
+        <button class="linkish" data-close>cancel</button>
+      </div>
+      <div id="ovMsg"></div>
+    </section>
+  </div>
+</div>
+
+<!-- ================= modal: own RPC ================= -->
+<div id="ovRpc" class="overlay" hidden role="dialog" aria-modal="true" aria-label="use your own node">
+  <div class="panel" tabindex="-1">
+    <button class="x" data-close aria-label="close">[ close ]</button>
+    <h2 class="disp">your node</h2>
+    <p class="muted small" style="max-width:54ch">paste the URL of a Neo N3 RPC node you control. a user on their own node cannot be censored. stored only in this browser.</p>
+    <section class="path">
+      <h3>// endpoint</h3>
+      <input id="ownRpcIn" placeholder="https://your.node.example:443" autocomplete="off">
+      <div class="row" style="margin-top:.6rem">
+        <button id="ownRpcGo">use it</button>
+        <button class="linkish" id="ownRpcReset">reset to list</button>
+      </div>
+      <div id="ownRpcMsg"></div>
+    </section>
+  </div>
+</div>
+
+<footer class="foot3">
+  <span class="disp" style="font-size:20px">free the bird</span><br>
+  <span class="muted" id="shiftLine">// night shift</span><br>
+  Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
+  MIT code, public proofs - a gift to the Flamingo community.
+</footer>
+
+<script src="config.js"></script>
+<script src="ftb-dapi.js"></script>
+<script src="js/ftb-rpc.js"></script>
+<script src="js/ftb-state.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/mod-wallet.js"></script>
+<script src="js/mod-claim-page.js"></script>
+</body>
+</html>

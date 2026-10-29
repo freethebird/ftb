@@ -653,7 +653,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
       <a href="#lend">lend</a>
       <a href="#vote">vote</a>
       <a href="#board">board</a>
-      <a href="#claim">claim</a>
+      <a href="claim.html">claim</a>
       <a href="#verify">verify</a>
       <a href="donate.html">donate</a>
       <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
@@ -687,7 +687,7 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
     <a class="cta solid" href="#trade">start trading -&gt;</a>
     <a class="cta" href="#earn">earn dividends -&gt;</a>
     <a class="cta" href="#vote">govern -&gt;</a>
-    <a class="cta" href="#claim">claim your ftbs -&gt;</a>
+    <a class="cta" href="claim.html">claim your ftbs -&gt;</a>
   </div>
 </section>
 
@@ -1007,39 +1007,6 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   </div>
 
   <!-- ============ CLAIM ============ -->
-  <div class="card act3" id="claim">
-    <div class="card-h">
-      <span class="no">claim</span>
-      <span class="spacer"></span>
-      <span class="lede">migration &mdash; claim your FTB</span>
-      <span class="ver">v0.12</span>
-    </div>
-    <div class="card-b">
-      <!-- state strip -> the one action -> the two anchors (entitlement, snapshot) -->
-      <div class="claimstate">
-        <span class="tag pub" id="migState">reading</span>
-        <span id="supplyLine">supply -</span>
-        <span id="capLine">cap -</span>
-        <button class="linkish" id="refreshBtn">refresh -&gt;</button>
-      </div>
-
-      <button class="go" id="claimGo">claim your ftb -&gt;</button>
-
-      <div class="clist">
-        <div class="crow">
-          <span class="cr-l">your claim</span>
-          <span class="cr-v" id="claimHint">connect a wallet to check your entitlement</span>
-          <button class="linkish" id="checkBtn">check -&gt;</button>
-        </div>
-        <div class="crow">
-          <span class="cr-l">snapshot</span>
-          <span class="cr-v">block 12,782,704 &middot; <b id="rootCount">-</b> &middot; root <b id="rootLine">-</b> &middot; the attacker is excluded by construction</span>
-          <button class="linkish" id="proofsBtn">proofs -&gt;</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ============ VERIFY ============ -->
   <div class="card act3" id="verify">
     <div class="card-h">
@@ -1125,7 +1092,6 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 <script defer src="js/mod-lend.js"></script>
 <script defer src="js/mod-gov.js"></script>
 <script defer src="js/mod-board.js"></script>
-<script defer src="js/mod-claim.js"></script>
 <script defer src="js/mod-verify.js"></script>
 <script defer src="js/mod-wallet.js"></script>
 </body>
