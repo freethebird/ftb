@@ -14,11 +14,12 @@ fail=0
 note(){ printf 'GATE: %s\n' "$*" >&2; fail=1; }
 
 # staged adds/copies/modifies, NUL-safe
-mapfile -d '' -t FILES < <(git diff --cached --name-only --diff-filter=ACM -z)
+FILES=()
+while IFS= read -r -d '' f; do FILES+=("$f"); done < <(git diff --cached --name-only --diff-filter=ACM -z)
 [ "${#FILES[@]}" -eq 0 ] && exit 0
 
 MAXBYTES=$((512*1024))   # 512 KiB soft cap
-is_allowed_large(){ case "$1" in web/proofs.json|*.sha256) return 0;; *) return 1;; esac; }
+is_allowed_large(){ case "$1" in web/proofs.json|web/proofs_v3.json|web/claim_breakdown_v3.json|*.sha256) return 0;; *) return 1;; esac; }
 
 for f in "${FILES[@]}"; do
   [ -f "$f" ] || continue
