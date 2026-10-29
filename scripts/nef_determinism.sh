@@ -13,7 +13,7 @@ tmp="build/.determinism"
 rm -rf "$tmp"
 mkdir -p "$tmp"
 fail=0
-for c in ftb_token ftb_migrator registry oracle lend ballot bondvault treasury dividends dbondvault accusation; do
+for c in ftb_token ftb_migrator ftb_migrator_r5 registry oracle lend ballot bondvault treasury dividends dbondvault accusation; do
 	neo-go contract compile \
 		-i "contracts/$c/$c.go" \
 		-c "contracts/$c/$c.yml" \

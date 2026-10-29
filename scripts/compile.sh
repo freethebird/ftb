@@ -33,6 +33,14 @@ for v in ftb_migrator_r3 ftb_migrator_r4 ballot_r3 ballot_r4; do
 		-o "build/$v.nef" \
 		-m "build/$v.manifest.json"
 done
+# R5 variant: NEW source — ratioDen is the v3/R5 tree total (54,027,173,482,587,996), in its
+# own dir so the deployed R1-R4 bytecode and its recorded NEF hashes stay untouched (FTB-01).
+echo "compiling ftb_migrator_r5"
+neo-go contract compile \
+	-i contracts/ftb_migrator_r5/ftb_migrator_r5.go \
+	-c contracts/ftb_migrator_r5/ftb_migrator_r5.yml \
+	-o build/ftb_migrator_r5.nef \
+	-m build/ftb_migrator_r5.manifest.json
 # Per-proposal ballots (genesis votes 2 and 3; one deployment per question).
 for v in ballot_launchdate ballot_claimwindow; do
 	echo "compiling $v"
