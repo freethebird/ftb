@@ -22,15 +22,15 @@
   var CFG = FtbState.CFG, C = FtbState.C;
 
   // v3 / R5 final tree - the files this page serves (committed beside it).
-  var PROOFS_URL = './proofs_v3.json';
-  var BREAKDOWN_URL = './claim_breakdown_v3.json';
+  var PROOFS_URL = './proofs_v4.json';
+  var BREAKDOWN_URL = './claim_breakdown_v4.json';
 
   // the committed cap arithmetic (DECISIONS.md): hard cap 100,000,000 FTB =
   // 10^16 base units; the v3 tree sums to ratioDen, so one FLM-equiv base unit
   // mints floor(amount * 10^16 / ratioDen). The on-chain migrator.quote() applies
   // the identical integer math once the v3 migrator is live.
   var RNUM = 10000000000000000n;              // 10^16  (100M FTB * 10^8)
-  var RDEN = 54027173482587996n;              // v3 / R5 total (FLM-equiv base units)
+  var RDEN = 57745832920225836n;              // v4 total (FLM-equiv base units)
   function ftbOf(amt) { return (BigInt(amt) * RNUM) / RDEN; }
   // headline form: two decimals max so a large number fits one line (the site's
   // tile convention); full precision stays in the tooltip and the detail rows.
@@ -43,14 +43,15 @@
     ['lp',        'LP salvage',       'p-lp',   'your share of FLM locked in Flamingo pools'],
     ['orderbook', 'order book',       'p-ob',   'FLM locked in open FlamingoSwap limit orders'],
     ['vault',     'lend / vault',     'p-vt',   'FLM collateral in the FToken lending vaults'],
-    ['grant',     'migration grant',  'p-gr',   'post-snapshot grant held in dev-wallet custody']
+    ['grant',     'migration grant',  'p-gr',   'post-snapshot grant held in dev-wallet custody'],
+    ['broker',    'Flamingo order book', 'p-bk', 'FLM in the FlamingoBroker (free deposits + open limit-order locks), credited in full']
   ];
 
   // ---------- data ----------
   // breakdown (small) upfront; proofs (big) lazily, only to sign a claim.
   var compIdx = null, META = null, loadErr = null, proofsIdx = null;
   var loading = fetch(BREAKDOWN_URL).then(function (r) {
-    if (!r.ok) throw new Error('claim_breakdown_v3.json not found'); return r.json();
+    if (!r.ok) throw new Error('claim_breakdown_v4.json not found'); return r.json();
   }).then(function (bd) {
     compIdx = bd.wallets || {};
     META = { root: bd.root, count: bd.count, fields: bd.fields || FIELDS.map(function (f) { return f[0]; }) };
@@ -60,16 +61,16 @@
   function loadProofs() {
     if (proofsIdx) return Promise.resolve(proofsIdx);
     return fetch(PROOFS_URL).then(function (r) {
-      if (!r.ok) throw new Error('proofs_v3.json not found'); return r.json();
+      if (!r.ok) throw new Error('proofs_v4.json not found'); return r.json();
     }).then(function (pf) {
       proofsIdx = {}; for (var i = 0; i < pf.entries.length; i++) proofsIdx[pf.entries[i].address] = pf.entries[i];
       return proofsIdx;
     });
   }
 
-  // total entitlement = sum of the six product components (element [6] is the
+  // total entitlement = sum of the seven product components (element [7] is the
   // merkle proof node count, not a component).
-  function totalOf(comp) { var t = 0n; for (var i = 0; i < 6; i++) t += BigInt(comp[i] || '0'); return t; }
+  function totalOf(comp) { var t = 0n; for (var i = 0; i < 7; i++) t += BigInt(comp[i] || '0'); return t; }
 
   // ---------- snapshot / root meta ----------
   function paintMeta() {
@@ -124,7 +125,7 @@
   function render(addr, comp) {
     var out = $('cxOut'); out.innerHTML = ''; out.hidden = false;
     var total = totalOf(comp);
-    var nodes = comp[6] || '?';
+    var nodes = comp[7] || '?';
     var ftb = ftbOf(total);
 
     // headline: FTB received (2dp) + full entitlement
@@ -133,7 +134,7 @@
     var ftbNum = el('span', 'cxftb', fmt2(ftb.toString())); ftbNum.title = fmt(ftb.toString()) + ' FTB';
     big.appendChild(ftbNum); big.appendChild(el('span', 'cxftbu', ' FTB'));
     head.appendChild(big);
-    head.appendChild(el('div', 'cxsub', fmt(total.toString()) + ' FLM-equiv entitlement → ' + fmt(ftb.toString()) + ' FTB at the v3 / R5 cap (100,000,000 FTB hard cap)'));
+    head.appendChild(el('div', 'cxsub', fmt(total.toString()) + ' FLM-equiv entitlement → ' + fmt(ftb.toString()) + ' FTB at the v4 cap (100,000,000 FTB hard cap)'));
     out.appendChild(head);
 
     // the product split
@@ -193,18 +194,18 @@
     // carries an earlier root, a v3 proof cannot verify on-chain - so don't
     // submit a doomed transaction; say plainly that v3 claiming isn't live yet.
     if (META && CFG.merkleRoot && norm(CFG.merkleRoot) !== norm(META.root)) {
-      FtbShell.showPlan('v3 / R5 not live yet',
-        'This page shows the final v3 / R5 claim tree, but the deployed migrator still carries the previous root — so a v3 proof would not verify on-chain yet. v3 claiming opens when the R5 migrator is deployed at MainNet launch. Your breakdown above is final; the claim button activates once the on-chain root matches.',
-        [['page root (v3/R5)', short(META.root)], ['deployed root', short(CFG.merkleRoot)]], null);
+      FtbShell.showPlan('v4 not live yet',
+        'This page shows the final v4 claim tree, but the deployed migrator still carries the previous root — so a v4 proof would not verify on-chain yet. v4 claiming opens when the R6 migrator is deployed at MainNet launch. Your breakdown above is final; the claim button activates once the on-chain root matches.',
+        [['page root (v4)', short(META.root)], ['deployed root', short(CFG.merkleRoot)]], null);
       return;
     }
     loadProofs().then(function (idx) {
       var e = idx[addr];
-      if (!e) { FtbShell.showPlan('proof unavailable', 'could not find a proof for this address in proofs_v3.json.', [['address', addr]], null); return; }
+      if (!e) { FtbShell.showPlan('proof unavailable', 'could not find a proof for this address in proofs_v4.json.', [['address', addr]], null); return; }
       var ftb = ftbOf(e.amount);
       var plan = FtbState.dapi.claim(FtbState.account, e.amount, e.proof);
       FtbShell.showPlan('claim ' + fmt2(ftb.toString()) + ' FTB',
-        'one claim per address, verified on-chain against the published v3 / R5 merkle root. the migrator converts at the committed cap ratio. check the hashes in verify before you sign.',
+        'one claim per address, verified on-chain against the published v4 merkle root. the migrator converts at the committed cap ratio. check the hashes in verify before you sign.',
         [['address', e.address], ['entitlement', fmt(e.amount) + ' FLM-equiv'], ['you receive', fmt(ftb.toString()) + ' FTB'], ['proof', e.proof.length + ' nodes'], ['what you sign', plan.summary]], plan);
     }).catch(function (er) { FtbShell.showPlan('proofs unavailable', errText(er), [['proofs file', PROOFS_URL]], null); });
   }
