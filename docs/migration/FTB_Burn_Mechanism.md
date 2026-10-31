@@ -93,3 +93,32 @@ burned unit is either unclaimed or bought on the open market.
 *Adopted by the owner 2026-10-17 (B1 + B2 + B3). Implementation parameters -
 the exact B3 per-transaction percentage and the B2 timeout length - are set in the launch
 parameters; the mechanisms themselves are decided.*
+
+## v4 broker-FLM addendum (2026-10-31) — B1 reaffirmed as the end-state
+
+v4 adds the FlamingoBroker FLM to the claim tree (free deposits + open-order
+locks, protocol fees excluded; **+37,186,594.38 FLM-equiv**, root
+`0x235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4`, 5,233
+wallets). The owner reaffirmed **B1 — deadline burn** as the end-state for
+these entitlements, and explicitly **declined** the governance-sweep
+alternative (no `sweepUnclaimed`, nothing added to the token):
+
+- A **claim window** is announced at launch (reminders T-30 / T-7 / T-1 per B1).
+  At its end the owner calls the migrator's existing `Close()` → the token's
+  `closeMigration`, which seals the mint forever. There is no on-chain deadline
+  to build — `Close()` is the window close.
+- Every unclaimed v4 entitlement is then **burned by construction**: never
+  minted, never recycled to treasury, dev, or governance. This includes the
+  broker wallets most likely never to claim — the 29.6M-FLM market-maker leaf
+  (`NUN32id3LKcSTEcfyiGCBKg6puCijwe4ZZ`) and the 35 new broker-only leaves.
+- This also disposes of the broker's **~1,887,659.55 FLM under-collateralisation**
+  (claims 37.24M incl. fees > holdings 35.35M at snapshot; see
+  `claude/ftb-broker-flm-v4-forensics.md`). FTB mints against *entitlements*, not
+  against recovered FLM, so the shortfall never over-issues FTB: the 100M cap
+  holds and any unbacked/abandoned portion simply goes unminted.
+
+**Supply-model correction:** the header figures above (base 526,782,179.10,
+r = 0.189832) are the pre-v4 (v2) model and are superseded. The live model is the
+v4 tree: entitlement base **577,458,329.20225836 FLM-equiv**, hard cap
+100,000,000 FTB, r = 100,000,000 ÷ 577,458,329.20225836 = **0.17317266…**,
+applied at mint time by FtbMigratorR6.
