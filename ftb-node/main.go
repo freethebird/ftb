@@ -50,7 +50,7 @@ import (
 // release; pinning and following it is what keeps a mirror current.
 const defaultIPNS = "k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq"
 
-const ftbNodeVersion = "0.1.1"
+const ftbNodeVersion = "0.1.2"
 
 type cfg struct {
 	dataDir   string
@@ -174,6 +174,7 @@ func run(c cfg) error {
 	cid, _ := followOnce(c, ipfsBin)
 	banner(c, peer)
 	publishClaim(c, ipfsBin, peer, cid)
+	provide(c, ipfsBin, cid) // announce to the DHT now - pinning alone does not
 
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
@@ -183,9 +184,14 @@ func run(c cfg) error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if ncid, changed := followOnce(c, ipfsBin); changed {
+				ncid, changed := followOnce(c, ipfsBin)
+				if changed {
 					publishClaim(c, ipfsBin, peer, ncid)
 				}
+				if ncid == "" { // resolve failed this cycle - re-announce the last pinned release
+					ncid = readState(c)
+				}
+				provide(c, ipfsBin, ncid)
 			}
 		}
 	}()
@@ -442,6 +448,20 @@ func followOnce(c cfg, ipfsBin string) (string, bool) {
 	writeState(c, cid)
 	logf("mirroring current release: %s", cid)
 	return cid, true
+}
+
+// provide announces to the DHT that this node serves the release CID, so other
+// peers discover this mirror via findprovs. Pinning does NOT announce promptly:
+// Kubo's background reprovider can lag by hours, leaving a fresh mirror invisible.
+// We announce right after each pin and again on every follow cycle (default 15m),
+// well inside the provider-record lifetime, so the record never goes stale.
+func provide(c cfg, ipfsBin, cid string) {
+	if cid == "" {
+		return
+	}
+	if _, err := ipfsOut(c, ipfsBin, "routing", "provide", cid); err != nil {
+		logf("could not announce the release to the DHT: %v (will retry next cycle)", err)
+	}
 }
 
 func resolve(c cfg, ipfsBin string) (string, error) {
