@@ -95,9 +95,17 @@
       <div class="nd-step">
         <div class="st-h"><span class="st-n">2</span><span class="st-t">Run it</span></div>
         <pre class="cmd">ftb-node</pre>
-        <p class="st-b">That is the whole job. Leave it running (a server, or just your machine while it is on). It prints your local copy of FTB and keeps mirroring in the background. Ctrl-C to stop; your pinned copy stays.</p>
+        <p class="st-b">The installer puts <code>ftb-node</code> in <code>~/.local/bin</code>. If your shell says <code>command not found</code>, that folder is not on your <code>PATH</code> yet (the installer prints this same line). Add it:</p>
+        <pre class="cmd">export PATH="$HOME/.local/bin:$PATH"</pre>
+        <p class="st-b">Append that line to <code>~/.zshrc</code> (or <code>~/.bashrc</code>) to make it permanent. Then that is the whole job: leave it running (a server, or just your machine while it is on). It prints your local copy of FTB and keeps mirroring in the background. Ctrl-C to stop; your pinned copy stays.</p>
       </div>
     </div>
+  </section>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">What it needs</h2>
+    <p class="nd-p"><b>Footprint.</b> The <code>ftb-node</code> binary is about 7 MB to download. On first run it fetches Kubo (the IPFS engine) once into <code>~/.ftb-node</code> and pins the FTB site, so once everything is in place budget roughly <b>250 MB</b> of disk for Kubo, its repo, and the site. Day to day it uses a little bandwidth to serve your copy. It mints nothing and stores no wallet.</p>
+    <p class="nd-p"><b>Requirements.</b> macOS, Linux, or Windows, on Intel or ARM. About <b>1 GB</b> of free RAM is comfortable. A normal broadband connection is enough; opening port <code>4001</code> to your machine lets your node find peers faster, but it is optional. No admin rights are needed, and the node holds no keys. Run it whenever your machine is on. The more mirrors online, the harder FTB is to switch off.</p>
   </section>
 
   <section class="nd-sec">
