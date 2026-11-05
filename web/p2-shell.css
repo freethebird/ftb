@@ -424,7 +424,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .statusline .rpc{color:var(--ink-2)}
 
 /* ---- hero (Flamingo landing: one sentence + one button) ---- */
-.hero3{max-width:1060px; margin:0 auto; padding:64px 22px 40px; text-align:center}
+.hero3{max-width:var(--col); margin:0 auto; padding:64px 22px 40px; text-align:center}
 .hero3 h1{font-family:var(--disp); font-weight:400;
   font-size:clamp(34px,6.4vw,64px); line-height:1.03; letter-spacing:.02em; margin:0 0 14px}
 .hero3 .sub{font-size:13.5px; color:var(--ink-2); max-width:62ch; margin:0 auto 22px;
@@ -437,7 +437,7 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .cta.solid:hover{opacity:.85}
 
 /* ---- content frame ---- */
-.page{max-width:1060px; margin:0 auto; padding:0 22px 90px}
+.page{max-width:var(--col); margin:0 auto; padding:0 22px 90px}
 
 /* ---- stat tiles (Flamingo analytics band) ---- */
 /* v0.12: tiles wide enough for the full numbers (the band never abbreviates); each tile
@@ -571,3 +571,16 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
 #disconnectBtn{color:var(--rd); border-color:var(--rd)}
 #disconnectBtn:hover{background:var(--rd); color:var(--keybg)}
 .navico{width:1.15em; height:1.15em; vertical-align:-.22em; display:inline-block}
+
+/* prose/inline links: plain underlined, never the key-button chrome (walkthrough fix) */
+p a, .csub a, .sub a, .advnote a, .bnote a, .st-b a, .nd-p a, .pfnote a, .sealnote a,
+.boardstate a, .lz-legend a, .lz-foot a, .lz-dexnote a, .bdnote a{
+  background:transparent; border:0; border-bottom:1px solid var(--ink-2); border-radius:0;
+  padding:0; text-transform:none; letter-spacing:inherit; color:inherit; line-height:inherit}
+p a:hover, .csub a:hover, .sub a:hover, .advnote a:hover, .bnote a:hover, .st-b a:hover,
+.nd-p a:hover, .pfnote a:hover, .sealnote a:hover, .boardstate a:hover, .lz-legend a:hover,
+.lz-foot a:hover, .lz-dexnote a:hover, .bdnote a:hover{ background:var(--sel); color:var(--sel-ink) }
+
+/* rpc status note doubles as the "use your own node" opener (own-node button retired) */
+.statusline .rpc.is-clickable{cursor:pointer; border-bottom:1px dotted var(--faint)}
+.statusline .rpc.is-clickable:hover{color:var(--ink); border-bottom-color:var(--ink)}

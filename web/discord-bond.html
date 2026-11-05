@@ -3,62 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>free the bird — discord bond</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="p2-shell.css">
-<style>
-/* discord bond — page-specific (shell + tokens from p2-shell.css) */
-.bpage{max-width:var(--col); margin:0 auto; padding:26px 22px 64px}
-.btitle{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); margin:0}
-.bsub{color:var(--ink-2); font-size:var(--fs-small); max-width:66ch; margin:6px 0 0; line-height:1.75}
-.bscaffold{display:inline-block; color:var(--dn); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--dn); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
-.blive{display:inline-block; color:var(--ok); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--ok); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
-.bsec{margin-top:30px; border:1px solid var(--hair); background:var(--panel); padding:20px}
-.bh{font-size:var(--fs-meta); letter-spacing:.09em; text-transform:uppercase; color:var(--faint); margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; gap:10px}
-.bstep{color:var(--faint)}
-.brow{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px}
-.bfield{display:block; margin-top:12px}
-.bfield label{display:block; color:var(--faint); font-size:var(--fs-meta); letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px}
-.bfield input, .bfield select{width:100%; background:var(--paper); border:1px solid var(--data-bd); color:var(--ink); font-family:var(--mono); font-size:13px; padding:9px 11px}
-.bamount{font-family:var(--disp); font-size:var(--fs-num); color:var(--ink)}
-.bkey{display:inline-block; background:var(--keybg); color:var(--keyfg); border:1px solid var(--keyfg); padding:8px 14px; font-family:var(--mono); font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
-.bkey:hover{background:var(--keyfg); color:var(--keybg)}
-.bkey.ghost{background:transparent; color:var(--ink-2); border-color:var(--hair)}
-.bkey.ghost:hover{background:var(--sel); color:var(--sel-ink)}
-.bprev{margin-top:12px; border:1px dashed var(--data-bd); background:var(--paper); padding:12px 14px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.65}
-.bprev b{color:var(--ink)}
-.bnote{color:var(--faint); font-size:var(--fs-meta); margin-top:10px; line-height:1.6}
-.bstat{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:4px}
-.bstat .k{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.05em; text-transform:uppercase}
-.bstat .v{font-family:var(--disp); font-size:var(--fs-num); color:var(--ink); margin-top:2px}
-.bcase{border:1px solid var(--hair); background:var(--paper); padding:14px; margin-top:12px}
-.bcase .bchead{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline}
-.bcase .bcid{color:var(--faint); font-size:var(--fs-meta)}
-.bcreason{color:var(--ink); font-size:var(--fs-small); margin:8px 0}
-.bvote{display:grid; grid-template-columns:110px 1fr 90px; align-items:center; gap:10px; margin:6px 0}
-.bvname{font-size:var(--fs-small); color:var(--ink-2)}
-.bvwrap{height:12px; background:var(--panel); border:1px solid var(--hair); overflow:hidden}
-.bvbar{display:block; height:100%}
-.bvbar.liq{background:var(--dn)} .bvbar.keep{background:var(--ink)}
-.bvv{text-align:right; font-size:var(--fs-small); color:var(--ink-2)}
-.bbanner{border:1px dashed var(--data-bd); background:var(--paper); padding:14px 16px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.7; margin-top:30px}
-.bbanner b{color:var(--ink)}
-.bhash{font-family:var(--mono); font-size:11px; color:var(--ink-2); word-break:break-all; line-height:1.9}
-.bhash b{color:var(--ink)}
-@media (max-width:560px){ .bvote{grid-template-columns:86px 1fr 78px} .bstat{grid-template-columns:1fr} }
-.bwall{margin-top:4px; border:1px solid var(--hair); background:var(--paper)}
-.bwrow{display:grid; grid-template-columns:96px 1fr; gap:12px; padding:9px 14px; border-top:1px solid var(--hair); align-items:center}
-.bwrow:first-child{border-top:0}
-.bwhead{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.06em; text-transform:uppercase}
-.bwnum{font-family:var(--mono); font-size:13px; color:var(--ink-2)}
-.bwid{font-family:var(--mono); font-size:13px; color:var(--ink); word-break:break-all}
-.dbtick{display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:12.5px; letter-spacing:.03em; color:var(--ink-2); border:1px solid var(--hair); background:var(--paper); padding:6px 11px}
-.dbtick .dot{width:7px; height:7px; border-radius:50%; background:var(--ok); flex:0 0 auto; animation:dbpulse 2.2s ease-out infinite}
-.dbtick b{color:var(--ink)}
-@keyframes dbpulse{0%{box-shadow:0 0 0 0 rgba(123,220,123,.45)}70%{box-shadow:0 0 0 7px rgba(123,220,123,0)}100%{box-shadow:0 0 0 0 rgba(123,220,123,0)}}
-@media (prefers-reduced-motion: reduce){.dbtick .dot{animation:none}}
-</style>
+<link rel="stylesheet" href="discord-bond.css">
 </head>
 <body>
 <header class="topbar">
@@ -79,27 +29,28 @@
       </span>
       <button id="connectBtn">connect -&gt;</button>
       <button id="disconnectBtn" hidden>disconnect</button>
-      <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
     </div>
   </div>
   <nav class="tabs" aria-label="sections">
     <div class="tabs-main">
-    <a href="index.html#trade">trade</a>
-    <a href="index.html#earn">earn</a>
-    <a href="index.html#lend">lend</a>
-    <a href="index.html#vote">vote</a>
-    <a href="index.html#board">board</a>
+    <a href="librationzero.html">LØ</a>
+    <a href="index.html">trade</a>
+    <a href="lend.html">lend</a>
+    <a href="governance.html">governance</a>
+    <a href="stake.html">stake</a>
     <a href="claim.html">claim</a>
-    <a href="index.html#verify">verify</a>
-    <a href="donate.html">donate</a>
     <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a href="explorer.html" aria-label="explorer" title="explorer"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg></a>
+    <a href="academy.html">academy</a>
+    <a href="donate.html">donate</a>
+    <a href="node.html">node</a>
     <a class="cur" aria-current="page" href="discord-bond.html">discord</a>
     </div>
     <span class="tabsep" aria-hidden="true"></span>
     <div class="tabs-ext">
-    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
-    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
-    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener noreferrer">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener noreferrer">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener noreferrer">reddit &#8599;</a>
     </div>
   </nav>
 </header>
@@ -111,7 +62,7 @@
 
 <main id="dbRoot" class="bpage">
   <h1 class="btitle">discord bond<span class="blive">live · testnet</span></h1>
-  <div class="brow" style="margin-top:12px"><a class="bkey" href="https://discord.gg/qvQptfkMV6" target="_blank" rel="noopener">Join the Discord ↗</a><span class="dbtick"><span class="dot" aria-hidden="true"></span><span id="dbTopNum">counting&hellip;</span></span></div>
+  <div class="brow u56f435"><a class="bkey" href="https://discord.gg/qvQptfkMV6" target="_blank" rel="noopener noreferrer">Join the Discord ↗</a><span class="dbtick"><span class="dot" aria-hidden="true"></span><span id="dbTopNum">counting&hellip;</span></span></div>
   <p class="bsub">Entry to the FTB Discord is <b>bonded</b>. Post a <b><span id="dbBondAmt">1000 FTB</span></b> bond, verify your deposit, and you're in. The bond is your skin in the game: if you scam a member, the community can file an accusation and vote to <b>liquidate and burn</b> your bond. Honest actors get their bond back on a clean exit; scammers lose it to the fire.</p>
 
   <section class="bsec">
@@ -133,7 +84,7 @@
 
   <section class="bsec">
     <div class="bh"><span>2 · verify for the server</span><span class="bstep">prove the deposit</span></div>
-    <p class="bnote" style="margin-top:0">Once your deposit confirms on-chain, run <b>/verify</b> in the <b>#verify</b> channel — the bot reads your bond by your Discord id and grants your <b>Bonded</b> role. You can check your bond status here first:</p>
+    <p class="bnote ud46224">Once your deposit confirms on-chain, run <b>/verify</b> in the <b>#verify</b> channel — the bot reads your bond by your Discord id and grants your <b>Bonded</b> role. You can check your bond status here first:</p>
     <div class="brow">
       <button class="bkey ghost" id="dbCheckBtn" type="button">check my bond -&gt;</button>
     </div>
@@ -158,10 +109,10 @@
 
   <section class="bsec">
     <div class="bh"><span>accusations · community vote</span><span class="bstep">the bond's own ballot — not governance</span></div>
-    <p class="bnote" style="margin-top:0">This is the bond's <b>own</b> dispute ballot, separate from protocol governance. Any bonded member can file; bonded members vote <b>liquidate</b> (burn the bond, remove the member) or <b>dismiss</b>. Liquidate above the threshold sends the bond to the burn address.</p>
+    <p class="bnote ud46224">This is the bond's <b>own</b> dispute ballot, separate from protocol governance. Any bonded member can file; bonded members vote <b>liquidate</b> (burn the bond, remove the member) or <b>dismiss</b>. Liquidate above the threshold sends the bond to the burn address.</p>
     <div id="dbCases"><p class="bnote">Loading open cases…</p></div>
 
-    <div class="bh" style="margin-top:22px"><span>file an accusation</span><span class="bstep">bonded members only</span></div>
+    <div class="bh u2517a5"><span>file an accusation</span><span class="bstep">bonded members only</span></div>
     <div class="bfield"><label for="dbAcc">accused bond id</label><input id="dbAcc" type="text" inputmode="numeric" placeholder="e.g. 41" autocomplete="off"></div>
     <div class="bfield"><label for="dbReason">reason</label>
       <select id="dbReason">
@@ -181,13 +132,13 @@
 
   <section class="bsec" id="dbWallSec">
     <div class="bh"><span>active bonds &middot; <span id="dbWallCount">&mdash;</span></span><span class="bstep">read live from the vault</span></div>
-    <p class="bnote" style="margin-top:0">Every member holding an active bond, by bond number &mdash; Discord user id only, no wallet, no personal data. Proof the room is real: each one has skin in the game.</p>
-    <div id="dbWall" class="bwall"><p class="bnote" style="padding:12px 14px;margin:0">Loading active bonds&hellip;</p></div>
+    <p class="bnote ud46224">Every member holding an active bond, by bond number &mdash; Discord user id only, no wallet, no personal data. Proof the room is real: each one has skin in the game.</p>
+    <div id="dbWall" class="bwall"><p class="bnote u715c5b">Loading active bonds&hellip;</p></div>
   </section>
 
   <div class="bbanner">
     <b>On-chain.</b> Deposits, cases, votes and burns all run through two contracts on Neo N3 TestNet — no admin key moves a bond.
-    <div class="bhash" style="margin-top:8px">
+    <div class="bhash u8a77e5">
       <b>vault</b> 0x62f053d7f360d286e6ee0551155d7724564fea2b<br>
       <b>ballot</b> 0xfada35e4dd4fd8ce22c7badf2d6449b449aaeda9<br>
       <b>FTB</b> 0x1ff1f51e63179867367ae8982af583e01e7cbdbd
@@ -200,12 +151,12 @@
   <div class="panel" tabindex="-1">
     <button class="x" data-close aria-label="close">[ close ]</button>
     <h2 class="disp" id="ovTitle">review</h2>
-    <p class="muted small" style="max-width:54ch" id="ovDesc">review before you sign. your wallet shows the exact invocation; this panel shows the same thing in words.</p>
+    <p class="muted small u01a8c8" id="ovDesc">review before you sign. your wallet shows the exact invocation; this panel shows the same thing in words.</p>
     <section class="path">
       <h3 id="ovSec">// details</h3>
       <div class="warn" id="ovWarn"></div>
       <div id="ovBody"></div>
-      <div class="row" style="margin-top:.6rem">
+      <div class="row uacef09">
         <button id="ovGo">sign in wallet</button>
         <button class="linkish" data-close>cancel</button>
       </div>
@@ -219,11 +170,11 @@
   <div class="panel" tabindex="-1">
     <button class="x" data-close aria-label="close">[ close ]</button>
     <h2 class="disp">your node</h2>
-    <p class="muted small" style="max-width:54ch">paste the URL of a Neo N3 RPC node you control. a user on their own node cannot be censored. stored only in this browser.</p>
+    <p class="muted small u01a8c8">paste the URL of a Neo N3 RPC node you control. a user on their own node cannot be censored. stored only in this browser.</p>
     <section class="path">
       <h3>// endpoint</h3>
       <input id="ownRpcIn" placeholder="https://your.node.example:443" autocomplete="off">
-      <div class="row" style="margin-top:.6rem">
+      <div class="row uacef09">
         <button id="ownRpcGo">use it</button>
         <button class="linkish" id="ownRpcReset">reset to list</button>
       </div>
@@ -233,7 +184,7 @@
 </div>
 
 <footer class="foot3">
-  <span class="disp" style="font-size:20px">free the bird</span><br>
+  <span class="disp ub9199e">free the bird</span><br>
   <span class="muted" id="shiftLine">// night shift</span><br>
   Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
   MIT code, public proofs - a gift to the Flamingo community.

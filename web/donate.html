@@ -3,28 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>free the bird — rpc node donation</title>
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>free the bird — donate</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="p2-shell.css">
-<style>
-/* rpc node donation — page-specific (shell comes from p2-shell.css) */
-.dpage{max-width:var(--col); margin:0 auto; padding:30px 22px 64px}
-.alabel{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.09em; text-transform:uppercase; margin-bottom:6px}
-.dlead{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); margin:0 0 8px}
-.dsub{color:var(--ink-2); font-size:var(--fs-small); margin:0 0 20px; max-width:62ch; line-height:1.7}
-.dcard{border:1px solid var(--hair); background:var(--panel); padding:24px; display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:start}
-.qrbox{background:#fff; padding:12px; border-radius:6px; width:200px}
-.qrbox img{display:block; width:176px; height:176px}
-.addr{font-family:var(--mono); font-size:13px; line-height:1.55; word-break:break-all; background:var(--paper); border:1px solid var(--data-bd); padding:10px 12px; color:var(--ink)}
-.drow{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center}
-.dkey{display:inline-block; background:var(--keybg); color:var(--keyfg); border:1px solid var(--keyfg); padding:7px 13px; font-family:var(--mono); font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
-.dkey:hover{background:var(--keyfg); color:var(--keybg)}
-a.dkey{border-bottom:1px solid var(--keyfg)}
-.dnote{color:var(--faint); font-size:var(--fs-meta); margin-top:16px; line-height:1.6}
-.copied{color:var(--ok); border-color:var(--ok)}
-@media (max-width:560px){ .dcard{grid-template-columns:1fr} .qrbox{margin:0 auto} }
-</style>
+<link rel="stylesheet" href="donate.css">
 </head>
 <body>
 <header class="topbar">
@@ -47,22 +31,24 @@ a.dkey{border-bottom:1px solid var(--keyfg)}
   </div>
   <nav class="tabs" aria-label="sections">
     <div class="tabs-main">
-    <a href="index.html#trade">trade</a>
-    <a href="index.html#earn">earn</a>
-    <a href="index.html#lend">lend</a>
-    <a href="index.html#vote">vote</a>
-    <a href="index.html#board">board</a>
+    <a href="librationzero.html">LØ</a>
+    <a href="index.html">trade</a>
+    <a href="lend.html">lend</a>
+    <a href="governance.html">governance</a>
+    <a href="stake.html">stake</a>
     <a href="claim.html">claim</a>
-    <a href="index.html#verify">verify</a>
-    <a class="cur" aria-current="page" href="donate.html">donate</a>
     <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a href="explorer.html" aria-label="explorer" title="explorer"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg></a>
+    <a href="academy.html">academy</a>
+    <a class="cur" aria-current="page" href="donate.html">donate</a>
+    <a href="node.html">node</a>
     <a href="discord-bond.html">discord</a>
     </div>
     <span class="tabsep" aria-hidden="true"></span>
     <div class="tabs-ext">
-    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
-    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
-    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener noreferrer">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener noreferrer">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener noreferrer">reddit &#8599;</a>
     </div>
   </nav>
 </header>
@@ -72,25 +58,45 @@ a.dkey{border-bottom:1px solid var(--keyfg)}
 <div class="launchbar" id="launchbar">TESTNET: LIVE &nbsp;·&nbsp; MAIN-NET NOV 7 &nbsp;·&nbsp; <span class="tminus" id="tminus">T-…</span></div>
 
 <main class="dpage" id="donateRoot">
-  <div class="alabel">keep the wire alive</div>
-  <h1 class="dlead">rpc node donation</h1>
-  <p class="dsub">freethebird.co is served from a node in Reykjavík (1984 Hosting) that also fronts the public Neo&nbsp;N3 TestNet RPC. It runs on donations — no ads, no tracking, no middlemen. If the node has been useful to you, a little Monero keeps it flying, private by default like the rest of this project.</p>
-  <div class="dcard">
-    <div class="qrbox"><img src="p2-qr-xmr.svg" alt="Monero donation QR code" width="176" height="176"></div>
-    <div>
-      <div class="alabel">Monero (XMR) · address</div>
-      <div class="addr" id="xmrAddr">8ArLhSNDdDLGyr1XegpiBJQbnx1NiCCkAaZNoDMJRjSGHG5Hgh6GPvZ4fi386tDTibQSWwyabjkSgGYhqPAjFt87Ho4CnQj</div>
-      <div class="drow">
-        <button class="dkey" id="xmrCopy" type="button">copy address</button>
-        <a class="dkey" href="monero:8ArLhSNDdDLGyr1XegpiBJQbnx1NiCCkAaZNoDMJRjSGHG5Hgh6GPvZ4fi386tDTibQSWwyabjkSgGYhqPAjFt87Ho4CnQj">open in wallet -&gt;</a>
+  <section class="dblock">
+    <div class="alabel">fund the launch</div>
+    <h1 class="dlead">main-net launch fund</h1>
+    <p class="dsub">FTB goes live on Neo&nbsp;N3 main-net on 7 November. Getting the contracts on-chain is a one-time deploy cost, paid once from a single-signature wallet that exists only to launch the project — FTB is built to be keyless, so no one is left holding the contracts. Chip in GAS or NEO to put the bird in the air.</p>
+    <div class="dcard">
+      <div class="qrbox"><img src="p2-qr-gas.svg" alt="Neo N3 GAS donation QR code" width="176" height="176"></div>
+      <div>
+        <div class="alabel">Neo&nbsp;N3 · GAS / NEO · address</div>
+        <div class="addr" id="gasAddr">NbqbDM5mc3geMfmuq4ygbQjZHqbNKoiLRe</div>
+        <div class="drow">
+          <button class="dkey" id="gasCopy" type="button">copy address</button>
+          <a class="dkey" href="neo:NbqbDM5mc3geMfmuq4ygbQjZHqbNKoiLRe">open in wallet -&gt;</a>
+        </div>
+        <p class="dnote">Neo&nbsp;N3 GAS or NEO only — do not send other assets or other chains to this address. This wallet signs the deployment and nothing else. Donations are one-way and non-refundable.</p>
       </div>
-      <p class="dnote">XMR only — do not send other assets to this address. Donations are one-way and non-refundable. Thank you for keeping the node independent.</p>
     </div>
-  </div>
+  </section>
+
+  <section class="dblock">
+    <div class="alabel">keep the wire alive</div>
+    <h2 class="dlead">rpc node donation</h2>
+    <p class="dsub">freethebird.co is served from a node in Reykjavík (1984 Hosting) that also fronts the public Neo&nbsp;N3 TestNet RPC. It runs on donations — no ads, no tracking, no middlemen. If the node has been useful to you, a little Monero keeps it flying, private by default like the rest of this project.</p>
+    <div class="dcard">
+      <div class="qrbox"><img src="p2-qr-xmr.svg" alt="Monero donation QR code" width="176" height="176"></div>
+      <div>
+        <div class="alabel">Monero (XMR) · address</div>
+        <div class="addr" id="xmrAddr">8ArLhSNDdDLGyr1XegpiBJQbnx1NiCCkAaZNoDMJRjSGHG5Hgh6GPvZ4fi386tDTibQSWwyabjkSgGYhqPAjFt87Ho4CnQj</div>
+        <div class="drow">
+          <button class="dkey" id="xmrCopy" type="button">copy address</button>
+          <a class="dkey" href="monero:8ArLhSNDdDLGyr1XegpiBJQbnx1NiCCkAaZNoDMJRjSGHG5Hgh6GPvZ4fi386tDTibQSWwyabjkSgGYhqPAjFt87Ho4CnQj">open in wallet -&gt;</a>
+        </div>
+        <p class="dnote">XMR only — do not send other assets to this address. Donations are one-way and non-refundable. Thank you for keeping the node independent.</p>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="foot3">
-  <span class="disp" style="font-size:20px">free the bird</span><br>
+  <span class="disp ub9199e">free the bird</span><br>
   <span class="muted">// night shift</span><br>
   Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
   MIT code, public proofs - a gift to the Flamingo community.

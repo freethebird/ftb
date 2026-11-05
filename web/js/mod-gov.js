@@ -50,19 +50,29 @@
   // hair ring is the unvoted remainder, so the filled arc IS the turnout. The
   // dasharray numbers are computed floats (not untrusted text), so the SVG is
   // assembled as a constant-shaped string - same pattern as the legacy donut.
-  function donutSvg(vals, turn) {
-    var eb = electBase(), off = 0, arcs = '';
+  // Built as DOM, not an innerHTML string (Canonical Bible, HTML edition: no markup sink).
+  // Every value set via setAttribute is a number or the SEG palette constant - no untrusted text.
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS('http://www.w3.org/2000/svg', tag), k;
+    for (k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function donutNode(vals, turn) {
+    var eb = electBase(), off = 0;
+    var svg = svgEl('svg', { 'class': 'bdonut', viewBox: '0 0 42 42', role: 'img', 'aria-label': turn.toFixed(1) + '% turnout' });
+    svg.appendChild(svgEl('circle', { cx: 21, cy: 21, r: 15.9155, fill: 'none', stroke: 'var(--hair)', 'stroke-width': 6 }));
     vals.forEach(function (v, i) {
       var pct = eb ? Number(v) / eb * 100 : 0;
       if (pct > 0) {
-        arcs += '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="' + SEG[i % SEG.length] +
-          '" stroke-width="6" stroke-dasharray="' + pct.toFixed(2) + ' ' + (100 - pct).toFixed(2) +
-          '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 21 21)"/>';
+        svg.appendChild(svgEl('circle', {
+          cx: 21, cy: 21, r: 15.9155, fill: 'none', stroke: SEG[i % SEG.length], 'stroke-width': 6,
+          'stroke-dasharray': pct.toFixed(2) + ' ' + (100 - pct).toFixed(2),
+          'stroke-dashoffset': (-off).toFixed(2), transform: 'rotate(-90 21 21)'
+        }));
       }
       off += pct;
     });
-    return '<svg class="bdonut" viewBox="0 0 42 42" role="img" aria-label="' + turn.toFixed(1) + '% turnout">' +
-      '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--hair)" stroke-width="6"/>' + arcs + '</svg>';
+    return svg;
   }
 
   // build one <details> ballot row from its live tallies
@@ -107,7 +117,7 @@
     det.appendChild(bo);
 
     var side = el('div', 'bside');
-    var don = el('div'); don.innerHTML = donutSvg(vals, turn); side.appendChild(don.firstChild);
+    side.appendChild(donutNode(vals, turn));
     var bt = el('div', 'bturn');
     bt.appendChild(el('b', null, turn.toFixed(1) + '%'));
     bt.appendChild(document.createTextNode(' turnout'));
@@ -134,7 +144,7 @@
   // the stat-band "active ballots" tile: one line per ballot, leader bright / runner-up muted
   function paintBallotsTile(all) {
     var host = $('tBallots'); if (!host) return;
-    host.innerHTML = '';
+    host.replaceChildren();
     BL.forEach(function (b, bi) {
       var vals = all[bi] || [];
       var total = vals.reduce(function (s, v) { return s + v; }, 0n);
@@ -152,7 +162,7 @@
   function refreshGov() {
     var menu = $('ballotMenu'); if (!menu) return;
     if (!ballotConfigured) {
-      menu.innerHTML = '';
+      menu.replaceChildren();
       menu.appendChild(el('div', 'small muted', 'no live ballot - a ballot contract is deployed per proposal; its hash is the proposal id.'));
       return;
     }
@@ -170,12 +180,12 @@
           }))
         : Promise.resolve(BL.map(function () { return false; }));
       votedP.then(function (flags) {
-        menu.innerHTML = '';
+        menu.replaceChildren();
         BL.forEach(function (b, bi) { menu.appendChild(ballotRow(b, bi, all[bi], flags[bi], bi === 0)); });
         paintBallotsTile(all);
       });
     }).catch(function (e) {
-      menu.innerHTML = ''; menu.appendChild(el('div', 'small', 'tally unavailable: ' + errText(e)));
+      menu.replaceChildren(); menu.appendChild(el('div', 'small', 'tally unavailable: ' + errText(e)));
     });
   }
 

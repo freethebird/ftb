@@ -1,634 +1,299 @@
-// mod-lend.js - module 4: LEND (MODULES.md).
-// NEO+GAS collateral, FTB loans. This page is read-only for the pool; every
-// position-changing action is a review-and-sign plan through the adapter.
+// mod-lend.js - module 4: LEND (MODULES.md) - FtbLoanBook peer-to-peer term loans.
+// Oracleless, keyless, immutable: a lender escrows FTB into an OFFER naming the
+// collateral (NEO or GAS), its amount, a flat term rate and a term; a borrower TAKES it
+// by locking exactly that collateral and receives the FTB; repay principal+interest
+// before maturity to unlock the collateral; an unrepaid loan is CLOSED by anyone after
+// maturity and the collateral goes to the lender. No oracle, no liquidation price, no
+// margin call, no owner. The page is read-only for the book; every value move is a
+// review-and-sign plan through the adapter (FtbShell.showPlan).
 //
-// Read discipline: loads coalesce (one pass in flight, at most one trailing
-// run, 3 s minimum interval) - the shell emits 'refresh' in a burst around
-// every signed tx, and the board must not re-enumerate storage per event.
-// Board enumeration paginates findstorage (next/truncated) and says so when
-// the page cap is hit; address rendering uses the adapter's codec, never
-// crypto.subtle, so the board also works on plain-http mirrors.
-//
-// Owns (writes only these): #lend card - the 4-stat panel (#lSApy liquidity apy,
-// #lBApy borrow apy, #lTotal total liquidity, #pHealth), #lendAct (the wizard keys
-// #lnWizLoan/#lnWizPay/#lnWizWdCol/#lnWizAdd/#lnWizRemove and the step panel
-// #lnWizard they build), #lendOff, #lendRefresh, and the loans board (#loansBody
-// plus its totals strip #lbLoaned/#lbCollat/#lbCount, #loansRefresh). All detail
-// lives on the board: per-position debt/collateral/health, your headroom, and the
-// permanent LIQUIDATED tag (liquidationsOf, prefix 0x34).
+// Owns (writes only these): #lend card - the stat strip (#lnOpen/#lnActive/#lnOffered/
+// #lnProceeds), #lendAct (the keys #lnWizLend/#lnWizWithdraw and the #lnWizard panel they
+// build), the offer book (#loansBody, #loansRefresh), #lendOff, #lendRefresh. Every amount
+// is base units on the wire: FTB and GAS 8dp, NEO whole. rateBps = flat % x 100; termMs ms.
 (function () {
   'use strict';
-  if (!FtbUtil.$('lend')) return; // R2: inert where the markup is absent
+  if (!window.FtbUtil || !FtbUtil.$('lend')) return; // R2: inert where the markup is absent
+  if (!window.FtbState || !window.FtbRpc) return;
 
-  var $ = FtbUtil.$, el = FtbUtil.el, fmt = FtbUtil.fmt, grp = FtbUtil.grp;
-  var C = FtbState.C;
-
-  function bps(v) { return (Number(v) / 100).toFixed(2) + '%'; }
-  function readVal(h, op, args) {
-    return FtbRpc.read(h, op, args).then(function (st) {
-      var it = st && st[0];
-      return it ? it.value : null;
-    });
-  }
-
-  // Graduated liquidation risk. The chain does not expose the liquidation
-  // threshold as a call, so we warn off the 60% borrow line (maxBorrow), which
-  // falls with the collateral price: debt / maxBorrow says how close the position
-  // is to that line (and, past 1.0, how far the collateral has already slipped
-  // below it). isUnhealthy — past the real liquidation line — always wins.
-  function riskLevel(bad, debt, maxB) {
-    if (bad) return { label: 'LIQUIDATABLE', color: '#ff4d4d', note: 'below the liquidation line — repay or add collateral now, or anyone can liquidate this position' };
-    if (debt <= 0n) return { label: 'no loan', color: '', note: 'no debt — nothing to liquidate' };
-    if (maxB <= 0n) return { label: 'check', color: '#e0a000', note: 'collateral has no fresh price' };
-    var r = Number(debt * 10000n / maxB) / 10000; // debt / 60%-borrow line
-    if (r > 1) return { label: 'AT RISK', color: '#ff6a00', note: Math.round((r - 1) * 100) + '% over the 60% borrow line — repay or add collateral before a further drop liquidates you' };
-    var drop = Math.max(0, Math.round((1 - r) * 100));
-    if (r > 0.9) return { label: 'WATCH', color: '#e0a000', note: 'near the 60% borrow line — about a ' + drop + '% collateral drop reaches it' };
-    if (r > 0.75) return { label: 'healthy', color: '#7bdc7b', note: 'about a ' + drop + '% collateral buffer to the 60% line' };
-    return { label: 'safe', color: '#33cc66', note: 'about a ' + drop + '% collateral buffer to the 60% line' };
-  }
-
-  function loadLend() {
-    var lend = C.lend;
-    if (!lend || lend.indexOf('0x0000') === 0 || !FtbRpc.current()) { var off0 = $('lendOff'); if (off0) off0.hidden = false; return; }
-    var off = $('lendOff'); if (off) off.hidden = true;
-    FtbRpc.readInt(lend, 'borrowApyBps').then(function (v) { $('lBApy').textContent = bps(v); }).catch(function () {});
-    FtbRpc.readInt(lend, 'supplyApyBps').then(function (v) { $('lSApy').textContent = bps(v); }).catch(function () {});
-    // total liquidity = what suppliers would withdraw today: cash + outstanding
-    // borrows, minus the holders' reserve (that third belongs to FTB holders).
-    Promise.all([
-      FtbRpc.readInt(C.ftb, 'balanceOf', [h160(lend)]),
-      FtbRpc.readInt(lend, 'totalBorrows', []),
-      FtbRpc.readInt(lend, 'reserveAccrued', [])
-    ]).then(function (vs) { $('lTotal').textContent = fmt(vs[0] + vs[1] - vs[2]) + ' FTB'; }).catch(function () {});
-    var acct = FtbState.acctHash160();
-    if (!acct) return;
-    var act = $('lendAct'); if (act) act.hidden = false;
-    var hu = [{ type: 'Hash160', value: acct }];
-    Promise.all([
-      readVal(lend, 'isUnhealthy', hu),
-      FtbRpc.readInt(lend, 'debtOf', hu).catch(function () { return 0n; }),
-      FtbRpc.readInt(lend, 'maxBorrow', hu).catch(function () { return 0n; })
-    ]).then(function (vs) {
-      var e = $('pHealth'); if (!e) return;
-      var bad = (vs[0] === true || vs[0] === 'true' || vs[0] === '1');
-      var rk = riskLevel(bad, vs[1], vs[2]);
-      e.textContent = rk.label;
-      e.style.color = rk.color || '';
-      e.title = rk.note;
-    }).catch(function () {});
-  }
-
-  // ---------- wizards: one question at a time ----------
-  // A) start loan: 1) FTB amount 2) NEO|GAS 3) predetermined collateral, sign.
-  // B) pay loan. C) add liquidity (shows approx APY). D) remove liquidity.
-  // Final steps are pure dapi plans executed only by the shell's modal (R6).
-  var toBase = FtbDapi.util.toBaseUnits, fromBase = FtbDapi.util.fromBaseUnits;
+  var $ = FtbUtil.$, el = FtbUtil.el, grp = FtbUtil.grp, short = FtbUtil.short;
+  var C = FtbState.C, CFG = FtbState.CFG || {}, AS = CFG.assets || {}, U = (window.FtbDapi && FtbDapi.util) || null;
   var wiz = $('lnWizard');
 
-  function amtVal(v, whole) {
-    v = (v || '').trim();
-    var re = whole ? /^[0-9]+$/ : /^[0-9]+(\.[0-9]+)?$/;
-    return (re.test(v) && parseFloat(v) > 0) ? v : null;
+  var ST = {
+    1: { t: 'open', c: 's-open' }, 2: { t: 'active', c: 's-active' },
+    3: { t: 'repaid', c: 's-done' }, 4: { t: 'defaulted', c: 's-default' },
+    5: { t: 'cancelled', c: 's-done' }
+  };
+
+  function live() { return C.loanbook && C.loanbook.indexOf('0x0000') !== 0 && FtbRpc.current(); }
+  function iarg(n) { return { type: 'Integer', value: String(n) }; }
+  function needAcct() { if (FtbState.account) return true; if (window.FtbWallet && FtbWallet.needConnect) FtbWallet.needConnect(); return false; }
+
+  // ---- unit helpers: 8dp for FTB/GAS, whole units for NEO ----
+  function toBase(dec, decimals) {
+    dec = String(dec == null ? '' : dec).trim();
+    if (!/^\d+(\.\d+)?$/.test(dec)) return null;
+    var p = dec.split('.'), whole = p[0] || '0', frac = p[1] || '';
+    if (decimals === 0) { if (/[1-9]/.test(frac)) return null; return BigInt(whole); }
+    frac = (frac + '00000000').slice(0, decimals);
+    return BigInt(whole) * (10n ** BigInt(decimals)) + BigInt(frac || '0');
   }
-  function needAcct() {
-    if (!FtbState.account) { FtbWallet.needConnect(); return null; }
-    return FtbState.account;
+  function fromBase(big, decimals) {
+    big = BigInt(big);
+    if (decimals === 0) return big.toString();
+    var d = 10n ** BigInt(decimals), w = big / d, f = big % d;
+    var fs = f.toString().padStart(decimals, '0').replace(/0+$/, '');
+    return fs ? (w.toString() + '.' + fs) : w.toString();
   }
-  function h160(hash) { return { type: 'Hash160', value: hash }; }
-  function clearWiz() { if (wiz) wiz.innerHTML = ''; }
-  function stepBox(no, labelText) {
-    var box = el('div', 'ticket'); box.style.marginTop = '10px';
-    var row = el('div', 'trow');
-    var lbl = el('label'); lbl.textContent = no + ') ' + labelText;
-    row.appendChild(lbl);
-    box.appendChild(row);
-    return { box: box, row: row };
-  }
-  function wizNote(box, text) {
-    var n = el('div', 'tmeta'); n.textContent = text; box.appendChild(n); return n;
-  }
-  function mkInput(placeholder, mode) {
-    var i = el('input'); i.placeholder = placeholder; i.inputMode = mode || 'decimal';
-    i.autocomplete = 'off'; return i;
-  }
-  function mkKey(label, fn) {
-    var b = el('button', null, label);
-    b.addEventListener('click', fn); return b;
-  }
-  function keyWrap() { return el('div', 'tsel'); }
-  function badAmt() {
-    FtbShell.showPlan('bad amount', 'enter a positive number. NEO is whole units only (0 decimals); FTB and GAS take 8.', [], null);
+  function amt(big, decimals) { return grp(fromBase(big, decimals)); }
+
+  function tokenOf(beLower) {
+    if (beLower === String(AS.neo).toLowerCase()) return { sym: 'NEO', dec: 0, hash: AS.neo };
+    if (beLower === String(AS.gas).toLowerCase()) return { sym: 'GAS', dec: 8, hash: AS.gas };
+    return { sym: '?', dec: 0, hash: beLower };
   }
 
-  // ----- A) start loan -----
-  // screen 1: amount. screen 2: BOTH collateral options with predetermined
-  // amounts, one click chooses. screen 3: the two transactions, in plain words.
-  // every screen REPLACES the previous one - no stacking, no duplicates.
-  function collatNeed(loanBase, price, wholeNeo) {
-    // loan ÷ (60% LTV × price) + 10% safety, rounded up (BigInt exact)
-    var num = loanBase * 110n, den = 60n * price;
-    return wholeNeo ? (num + den - 1n) / den : (num * 100000000n + den - 1n) / den;
-  }
-  function wizLoan() {
-    if (!needAcct()) return;
-    clearWiz();
-    var s1 = stepBox('1', 'how many ftb do you want to borrow?');
-    var in1 = mkInput('0.0');
-    var k1 = keyWrap(); k1.appendChild(mkKey('next ->', function () {
-      var a = amtVal(in1.value); if (a === null) return badAmt();
-      wizLoanPick(BigInt(toBase(a)), a);
-    }));
-    s1.row.appendChild(in1); s1.row.appendChild(k1);
-    wiz.appendChild(s1.box);
-    in1.focus();
-  }
-  function wizLoanPick(loanBase, loanDec) {
-    clearWiz();
-    var s = stepBox('2', 'choose your collateral - the amounts are predetermined');
-    s.row.appendChild(el('span', 'gname', 'reading oracle…'));
-    var note = wizNote(s.box, '');
-    wiz.appendChild(s.box);
-    var assets = FtbState.CFG.assets;
-    Promise.all([
-      FtbRpc.readInt(C.oracle, 'price', [h160(assets.neo)]),
-      FtbRpc.readInt(C.oracle, 'price', [h160(assets.gas)])
-    ]).then(function (ps) {
-      var needNeo = collatNeed(loanBase, ps[0], true);
-      var needGas = collatNeed(loanBase, ps[1], false);
-      s.row.removeChild(s.row.lastChild);
-      // one row per option: predetermined amount on the left, the choice key on the right.
-      // [name, display, price, isNeo, rawArg] - rawArg is the exact contract integer.
-      [['NEO', grp(needNeo.toString()), ps[0], true, needNeo.toString()],
-       ['GAS', grp(fromBase(needGas.toString())), ps[1], false, needGas.toString()]].forEach(function (o) {
-        var r = el('div', 'trow');
-        var lbl = el('label'); lbl.textContent = '';
-        r.appendChild(lbl);
-        r.appendChild(el('span', 'gname', o[1] + ' ' + o[0]));
-        var kw = keyWrap();
-        kw.appendChild(mkKey('use ' + o[0].toLowerCase() + ' ->', function () {
-          wizLoanSign(loanBase, loanDec, o[0], o[1], o[2], o[3], o[4]);
-        }));
-        r.appendChild(kw);
-        s.box.insertBefore(r, note);
-      });
-      note.textContent = 'predetermined from the live oracle: ' + loanDec + ' FTB ÷ (60% LTV × ratio) + 10% safety. ratios now: 1 NEO = ' +
-        fromBase(ps[0].toString()) + ' FTB · 1 GAS = ' + fromBase(ps[1].toString()) + ' FTB.';
-    }).catch(function (e) {
-      s.row.removeChild(s.row.lastChild);
-      var raw = FtbUtil.errText(e);
-      if (/fresh price/i.test(raw)) {
-        // the oracle's designed safe-failure: it reverts rather than price against a stale feed
-        s.row.appendChild(el('span', 'gname', 'collateral pricing paused'));
-        note.textContent = 'the oracle has no fresh NEO/GAS price right now, so new loans are paused - the safe default (the pool will not lend against a stale price). it clears as soon as a reporter refreshes the feed.';
-      } else {
-        s.row.appendChild(el('span', 'gname', 'oracle unavailable'));
-        note.textContent = 'could not read the oracle: ' + raw;
-      }
-    });
-  }
-  function wizLoanSign(loanBase, loanDec, which, needDec, price, wholeNeo, needArg) {
-    clearWiz();
-    var s = stepBox('3', 'two signatures - lock your collateral, then take the loan');
-    var priceDec = fromBase(price.toString());
-    s.row.appendChild(el('span', 'gname', loanDec + ' FTB  against  ' + needDec + ' ' + which));
-    var keys = keyWrap();
-    s.row.appendChild(keys);
-    wizNote(s.box, 'a loan is two transactions, signed one after the other: 1) your ' + which +
-      ' locks as collateral - wait for "confirmed on-chain" - 2) the loan lands in your wallet. your collateral is returned when you repay.');
-    wiz.appendChild(s.box);
-
-    // Pre-read the position: if collateral already on-chain covers this loan
-    // (deposit confirmed, borrow failed or page reloaded), step 1 is DONE - never
-    // offer a second deposit. This is read from the chain, not remembered locally.
-    var acct0 = FtbState.acctHash160();
-    FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct0)]).then(function (maxB) {
-      if (maxB >= BigInt(loanBase)) {
-        var doneK = mkKey('1. collateral already locked ✓', function () {});
-        doneK.disabled = true;
-        keys.insertBefore(doneK, keys.firstChild);
-        return;
-      }
-      keys.insertBefore(mkKey('1. lock ' + needDec + ' ' + which + ' ->', function () {
-        var plan = wholeNeo
-          ? FtbState.dapi.addCollateralNeo(FtbState.account, needArg)
-          : FtbState.dapi.addCollateralGas(FtbState.account, needArg);
-        FtbShell.showPlan('lock ' + needDec + ' ' + which + ' as collateral',
-          'transaction 1 of 2: your ' + which + ' moves into the lend contract as collateral. it stays yours - you get it back when the loan is repaid.',
-          [['collateral', needDec + ' ' + which], ['oracle ratio', '1 ' + which + ' = ' + priceDec + ' FTB'], ['what you sign', plan.summary]],
-          plan);
-      }), keys.firstChild);
-    }).catch(function () {});
-
-    keys.appendChild(borrowPlanKey('2. take ' + loanDec + ' ftb loan ->', loanBase, loanDec, 0n));
-  }
-
-  // The borrow button, shared by the loan wizard (step 2) and the loans board's
-  // direct "take loan" action. Pre-checks BOTH chain gates before asking for a
-  // signature: LTV headroom (existingDebt counts - the board path borrows against
-  // collateral that may already back a loan) and pool liquidity. An empty pool
-  // faults the borrow with "not enough liquidity" - show it here, in words,
-  // instead of an opaque wallet error after signing.
-  function borrowPlanKey(label, loanBase, loanDec, existingDebt) {
-    return mkKey(label, function () {
-      var acct = FtbState.acctHash160();
-      Promise.all([
-        FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]),
-        FtbRpc.readInt(C.ftb, 'balanceOf', [h160(C.lend)]).catch(function () { return 0n; }),
-        FtbRpc.readInt(C.lend, 'reserveAccrued', []).catch(function () { return 0n; })
-      ]).then(function (vs) {
-        var maxB = vs[0], head = maxB - BigInt(existingDebt), liquid = vs[1] - vs[2];
-        var okLtv = BigInt(loanBase) <= head;
-        var okLiq = BigInt(loanBase) <= liquid;
-        // express the limit the way users think about it: the % LTV after this loan
-        var ltvAfter = maxB > 0n ? (Number((BigInt(existingDebt) + BigInt(loanBase)) * 10000n / maxB) * 0.006).toFixed(1) : '-';
-        FtbShell.showPlan('take a ' + loanDec + ' FTB loan',
-          okLtv && okLiq
-            ? 'the contract sends you ' + loanDec + ' FTB against your locked collateral. interest accrues (2% base, 12% at the 80% kink); repay any time to unlock your collateral.'
-            : 'this will be REJECTED on-chain - fix the failing check first.',
-          [['you receive', loanDec + ' FTB'],
-           ['ltv after this loan', ltvAfter + '% of the 60% max - ' + (okLtv ? 'within limit' : 'NO - over the limit; lock more collateral or repay first')],
-           ['pool liquidity', fmt(liquid) + ' FTB - ' + (okLiq ? 'enough' : 'NO - the pool is short. add liquidity (ADD LIQUIDITY below) or borrow less')],
-           ['what you sign', 'lend.borrow(you, ' + loanDec + ')']],
-          okLtv && okLiq ? FtbState.dapi.borrow(FtbState.account, loanBase.toString()) : null);
-      }).catch(function () {
-        FtbShell.showPlan('take a ' + loanDec + ' FTB loan', 'could not pre-check the chain - the contract enforces both limits regardless.',
-          [['you receive', loanDec + ' FTB']], FtbState.dapi.borrow(FtbState.account, loanBase.toString()));
-      });
-    });
-  }
-
-  // ----- A2) borrow against collateral already locked (from the loans board) -----
-  // A deposit without a borrow is a valid position; its owner must be able to draw
-  // the loan later without restarting the wizard. Opened from the board's
-  // "take loan ->" key on your own row.
-  function wizBorrowDirect() {
-    if (!needAcct()) return;
-    clearWiz();
-    var s = stepBox('1', 'borrow how much ftb against your locked collateral?');
-    var input = mkInput('0.0');
-    var note = wizNote(s.box, 'reading your headroom…');
-    var acct = FtbState.acctHash160();
-    var curDebt = 0n;
-    Promise.all([
-      FtbRpc.readInt(C.lend, 'maxBorrow', [h160(acct)]),
-      FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)])
-    ]).then(function (vs) {
-      curDebt = vs[1];
-      var head = vs[0] - vs[1];
-      if (head < 0n) head = 0n;
-      var ltv = vs[0] > 0n ? (Number(vs[1] * 10000n / vs[0]) * 0.006).toFixed(1) : '0.0';
-      input.value = fromBase(head.toString());
-      note.textContent = 'your ltv is ' + ltv + '% (max 60%). headroom: ' + fmt(head) + ' FTB - prefilled with the maximum; borrow less for a bigger safety buffer against liquidation.';
-    }).catch(function () { note.textContent = 'could not read your position - the chain enforces the limit regardless.'; });
-    var keys = keyWrap();
-    keys.appendChild(mkKey('review borrow ->', function () {
-      var a = amtVal(input.value); if (a === null) return badAmt();
-      var kb = borrowPlanKey('take ' + a + ' ftb ->', toBase(a), a, curDebt);
-      kb.click();
-    }));
-    s.row.appendChild(input); s.row.appendChild(keys);
-    wiz.appendChild(s.box);
-    input.focus();
-  }
-
-  // ----- B) pay loan -----
-  function wizPay() {
-    if (!needAcct()) return;
-    clearWiz();
-    var s = stepBox('1', 'repay how much ftb?');
-    var acct = FtbState.acctHash160();
-    var input = mkInput('0.0');
-    // wallet balance chip: click fills your full FTB balance - overpaying is
-    // safe, the contract refunds whatever exceeds the debt (repayIn).
-    var chip = FtbUtil.balChip(C.ftb, 'FTB', 8, function (raw) { input.value = fromBase(raw.toString()); });
-    FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)]).then(function (d) {
-      // interest accrues per block, so the exact debt at read-time is already
-      // stale when the tx lands - prefill +0.001 FTB; repayIn refunds the excess.
-      input.value = fromBase((d + 100000n).toString());
-      note.textContent = 'your debt right now: ' + fmt(d) + ' FTB (prefilled a hair higher - interest ticks every block; the contract refunds whatever isn\'t owed).';
-    }).catch(function () {});
-    var note = wizNote(s.box, 'reading your debt…');
-    var keys = keyWrap();
-    keys.appendChild(mkKey('sign repayment ->', function () {
-      var a = amtVal(input.value); if (a === null) return badAmt();
-      FtbShell.showPlan('repay ' + a + ' FTB',
-        'transfers FTB to the pool against your debt.',
-        [['amount', a + ' FTB'], ['what you sign', 'ftb.transfer(you -> lend, ' + a + ', "repay")']],
-        FtbState.dapi.repay(FtbState.account, toBase(a)));
-    }));
-    s.row.appendChild(input); s.row.appendChild(chip); s.row.appendChild(keys);
-    wiz.appendChild(s.box);
-    input.focus();
-  }
-
-  // ----- C) add liquidity -----
-  function wizAdd() {
-    if (!needAcct()) return;
-    clearWiz();
-    var s = stepBox('1', 'how many ftb do you lend to the pool?');
-    var input = mkInput('0.0');
-    // wallet balance chip: click lends your full FTB balance.
-    var chip = FtbUtil.balChip(C.ftb, 'FTB', 8, function (raw) { input.value = fromBase(raw.toString()); });
-    var note = wizNote(s.box, 'reading the rate…');
-    FtbRpc.readInt(C.lend, 'supplyApyBps', []).then(function (v) {
-      note.textContent = 'approximate apy right now: ' + (Number(v) / 100).toFixed(2) + '% - it floats with how much of the pool is loaned out (borrow rate × % loaned × 2/3).';
-    }).catch(function () { note.textContent = 'apy unreadable - the chain still enforces the curve.'; });
-    var keys = keyWrap();
-    keys.appendChild(mkKey('sign liquidity ->', function () {
-      var a = amtVal(input.value); if (a === null) return badAmt();
-      FtbShell.showPlan('add ' + a + ' FTB liquidity',
-        'you receive pool shares; interest accrues to the share price.',
-        [['amount', a + ' FTB'], ['what you sign', 'ftb.transfer(you -> lend, ' + a + ', "supply")']],
-        FtbState.dapi.supply(FtbState.account, toBase(a)));
-    }));
-    s.row.appendChild(input); s.row.appendChild(chip); s.row.appendChild(keys);
-    wiz.appendChild(s.box);
-    input.focus();
-  }
-
-  // ----- D) remove liquidity -----
-  function wizRemove() {
-    if (!needAcct()) return;
-    clearWiz();
-    var s = stepBox('1', 'withdraw how many shares?');
-    var input = mkInput('0', 'numeric');
-    var note = wizNote(s.box, 'reading your shares…');
-    var acct = FtbState.acctHash160();
-    FtbRpc.readInt(C.lend, 'sharesOf', [h160(acct)]).then(function (v) {
-      input.value = v.toString();
-      note.textContent = 'you hold ' + fmt(v) + ' shares (shares are 8-decimal, like FTB - prefilled with all of them). shares pay out FTB at the current share price.';
-    }).catch(function () {});
-    var keys = keyWrap();
-    keys.appendChild(mkKey('sign withdrawal ->', function () {
-      var a = amtVal(input.value, true); if (a === null) return badAmt();
-      FtbShell.showPlan('withdraw ' + fmt(BigInt(a)) + ' shares',
-        'burns pool shares and returns FTB at the current share price. only free cash can leave - borrows stay funded.',
-        [['shares', fmt(BigInt(a))], ['what you sign', 'lend.withdrawSupply(you, ' + a + ')']],
-        FtbState.dapi.withdrawSupply(FtbState.account, a));
-    }));
-    s.row.appendChild(input); s.row.appendChild(keys);
-    wiz.appendChild(s.box);
-    input.focus();
-  }
-
-  // ----- E) withdraw collateral -----
-  function wizWdCol() {
-    if (!needAcct()) return;
-    clearWiz();
-    var s = stepBox('1', 'take back your collateral');
-    var acct = FtbState.acctHash160();
-    var note = wizNote(s.box, 'reading your collateral…');
-    var keys = keyWrap();
-    var state = { neo: null, gas: null };
-    Promise.all([
-      FtbRpc.readInt(C.lend, 'collateralOf', [h160(acct), { type: 'Boolean', value: true }]),
-      FtbRpc.readInt(C.lend, 'collateralOf', [h160(acct), { type: 'Boolean', value: false }]),
-      FtbRpc.readInt(C.lend, 'debtOf', [h160(acct)])
-    ]).then(function (vs) {
-      state.neo = vs[0]; state.gas = vs[1]; state.debt = vs[2];
-      keys.innerHTML = '';
-      if (vs[2] > 0n) {
-        note.textContent = 'you still owe ' + fmt(vs[2]) + ' FTB - even dust debt locks collateral. repay it first (PAY LOAN over-prefills and the contract refunds the excess), or take back only what stays free.';
-        keys.appendChild(mkKey('pay loan first ->', wizPay));
-        keys.appendChild(mkKey('claim collateral ->', function () { wizWdFree(state); }));
-      } else {
-        note.textContent = 'locked: ' + grp(vs[0].toString()) + ' NEO · ' + fmt(vs[1]) + ' GAS - debt is zero, so everything comes back in one transaction.';
-        keys.appendChild(mkKey('claim collateral ->', function () {
-          if (state.neo === 0n && state.gas === 0n) {
-            FtbShell.showPlan('nothing locked', 'you have no collateral in the lend contract.', [], null);
-            return;
-          }
-          var plan = FtbState.dapi.withdrawCollateral(FtbState.account, state.neo.toString(), state.gas.toString());
-          FtbShell.showPlan('claim ' + grp(state.neo.toString()) + ' NEO + ' + fmt(state.gas) + ' GAS',
-            'one transaction returns everything you have locked.',
-            [['NEO back', grp(state.neo.toString())], ['GAS back', fmt(state.gas)], ['what you sign', plan.summary]],
-            plan);
-        }));
-      }
-    }).catch(function () { note.textContent = 'could not read your collateral.'; });
-    s.row.appendChild(el('span', 'gname', 'all of it'));
-    s.row.appendChild(keys);
-    wiz.appendChild(s.box);
-  }
-  // partial withdrawal while debt exists: keep enough value for debt ÷ 60% + 5%
-  // margin. NEO leaves only if the GAS alone can cover; GAS leaves down to the cover.
-  function wizWdFree(state) {
-    var assets = FtbState.CFG.assets;
-    Promise.all([
-      FtbRpc.readInt(C.oracle, 'price', [h160(assets.neo)]),
-      FtbRpc.readInt(C.oracle, 'price', [h160(assets.gas)])
-    ]).then(function (ps) {
-      var pN = ps[0], pG = ps[1];
-      var needVal = state.debt * 105n / 60n + 1n;                 // FTB base that must stay covered
-      var neoVal = state.neo * pN;                                // NEO: value = whole × price
-      var gasVal = state.gas * pG / 100000000n;                   // GAS: value = base × price / 1e8
-      var freeNeo = gasVal >= needVal ? state.neo : 0n;
-      var coverFromNeo = (freeNeo > 0n ? 0n : neoVal);
-      var shortfall = needVal > coverFromNeo ? needVal - coverFromNeo : 0n;
-      var keepGas = shortfall * 100000000n / pG + 1n;
-      var freeGas = state.gas > keepGas ? state.gas - keepGas : 0n;
-      if (freeNeo === 0n && freeGas === 0n) {
-        FtbShell.showPlan('nothing free', 'everything locked is covering your debt. repay first to free it.', [], null);
-        return;
-      }
-      var plan = FtbState.dapi.withdrawCollateral(FtbState.account, freeNeo.toString(), freeGas.toString());
-      FtbShell.showPlan('claim ' + grp(freeNeo.toString()) + ' NEO + ' + fmt(freeGas) + ' GAS',
-        'the most that can leave while your ' + fmt(state.debt) + ' FTB debt stays covered (60% LTV + 5% margin). repay to free the rest.',
-        [['NEO back', grp(freeNeo.toString())], ['GAS back', fmt(freeGas)], ['what you sign', plan.summary]],
-        plan);
-    }).catch(function (e) {
-      FtbShell.showPlan('oracle unavailable', FtbUtil.errText(e), [], null);
-    });
-  }
-
-  function wire(id, fn) { var b = $(id); if (b) b.addEventListener('click', fn); }
-  wire('lnWizLoan', wizLoan);
-  wire('lnWizPay', wizPay);
-  wire('lnWizWdCol', wizWdCol);
-  wire('lnWizAdd', wizAdd);
-  wire('lnWizRemove', wizRemove);
-
-  // ----- loans board: every position enumerated from contract storage -----
-  // prefixes 0x31–0x34 via findstorage, PAGINATED: the C# RPC caps one page at
-  // 100 entries and answers {results, next, truncated}; we follow `next` until
-  // done, capped at MAX_PAGES - past the cap the board SAYS it is truncated
-  // instead of silently showing a partial enumeration (R5/R8).
-  var MAX_PAGES = 5;
-  function findAll(hash, prefixB64) {
-    var out = [];
-    function page(start) {
-      var params = start == null ? [hash, prefixB64] : [hash, prefixB64, start];
-      return FtbRpc.call('findstorage', params).then(function (r) {
-        if (Array.isArray(r)) return { items: out.concat(r), truncated: false }; // neo-go shape: one full array
-        out = out.concat((r && r.results) || []);
-        if (r && r.truncated) {
-          if (out.length >= MAX_PAGES * 100) return { items: out, truncated: true };
-          return page(r.next);
-        }
-        return { items: out, truncated: false };
-      });
+  function decodeOffer(id, arr) {
+    function int(i) { var x = arr[i]; return (x && x.value != null) ? BigInt(x.value) : 0n; }
+    function party(i) {
+      var x = arr[i];
+      if (!x || x.value == null || x.value === '') return null;
+      if (!U) return { le: '', be: '' };
+      var leHex = U.b64ToHex(x.value);
+      return { le: '0x' + leHex, be: '0x' + U.reverseHex(leHex) };
     }
-    return page(null);
+    var colTok = party(2), tok = colTok ? tokenOf(colTok.be.toLowerCase()) : { sym: '?', dec: 0 };
+    return {
+      id: id, funder: party(0), borrower: party(1), colTok: colTok, tok: tok,
+      colAmt: int(3), principal: int(4), rate: int(5), term: int(6),
+      maturity: int(7), repay: int(8), state: Number(int(9))
+    };
   }
 
-  // Refresh coalescing lives in the shared seam (FtbUtil.coalesce): the shell
-  // emits 'refresh' in a burst around every signed transaction (optimistic, each
-  // 5 s confirmation poll, confirmed, the modal's ok & refresh) - up to ~17 events
-  // for one landing - and without coalescing a slower STALE pass can resolve last
-  // and paint old numbers over fresh ones.
+  function rateStr(bps) { return (Number(bps) / 100) + '%'; }
+  function termStr(ms) {
+    var d = Number(ms) / 86400000;
+    if (d >= 1) return (Math.round(d * 10) / 10) + ' d';
+    var h = Number(ms) / 3600000; if (h >= 1) return (Math.round(h * 10) / 10) + ' h';
+    return Math.round(Number(ms) / 60000) + ' min';
+  }
+  function dueStr(maturityMs) {
+    var left = Number(maturityMs) - Date.now();
+    if (left <= 0) return 'matured';
+    var d = left / 86400000; if (d >= 1) return 'due in ' + Math.round(d) + ' d';
+    var h = left / 3600000; if (h >= 1) return 'due in ' + Math.round(h) + ' h';
+    return 'due in ' + Math.max(1, Math.round(left / 60000)) + ' min';
+  }
+  function mine(party) { return !!(party && FtbState.acctHash160() && party.le === FtbState.acctHash160()); }
 
-  // Addresses render through the adapter's scriptHashToAddress (pure-JS SHA-256,
-  // no crypto.subtle) - the Article 10 single toolkit; this module keeps no codec.
-  function loadLoans() {
-    var body = $('loansBody'); if (!body || !FtbRpc.current() || !C.lend) return;
-    body.textContent = 'reading chain storage…';
-    // Four prefixes: 0x31 debt ('MQ=='), 0x32 NEO collateral ('Mg=='), 0x33 GAS
-    // collateral ('Mw=='), 0x34 liquidation count ('NA=='). A deposit can land
-    // without its borrow (failed second signature), collateral outlives a repaid
-    // loan, and a LIQUIDATION outlives the position itself - all must be VISIBLE,
-    // or users think funds (or history) vanished.
-    Promise.all(['MQ==', 'Mg==', 'Mw==', 'NA=='].map(function (p) {
-      return findAll(C.lend, p).catch(function () { return { items: [], truncated: false }; });
-    })).then(function (sets) {
-      var boardTrunc = sets.some(function (s) { return s.truncated; });
-      var seen = {}, users = [];
-      sets.forEach(function (s) {
-        s.items.forEach(function (e) {
-          var sh = FtbDapi.util.b64ToHex(e.key).slice(2); // storage-order bytes, prefix dropped
-          if (!seen[sh]) { seen[sh] = 1; users.push(sh); }
-        });
-      });
-      if (!users.length) {
-        body.textContent = 'no positions yet.';
-        // the strip is earned numbers (R5): with zero positions it reads zero, not a stale sum
-        var z1 = $('lbLoaned'); if (z1) z1.textContent = '0 FTB';
-        var z2 = $('lbUtil'); if (z2) z2.textContent = '0.0%';
-        var z3 = $('lbCollat'); if (z3) z3.textContent = '0 NEO + 0 GAS';
-        var z4 = $('lbCount'); if (z4) z4.textContent = '0';
-        return;
+  // ---------- read + render the book ----------
+  function loadBook() {
+    var off = $('lendOff');
+    if (!live()) { if (off) off.hidden = false; setStat('-'); if ($('loansBody')) $('loansBody').textContent = 'standby'; return; }
+    if (off) off.hidden = true;
+    FtbRpc.readInt(C.loanbook, 'offerCount', []).then(function (cntB) {
+      var n = Number(cntB), CAP = 300, start = Math.max(0, n - CAP), ids = [];
+      for (var i = n - 1; i >= start; i--) ids.push(i);
+      return Promise.all(ids.map(function (id) {
+        return FtbRpc.read(C.loanbook, 'offer', [iarg(id)])
+          .then(function (st) { return (st && st[0] && st[0].value) ? decodeOffer(id, st[0].value) : null; })
+          .catch(function () { return null; });
+      })).then(function (list) { render(list.filter(function (o) { return o && o.state >= 1; }), n > CAP); });
+    }).catch(function (e) { if ($('loansBody')) $('loansBody').textContent = 'book unavailable: ' + FtbUtil.errText(e); });
+    loadProceeds();
+  }
+
+  function setStat(v) { ['lnOpen', 'lnActive', 'lnOffered', 'lnProceeds'].forEach(function (id) { var n = $(id); if (n) n.textContent = v; }); }
+
+  function loadProceeds() {
+    var p = $('lnProceeds'); if (!p) return;
+    if (!FtbState.account) { p.textContent = '-'; return; }
+    FtbRpc.readInt(C.loanbook, 'claimable', [{ type: 'Hash160', value: FtbState.acctHash160() }, { type: 'Hash160', value: C.ftb }])
+      .then(function (v) { p.textContent = amt(v, 8) + ' FTB'; }).catch(function () { p.textContent = '-'; });
+  }
+
+  function render(offers, trunc) {
+    var open = 0, active = 0, offered = 0n;
+    offers.forEach(function (o) {
+      if (o.state === 1) { open++; offered += o.principal; }
+      else if (o.state === 2) active++;
+    });
+    if ($('lnOpen')) $('lnOpen').textContent = String(open);
+    if ($('lnActive')) $('lnActive').textContent = String(active);
+    if ($('lnOffered')) $('lnOffered').textContent = amt(offered, 8) + ' FTB';
+    loadProceeds();
+
+    var body = $('loansBody'); if (!body) return;
+    body.replaceChildren();
+    if (!offers.length) { body.appendChild(el('div', 'small muted', 'no offers yet - be the first to lend (LEND FTB).')); return; }
+
+    offers.forEach(function (o) {
+      var row = el('div', 'lnrow');
+      var meta = el('div', 'lnmeta small');
+      var st = el('span', 'lnst ' + (ST[o.state] ? ST[o.state].c : ''), ST[o.state] ? ST[o.state].t : '?');
+      meta.appendChild(el('span', 'lnid', '#' + o.id + ' '));
+      meta.appendChild(st);
+      var line = '  ' + amt(o.colAmt, o.tok.dec) + ' ' + o.tok.sym + ' collateral  ·  ' +
+        amt(o.principal, 8) + ' FTB  ·  ' + rateStr(o.rate) + '  ·  ' + termStr(o.term);
+      if (o.state === 2) line += '  ·  ' + dueStr(o.maturity) + '  ·  repay ' + amt(o.repay, 8) + ' FTB';
+      meta.appendChild(el('span', 'lntxt', line));
+      row.appendChild(meta);
+
+      var acts = el('div', 'row lnacts');
+      if (o.state === 1) {
+        acts.appendChild(keyBtn('take →', function () { planTake(o); }));
+        if (mine(o.funder)) acts.appendChild(keyBtn('cancel →', function () { planCancel(o); }));
+      } else if (o.state === 2) {
+        if (mine(o.borrower)) acts.appendChild(keyBtn('repay →', function () { planRepay(o); }));
+        if (Date.now() >= Number(o.maturity)) acts.appendChild(keyBtn('close →', function () { planClose(o); }));
       }
-      return Promise.all(users.map(function (sh) {
-        var be = '0x' + FtbDapi.util.reverseHex(sh); // canonical RPC form for Hash160 args
-        return Promise.all([
-          FtbRpc.readInt(C.lend, 'debtOf', [h160(be)]),
-          FtbRpc.readInt(C.lend, 'collateralOf', [h160(be), { type: 'Boolean', value: true }]),
-          FtbRpc.readInt(C.lend, 'collateralOf', [h160(be), { type: 'Boolean', value: false }]),
-          FtbRpc.read(C.lend, 'isUnhealthy', [h160(be)]).then(function (st) {
-            var it = st && st[0];
-            return it && (it.type === 'Boolean' ? it.value : (it.value && it.value !== '0' && it.value !== ''));
-          }).catch(function () { return false; }),
-          FtbRpc.readInt(C.lend, 'liquidationsOf', [h160(be)]).catch(function () { return 0n; }),
-          FtbRpc.readInt(C.lend, 'maxBorrow', [h160(be)]).catch(function () { return 0n; })
-        ]).then(function (vs) {
-          return { addr: FtbDapi.util.scriptHashToAddress(sh), be: be, debt: vs[0], neo: vs[1], gas: vs[2], bad: !!vs[3], liqs: vs[4], maxB: vs[5] };
-        });
-      })).then(function (rows) {
-        var open = rows.filter(function (r) { return r.debt > 0n || r.neo > 0n || r.gas > 0n || r.liqs > 0n; });
-        // totals strip: chain-wide, summed from the same enumeration
-        var totNeo = 0n, totGas = 0n, nLoans = 0;
-        rows.forEach(function (r) { totNeo += r.neo; totGas += r.gas; if (r.debt > 0n) nLoans++; });
-        FtbRpc.readInt(C.lend, 'totalBorrows', []).then(function (tb) {
-          var e = $('lbLoaned'); if (e) e.textContent = fmt(tb) + ' FTB';
-        }).catch(function () {});
-        FtbRpc.readInt(C.lend, 'utilizationBps', []).then(function (u) {
-          var e = $('lbUtil'); if (e) e.textContent = (Number(u) / 100).toFixed(1) + '%';
-        }).catch(function () {});
-        var ec = $('lbCollat'); if (ec) ec.textContent = grp(totNeo.toString()) + ' NEO + ' + fmt(totGas) + ' GAS';
-        var en = $('lbCount'); if (en) en.textContent = nLoans + (rows.length > nLoans ? ' (+ ' + (rows.length - nLoans) + ' closed/collateral-only)' : '');
-        body.innerHTML = '';
-        if (!open.length) { body.textContent = 'no open positions - ' + rows.length + ' closed.'; return; }
-        open.forEach(function (r) {
-          var row = el('div', 'entry');
-          row.style.padding = '8px 0';
-          var idx = el('span', 'idx', r.bad ? '!!' : '//');
-          var mid = el('div');
-          var mine = FtbState.account && r.addr === FtbState.account;
-          var ttl = el('span', 'ttl', r.addr.slice(0, 6) + '…' + r.addr.slice(-4) + (mine ? ' (you)' : ''));
-          ttl.title = r.addr;
-          mid.appendChild(ttl);
-          var meta = el('div', 'meta');
-          var closedByLiq = r.debt === 0n && r.neo === 0n && r.gas === 0n && r.liqs > 0n;
-          if (closedByLiq) {
-            meta.appendChild(el('span', null, 'position closed by liquidation'));
-          } else {
-            meta.appendChild(el('span', null, 'debt ' + fmt(r.debt) + ' FTB'));
-            meta.appendChild(el('span', null, grp(r.neo.toString()) + ' NEO'));
-            meta.appendChild(el('span', null, fmt(r.gas) + ' GAS'));
-          }
-          if (mine) {
-            var head = r.maxB - r.debt; if (head < 0n) head = 0n;
-            // maxB is collateral × 60%, so ltv% = debt / maxB × 60
-            var ltv = r.maxB > 0n ? (Number(r.debt * 10000n / r.maxB) * 0.006).toFixed(1) : '0.0';
-            var rkm = riskLevel(r.bad, r.debt, r.maxB);
-            meta.appendChild(el('span', null, 'ltv ' + ltv + '% of 60% · headroom ' + fmt(head) + ' FTB' + (rkm.note ? ' · ' + rkm.note : '')));
-          }
-          // the health slot carries four states: liquidatable (actionable NOW) wins,
-          // then a liquidation mark that never fades, then the live states.
-          var tag;
-          if (r.bad) {
-            tag = el('span', 'tag pub', 'LIQUIDATABLE');
-          } else if (r.liqs > 0n) {
-            tag = el('span', 'tag pub', 'liquidated ×' + r.liqs.toString());
-          } else if (r.debt > 0n) {
-            var rkt = riskLevel(false, r.debt, r.maxB);
-            tag = el('span', (rkt.label === 'AT RISK' || rkt.label === 'WATCH') ? 'tag pub' : 'tag', rkt.label);
-            tag.style.color = rkt.color || '';
-            tag.title = rkt.note;
-          } else {
-            tag = el('span', 'tag', 'collateral only - claimable');
-          }
-          meta.appendChild(tag);
-          var btnWrap = el('div', 'read');
-          if (mine && !r.bad) {
-            // your own position is actionable straight from the board: draw a loan
-            // against collateral already locked - no wizard restart (the deposit
-            // is a fact on-chain; the borrow should be one click from seeing it).
-            var bk = el('button', 'linkish', 'take loan ->');
-            bk.addEventListener('click', wizBorrowDirect);
-            btnWrap.appendChild(bk);
-          }
-          if (r.bad) {
-            var lb = el('button', 'linkish', 'liquidate ->');
-            lb.addEventListener('click', function () {
-              if (!needAcct()) return;
-              var plan = FtbState.dapi.liquidate(FtbState.account, r.debt.toString(), r.be);
-              FtbShell.showPlan('liquidate ' + r.addr.slice(0, 6) + '…' + r.addr.slice(-4),
-                'you repay up to ' + fmt(r.debt) + ' FTB of their debt and seize collateral at an 8% bonus. the pool stays solvent; the borrower keeps any excess collateral.',
-                [['borrower', r.addr], ['debt covered', fmt(r.debt) + ' FTB'], ['what you sign', plan.summary]],
-                plan);
-            });
-            btnWrap.appendChild(lb);
-          }
-          row.appendChild(idx); row.appendChild(mid); row.appendChild(btnWrap);
-          mid.appendChild(meta);
-          body.appendChild(row);
-        });
-        body.appendChild(el('div', 'small muted', open.length + ' open · ' + (rows.length - open.length) + ' closed - enumerated from contract storage, not a server.'));
-        if (boardTrunc) body.appendChild(el('div', 'small muted', 'board truncated at ' + (MAX_PAGES * 100) + ' entries per prefix - point the page at your own node (OWN NODE) for the full enumeration.'));
-      });
-    }).catch(function (e) { body.textContent = 'board unavailable: ' + FtbUtil.errText(e); });
+      if (acts.childNodes.length) row.appendChild(acts);
+      body.appendChild(row);
+    });
+    body.appendChild(el('div', 'small muted', open + ' open · ' + active + ' active · ' + (offers.length - open - active) + ' settled - enumerated from contract storage, not a server.'));
+    if (trunc) body.appendChild(el('div', 'small muted', 'book truncated at 300 newest offers - point the page at your own node for the full enumeration.'));
   }
 
-  function flash(b) {
-    if (!b) return;
-    var t = b.textContent; b.textContent = 'reading…'; b.disabled = true;
-    setTimeout(function () { b.textContent = t; b.disabled = false; }, 1500);
+  function keyBtn(label, fn) { var b = el('button', 'linkish', label); b.addEventListener('click', fn); return b; }
+
+  // ---------- plans (review + sign) ----------
+  function planTake(o) {
+    if (!needAcct()) return;
+    FtbShell.showPlan('take offer #' + o.id,
+      'you lock ' + amt(o.colAmt, o.tok.dec) + ' ' + o.tok.sym + ' as collateral and receive ' + amt(o.principal, 8) +
+      ' FTB. repay ' + amt(o.repay > 0n ? o.repay : (o.principal + o.principal * o.rate / 10000n), 8) +
+      ' FTB before maturity to unlock your collateral; miss it and the collateral is the lender\'s.',
+      [['you lock', amt(o.colAmt, o.tok.dec) + ' ' + o.tok.sym],
+       ['you receive', amt(o.principal, 8) + ' FTB'],
+       ['you will repay', amt(o.principal + o.principal * o.rate / 10000n, 8) + ' FTB'],
+       ['term', termStr(o.term)],
+       ['what you sign', o.tok.sym + '.transfer(you → loanbook, ' + amt(o.colAmt, o.tok.dec) + ', "take #' + o.id + '")']],
+      FtbState.dapi.loanTake(FtbState.account, o.colTok.be, o.colAmt.toString(), o.id));
+  }
+  function planRepay(o) {
+    if (!needAcct()) return;
+    var due = o.repay > 0n ? o.repay : (o.principal + o.principal * o.rate / 10000n);
+    FtbShell.showPlan('repay loan #' + o.id,
+      'transfers ' + amt(due, 8) + ' FTB to clear the loan; your ' + amt(o.colAmt, o.tok.dec) + ' ' + o.tok.sym +
+      ' collateral returns to you. any overpay is refunded by the contract.',
+      [['you repay', amt(due, 8) + ' FTB'],
+       ['unlocks', amt(o.colAmt, o.tok.dec) + ' ' + o.tok.sym],
+       ['what you sign', 'FTB.transfer(you → loanbook, ' + amt(due, 8) + ', "repay #' + o.id + '")']],
+      FtbState.dapi.loanRepay(FtbState.account, due.toString(), o.id));
+  }
+  function planClose(o) {
+    if (!needAcct()) return;
+    FtbShell.showPlan('close loan #' + o.id,
+      'the term has elapsed and the loan is unrepaid. closing credits the ' + amt(o.colAmt, o.tok.dec) + ' ' + o.tok.sym +
+      ' collateral to the lender\'s pull ledger. anyone may call this; it moves no tokens to you.',
+      [['settles', 'loan #' + o.id],
+       ['collateral → lender', amt(o.colAmt, o.tok.dec) + ' ' + o.tok.sym],
+       ['what you sign', 'loanbook.close(' + o.id + ')']],
+      FtbState.dapi.loanClose(o.id));
+  }
+  function planCancel(o) {
+    if (!needAcct()) return;
+    FtbShell.showPlan('cancel offer #' + o.id,
+      'withdraws your un-taken offer and refunds the ' + amt(o.principal, 8) + ' FTB you escrowed.',
+      [['refunds', amt(o.principal, 8) + ' FTB'],
+       ['what you sign', 'loanbook.cancelOffer(' + o.id + ')']],
+      FtbState.dapi.loanCancel(o.id));
   }
 
-  // every entry point goes through the coalesced pass - manual buttons included:
-  // a click during an in-flight pass queues exactly one trailing run.
-  var loadLendC = FtbUtil.coalesce(loadLend, 3000), loadLoansC = FtbUtil.coalesce(loadLoans, 3000);
-  var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', function () { flash(lb); loadLendC(); });
-  var lr = $('loansRefresh'); if (lr) lr.addEventListener('click', function () { flash(lr); loadLoansC(); });
-  FtbState.on('refresh', loadLoansC);
-  FtbState.on('rpc', loadLoansC);
-  FtbState.on('rpc', loadLendC);
-  FtbState.on('account', loadLendC);
-  FtbState.on('refresh', loadLendC);
-  // a confirmed write means the wizard's job is done - tear it down so no stale
-  // amounts linger on screen looking like the transaction never happened.
+  // ---------- A) lend FTB (post an offer) ----------
+  function wizLend() {
+    if (!needAcct()) return;
+    clearWiz();
+    var box = el('div', 'advbody');
+    box.appendChild(el('p', 'advnote', 'You escrow FTB and set the terms. A borrower who locks the collateral you name receives your FTB and must repay principal + interest before the term ends; if they do not, the collateral becomes yours. You set the price of the collateral - there is no oracle.'));
+    var r1 = el('div', 'row');
+    var tokSel = el('select'); tokSel.id = 'lnTok';
+    [['NEO', 'NEO'], ['GAS', 'GAS']].forEach(function (p) { var op = el('option', null, p[0]); op.value = p[1]; tokSel.appendChild(op); });
+    var cCol = mkIn('collateral amount');
+    var cPrin = mkIn('FTB to lend');
+    var cRate = mkIn('rate % (e.g. 5)');
+    var cTerm = mkIn('term in days (e.g. 30)');
+    r1.appendChild(labelled('collateral', tokSel));
+    r1.appendChild(labelled('amount', cCol));
+    r1.appendChild(labelled('lend FTB', cPrin));
+    r1.appendChild(labelled('rate %', cRate));
+    r1.appendChild(labelled('term (days)', cTerm));
+    box.appendChild(r1);
+    var note = el('p', 'advnote', '');
+    box.appendChild(note);
+    var keys = el('div', 'row');
+    keys.appendChild(keyBtn('review offer →', function () {
+      var tok = tokenOf(String(tokSel.value === 'GAS' ? AS.gas : AS.neo).toLowerCase());
+      var colBase = toBase(cCol.value, tok.dec);
+      var prinBase = toBase(cPrin.value, 8);
+      var rateN = Number(cRate.value), daysN = Number(cTerm.value);
+      if (colBase === null || colBase <= 0n) { note.textContent = 'enter a positive collateral amount' + (tok.dec === 0 ? ' (NEO is whole units)' : ''); return; }
+      if (prinBase === null || prinBase <= 0n) { note.textContent = 'enter a positive FTB amount to lend'; return; }
+      if (!(rateN >= 0) || rateN > 10000) { note.textContent = 'rate must be between 0% and 10,000%'; return; }
+      if (!(daysN > 0) || daysN > 3650) { note.textContent = 'term must be between 1 and 3650 days'; return; }
+      var rateBps = Math.round(rateN * 100), termMs = Math.round(daysN * 86400000);
+      if (termMs < 60000) { note.textContent = 'term too short (minimum 1 minute)'; return; }
+      var repay = prinBase + prinBase * BigInt(rateBps) / 10000n;
+      FtbShell.showPlan('lend ' + fromBase(prinBase, 8) + ' FTB',
+        'escrows your FTB into an open offer. a borrower who locks ' + fromBase(colBase, tok.dec) + ' ' + tok.sym +
+        ' receives it and owes you ' + fromBase(repay, 8) + ' FTB by maturity. you can cancel any time before it is taken.',
+        [['you lend', fromBase(prinBase, 8) + ' FTB'],
+         ['collateral required', fromBase(colBase, tok.dec) + ' ' + tok.sym],
+         ['interest', rateN + '% flat → ' + fromBase(repay, 8) + ' FTB repaid'],
+         ['term', daysN + ' days'],
+         ['what you sign', 'FTB.transfer(you → loanbook, ' + fromBase(prinBase, 8) + ', "offer")']],
+        FtbState.dapi.loanPostOffer(FtbState.account, prinBase.toString(), tok.hash, colBase.toString(), rateBps, termMs));
+    }));
+    box.appendChild(keys);
+    wiz.appendChild(box);
+    cCol.focus();
+  }
+
+  // ---------- B) withdraw proceeds (pull ledger, per token) ----------
+  function wizWithdraw() {
+    if (!needAcct()) return;
+    clearWiz();
+    var box = el('div', 'advbody');
+    box.appendChild(el('p', 'advnote', 'Repaid FTB and collateral from defaulted loans accrue to your pull ledger. Withdraw each token you are owed.'));
+    var keys = el('div', 'row');
+    var acct = { type: 'Hash160', value: FtbState.acctHash160() };
+    [['FTB', C.ftb, 8], ['NEO', AS.neo, 0], ['GAS', AS.gas, 8]].forEach(function (t) {
+      FtbRpc.readInt(C.loanbook, 'claimable', [acct, { type: 'Hash160', value: t[1] }]).then(function (v) {
+        if (v <= 0n) return;
+        keys.appendChild(keyBtn('withdraw ' + amt(v, t[2]) + ' ' + t[0] + ' →', function () {
+          FtbShell.showPlan('withdraw ' + fromBase(v, t[2]) + ' ' + t[0],
+            'pays out your accrued ' + t[0] + ' proceeds. the balance is zeroed before the send.',
+            [['you receive', fromBase(v, t[2]) + ' ' + t[0]], ['what you sign', 'loanbook.withdraw(you, ' + t[0] + ')']],
+            FtbState.dapi.loanWithdraw(FtbState.account, t[1]));
+        }));
+        if (keys.childNodes.length === 1) box.insertBefore(keys, null);
+      }).catch(function () {});
+    });
+    setTimeout(function () { if (!keys.childNodes.length) box.appendChild(el('p', 'advnote', 'nothing to withdraw right now.')); }, 1200);
+    box.appendChild(keys);
+    wiz.appendChild(box);
+  }
+
+  // ---------- small UI helpers ----------
+  function clearWiz() { if (wiz) wiz.replaceChildren(); }
+  function mkIn(ph) { var i = el('input'); i.type = 'text'; i.autocomplete = 'off'; i.spellcheck = false; i.placeholder = ph || ''; return i; }
+  function labelled(lbl, node) { var w = el('div', 'lnfield'); w.appendChild(el('span', 'lnlbl', lbl)); if (node && node.setAttribute) node.setAttribute('aria-label', lbl); w.appendChild(node); return w; }
+
+  // ---------- wiring ----------
+  function syncAct() { var a = $('lendAct'); if (a) a.hidden = !FtbState.account; }
+  function flash(b) { if (!b) return; var t = b.textContent; b.textContent = 'reading…'; b.disabled = true; setTimeout(function () { b.textContent = t; b.disabled = false; }, 1200); }
+
+  var loadC = FtbUtil.coalesce(loadBook, 3000);
+  var lw = $('lnWizLend'); if (lw) lw.addEventListener('click', wizLend);
+  var ww = $('lnWizWithdraw'); if (ww) ww.addEventListener('click', wizWithdraw);
+  var lb = $('lendRefresh'); if (lb) lb.addEventListener('click', function () { flash(lb); loadC(); });
+  var lr = $('loansRefresh'); if (lr) lr.addEventListener('click', function () { flash(lr); loadC(); });
+  FtbState.on('rpc', loadC);
+  FtbState.on('refresh', loadC);
+  FtbState.on('account', loadC);
+  FtbState.on('account', syncAct);
   FtbState.on('refresh', clearWiz);
-  // keep the pool fresh while the page is open
-  setInterval(function () { if (FtbRpc.current()) loadLendC(); }, 60000);
+  syncAct();
+  setInterval(function () { if (FtbRpc.current()) loadC(); }, 60000);
 })();

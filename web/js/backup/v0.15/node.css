@@ -1,0 +1,88 @@
+/* node.css -- RUN FTB NODE. Static, canon-clean: all styling lives here (never inline),
+   tokens inherited from p2-shell.css. Paired with node.html. */
+
+.nd{max-width:var(--col); margin:0 auto; padding:26px 22px 72px}
+
+/* hero */
+.nd-hero{border-bottom:1px solid var(--hair); padding-bottom:18px; display:flex; gap:16px; align-items:flex-start}
+.nd-glyph{flex:0 0 auto; width:34px; height:34px; color:var(--ink)}
+.nd-htext{min-width:0}
+.nd-kicker{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.14em; text-transform:uppercase}
+.nd-title{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); line-height:.98; margin:.12em 0 0}
+.nd-sub{color:var(--ink-2); font-size:var(--fs-small); line-height:1.5; margin:.5em 0 0; max-width:62ch}
+
+/* sections */
+.nd-sec{margin-top:34px}
+.nd-h{font-size:var(--fs-meta); letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+  border-bottom:1px solid var(--hair); padding-bottom:7px; margin:0}
+.nd-p{font-size:var(--fs-body); line-height:1.7; color:var(--ink); margin:14px 0 0; max-width:72ch}
+.nd-p.muted{color:var(--ink-2)}
+.nd-p b{color:var(--ink)}
+.nd-ul{margin:12px 0 0; padding:0; list-style:none; max-width:72ch}
+.nd-ul li{position:relative; padding:0 0 0 20px; margin:9px 0; font-size:var(--fs-body); line-height:1.65; color:var(--ink)}
+.nd-ul li::before{content:"\2014"; position:absolute; left:0; color:var(--faint)}
+.nd-ul li b{color:var(--ink)}
+.nd-ul li .q{color:var(--ink-2)}
+
+/* requirement rows */
+.nd-req{margin-top:16px; border:1px solid var(--hair)}
+.nd-req .r{display:grid; grid-template-columns:160px 1fr; gap:14px; padding:11px 14px;
+  border-top:1px solid var(--hair); font-size:var(--fs-small); line-height:1.55}
+.nd-req .r:first-child{border-top:0}
+.nd-req .rk{color:var(--faint); text-transform:uppercase; letter-spacing:.06em; font-size:var(--fs-meta)}
+.nd-req .rv{color:var(--ink)}
+.nd-req .rv b{color:var(--ink)}
+
+/* numbered steps */
+.nd-steps{margin-top:16px}
+.nd-step{border:1px solid var(--hair); background:var(--panel); padding:14px 16px; margin-top:12px}
+.nd-step .st-h{display:flex; gap:13px; align-items:baseline}
+.nd-step .st-n{font-family:var(--disp); font-size:var(--fs-num); color:var(--faint); line-height:1; flex:0 0 auto}
+.nd-step .st-t{font-family:var(--disp); font-size:var(--fs-lead); color:var(--ink); line-height:1.2}
+.nd-step .st-b{font-size:var(--fs-small); line-height:1.7; color:var(--ink-2); margin:9px 0 0; max-width:70ch}
+.nd-step .st-b b{color:var(--ink)}
+
+/* code / command blocks */
+.cmd{margin:11px 0 0; background:var(--keybg); border:1px solid var(--data-bd); padding:11px 13px;
+  overflow-x:auto; font-family:var(--mono); font-size:var(--fs-small); line-height:1.6; color:var(--ink);
+  white-space:pre; -webkit-overflow-scrolling:touch}
+.cmd .cm{color:var(--faint)}   /* comments */
+.cmd .pr{color:var(--ok)}      /* command / ok */
+.cmd .v{color:var(--amber)}    /* placeholder the operator edits */
+.filename{display:block; color:var(--faint); font-size:var(--fs-meta); letter-spacing:.07em;
+  text-transform:uppercase; margin:14px 0 0}
+
+/* callouts */
+.cx{border:1px solid var(--hair); border-left-width:3px; background:var(--panel); padding:12px 14px;
+  margin:14px 0 0; font-size:var(--fs-small); line-height:1.7; color:var(--ink-2); max-width:72ch}
+.cx b{color:var(--ink)}
+.cx .cxl{display:block; font-size:var(--fs-meta); letter-spacing:.1em; text-transform:uppercase; margin-bottom:5px}
+.cx.good{border-left-color:var(--ok)}
+.cx.warn{border-left-color:var(--amber)}
+.cx.stop{border-left-color:var(--dn)}
+.cx.good .cxl{color:var(--ok)}
+.cx.warn .cxl{color:var(--amber)}
+.cx.stop .cxl{color:var(--dn)}
+
+/* download cards */
+.nd-dl{margin-top:16px; display:grid; grid-template-columns:1fr; gap:1px; background:var(--hair); border:1px solid var(--hair)}
+.nd-dl a{display:grid; grid-template-columns:1fr auto; gap:5px 14px; padding:12px 14px;
+  background:var(--paper); border-bottom:0; align-items:baseline}
+.nd-dl a:hover{background:var(--sel); color:var(--sel-ink)}
+.nd-dl .dn{font-family:var(--disp); font-size:var(--fs-body)}
+.nd-dl .dd{grid-column:1; color:var(--ink-2); font-size:var(--fs-meta); line-height:1.5}
+.nd-dl .dget{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.1em; text-transform:uppercase; white-space:nowrap}
+.nd-dl a:hover .dd,.nd-dl a:hover .dget{color:var(--sel-ink)}
+
+/* footer */
+.nd-foot{margin-top:40px; border-top:1px solid var(--hair); padding-top:16px; color:var(--faint);
+  font-size:var(--fs-meta); line-height:1.85; max-width:76ch}
+.nd-foot b{color:var(--ink-2)}
+
+@media (max-width:560px){
+  .nd{padding:22px 16px 64px}
+  .nd-hero{gap:12px}
+  .nd-glyph{width:30px; height:30px}
+  .nd-title{font-size:var(--fs-num)}
+  .nd-req .r{grid-template-columns:1fr; gap:3px}
+}

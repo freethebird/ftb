@@ -98,7 +98,7 @@
 
   function lookup(addrRaw) {
     var addr = (addrRaw || '').trim();
-    $('cxOut').hidden = true; $('cxOut').innerHTML = '';
+    $('cxOut').hidden = true; $('cxOut').replaceChildren();
     if (!addr) { msg('err', 'paste a Neo N3 wallet address to see its claim.'); return; }
     if (!NEO_ADDR.test(addr)) { msg('err', 'that does not look like a Neo N3 address (starts with N, 34 characters).'); return; }
     msg('', 'reading the published tree…');
@@ -111,7 +111,7 @@
   }
 
   function renderAbsent(addr) {
-    var out = $('cxOut'); out.innerHTML = ''; out.hidden = false;
+    var out = $('cxOut'); out.replaceChildren(); out.hidden = false;
     out.appendChild(el('div', 'cxhead', 'not in the snapshot'));
     out.appendChild(el('div', 'cxnote', 'This address is not in the published pre-exploit snapshot, so it has no claim. Only pre-exploit holders (and salvaged LP / order-book / vault positions) are in the tree; the attacker and the flagged cluster are excluded by construction.'));
     out.appendChild(kvLine('address', addr));
@@ -123,7 +123,7 @@
   }
 
   function render(addr, comp) {
-    var out = $('cxOut'); out.innerHTML = ''; out.hidden = false;
+    var out = $('cxOut'); out.replaceChildren(); out.hidden = false;
     var total = totalOf(comp);
     var nodes = comp[7] || '?';
     var ftb = ftbOf(total);
@@ -174,10 +174,10 @@
   function maybeClaimButton(act, addr, total) {
     act.appendChild(el('div', 'cxnote', 'checking the on-chain claim ledger…'));
     FtbRpc.readBool(C.migrator, 'claimed', [{ type: 'Hash160', value: FtbState.acctHash160() }]).then(function (done) {
-      act.innerHTML = '';
+      act.replaceChildren();
       if (done) { act.appendChild(el('div', 'cxnote', 'This address has already claimed its FTB — one claim per snapshot address, forever. The ledger lives in the token contract.')); return; }
       addClaimBtn(act, addr);
-    }).catch(function () { act.innerHTML = ''; addClaimBtn(act, addr); act.appendChild(el('div', 'cxnote', 'Could not pre-read the claimed ledger — the chain enforces one claim per address regardless.')); });
+    }).catch(function () { act.replaceChildren(); addClaimBtn(act, addr); act.appendChild(el('div', 'cxnote', 'Could not pre-read the claimed ledger — the chain enforces one claim per address regardless.')); });
   }
   function addClaimBtn(act, addr) {
     var b = el('button', 'bkey', 'claim this →'); b.type = 'button';

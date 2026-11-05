@@ -12,17 +12,19 @@ window.FTB_CONFIG = {
     ftb:      '0x1ff1f51e63179867367ae8982af583e01e7cbdbd', // FTB token v2 (cap 100M, per-account claim ledger)
     migrator: '0x4af54b861eafcff198892b38b8b60fd06f95dd2d', // migration claim R4 - stateless proof-checker, v2 tree (5,194 wallets), mints floor(FLM-equiv × 0.189832)
     registry: '0x0d59f3bb8018f5668ac4448249f21927fe961614', // seam board (re-pointed via timelock 20 Oct)
-    oracle:   '0x1c92a93d438b9468b45706cbc4b1ddcc345df875', // Launch 2
-    lend:     '0x3b319667f54a4888d0d366d4923d93a833baf8c5', // R4 reset: fresh state (FtbLendR2), same audited code
+    // keyless/de-keyed stack - fill after the de-keyed full stack is deployed to TestNet (cmd/deploy testnet launch2):
+    gov:          '0xf87c422d660a4d3c4f70c60fd92fa56aba257e67', // FtbGov
+    loanbook:     '0x5665180b8e00b52595d1133b984fa338c12d0808', // FtbLoanBook (oracleless P2P lend)
+    commandments: '0x845cbd236620eb01a6d7446c080bbf646f4d2979', // FtbCommandments
     // ballot is deployed per proposal; the hash IS the proposal id
     // R4 19 Oct: fresh tally (vote reset), electorate = v2 claim tree (5,194 wallets
     // incl. dev + salvage); voting window runs to 31 Oct - DECISIONS.md, Decision 14.
     ballot:   '0x2f76d354c1345946b0dc22d189724b71c7539690',
     // bond vault holds listing bonds (50/50 liquidity/rug-pull split)
-    bondvault: '0x20663c31352c224da37cd136dab587f2da55d390', // R4 reset: fresh state (FtbBondVaultR2)
+    bondvault: '0x64db7f6afa1c1fc12be1220c0443b21064230815', // R4 reset: fresh state (FtbBondVaultR2)
     // treasury escrows proposal budgets; dividends pays the holders' 2/9 to stakers
-    treasury:  '0xa0bcfb4de8898d12a5535151fd80050c46391033', // R4 reset: fresh state (FtbTreasuryR2)
-    dividends: '0xa1f8fcbdfee1446cd47d46d773d8b6a7f2542c63', // R4 reset: fresh state (FtbDividendsR2)
+    treasury:  '0x39c743548100817b8bae8ee8e76801cceadce9e9', // R4 reset: fresh state (FtbTreasuryR2)
+    dividends: '0x47c5d3786fe716292a07ff867072b7f41f9eb17e', // R4 reset: fresh state (FtbDividendsR2)
     // Discord bond system (deployed 22 Oct 2026; separate from the listing bondvault above):
     dbondvault: '0x62f053d7f360d286e6ee0551155d7724564fea2b', // FtbDiscordBond -- Discord entry-bond vault
     accusation: '0xfada35e4dd4fd8ce22c7badf2d6449b449aaeda9', // FtbBondAccusation -- the bond's own dispute ballot

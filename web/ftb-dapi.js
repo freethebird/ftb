@@ -25,7 +25,6 @@
   var MAGIC = { MainNet: 860833102, TestNet: 894710606 };
   var WITNESS = { None: 0, CalledByEntry: 1, CustomContracts: 16, CustomGroups: 32, Global: 128 };
   var GAS = '0xd2a4cff31913016155e38e474a2c06d08be276cf'; // native GAS, 8 decimals
-  var NEO = '0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5'; // native NEO, 0 decimals (whole units)
 
   // F3 remediation: a Neo N3 script hash is exactly 0x + 40 hex. Validate every hash that becomes
   // a call target, a signer account, or an allowedContracts entry, so a malformed config value or
@@ -349,12 +348,6 @@
   FtbDapi.prototype.migrationOpen = function () { return this.read(this._need('ftb'), 'migrationOpen', []).then(decodeBool); };
   FtbDapi.prototype.claimed = function (acct) { return this.read(this._need('migrator'), 'claimed', [A.h160(acct)]).then(decodeBool); };
   FtbDapi.prototype.registryGet = function (name) { return this.read(this._need('registry'), 'get', [A.str(name)]).then(decodeHash160); };
-  FtbDapi.prototype.price = function (asset) { return this.read(this._need('oracle'), 'price', [A.h160(asset)]).then(decodeInt); };
-  FtbDapi.prototype.debtOf = function (user) { return this.read(this._need('lend'), 'debtOf', [A.h160(user)]).then(decodeInt); };
-  FtbDapi.prototype.collateralValue = function (user) { return this.read(this._need('lend'), 'collateralValue', [A.h160(user)]).then(decodeInt); };
-  FtbDapi.prototype.maxBorrow = function (user) { return this.read(this._need('lend'), 'maxBorrow', [A.h160(user)]).then(decodeInt); };
-  FtbDapi.prototype.isUnhealthy = function (user) { return this.read(this._need('lend'), 'isUnhealthy', [A.h160(user)]).then(decodeBool); };
-  FtbDapi.prototype.sharesOf = function (user) { return this.read(this._need('lend'), 'sharesOf', [A.h160(user)]).then(decodeInt); };
   // ballot reads: tallies and one-vote markers are public chain state, same for every node
   FtbDapi.prototype.ballotRoot = function () { return this.read(this._need('ballot'), 'root', []); };
   FtbDapi.prototype.ballotNumOptions = function () { return this.read(this._need('ballot'), 'numOptions', []).then(decodeInt); };
@@ -372,45 +365,35 @@
     return this._w(this._need('migrator'), 'claim', [A.h160(account), A.int(amountBase), proof],
       'Claim ' + fromBaseUnits(amountBase) + ' FLM-equiv as ' + fromBaseUnits(ftbOf(amountBase)) + ' FTB (r = 0.189832) for ' + account);
   };
-  FtbDapi.prototype.supply = function (user, amountBase) {
+  // ---- FtbLoanBook: oracleless, keyless P2P term loans (post / take / repay / close / cancel / withdraw) ----
+  // Value moves via NEP-17 transfer with a typed data payload the contract decodes in
+  // OnNEP17Payment; Close/CancelOffer/Withdraw are direct calls. Base units on the wire:
+  // FTB & GAS 8dp, NEO whole. rateBps = flat % of principal x 100; termMs in milliseconds.
+  FtbDapi.prototype.loanPostOffer = function (user, principalBase, colTokHash, colAmt, rateBps, termMs) {
     return this._w(this._need('ftb'), 'transfer',
-      [A.h160(user), A.h160(this._need('lend')), A.int(amountBase), A.arr([A.str('supply')])],
-      'Supply ' + fromBaseUnits(amountBase) + ' FTB to the lend pool');
+      [A.h160(user), A.h160(this._need('loanbook')), A.int(principalBase),
+       A.arr([A.str('offer'), A.h160(colTokHash), A.int(colAmt), A.int(rateBps), A.int(termMs)])],
+      'offer ' + fromBaseUnits(principalBase) + ' FTB to lend');
   };
-  FtbDapi.prototype.repay = function (user, amountBase) {
+  FtbDapi.prototype.loanTake = function (user, colTokHash, colAmt, id) {
+    return this._w(colTokHash, 'transfer',
+      [A.h160(user), A.h160(this._need('loanbook')), A.int(colAmt), A.arr([A.str('take'), A.int(id)])],
+      'take offer #' + id);
+  };
+  FtbDapi.prototype.loanRepay = function (user, repayBase, id) {
     return this._w(this._need('ftb'), 'transfer',
-      [A.h160(user), A.h160(this._need('lend')), A.int(amountBase), A.arr([A.str('repay')])],
-      'Repay ' + fromBaseUnits(amountBase) + ' FTB of debt');
+      [A.h160(user), A.h160(this._need('loanbook')), A.int(repayBase), A.arr([A.str('repay'), A.int(id)])],
+      'repay loan #' + id);
   };
-  // NEO collateral is whole units: 0 decimals, no base-unit scaling.
-  FtbDapi.prototype.addCollateralNeo = function (user, wholeNeo) {
-    return this._w(NEO, 'transfer',
-      [A.h160(user), A.h160(this._need('lend')), A.int(wholeNeo), A.any(null)],
-      'Add ' + wholeNeo + ' NEO as collateral');
+  FtbDapi.prototype.loanClose = function (id) {
+    return this._w(this._need('loanbook'), 'close', [A.int(id)], 'close defaulted loan #' + id);
   };
-  FtbDapi.prototype.addCollateralGas = function (user, amountBase) {
-    return this._w(this.cfg.assets.gas, 'transfer',
-      [A.h160(user), A.h160(this._need('lend')), A.int(amountBase), A.any(null)],
-      'Add ' + fromBaseUnits(amountBase) + ' GAS as collateral');
+  FtbDapi.prototype.loanCancel = function (id) {
+    return this._w(this._need('loanbook'), 'cancelOffer', [A.int(id)], 'cancel offer #' + id);
   };
-  FtbDapi.prototype.borrow = function (user, amountBase) {
-    return this._w(this._need('lend'), 'borrow', [A.h160(user), A.int(amountBase)],
-      'Borrow ' + fromBaseUnits(amountBase) + ' FTB');
+  FtbDapi.prototype.loanWithdraw = function (user, tokenHash) {
+    return this._w(this._need('loanbook'), 'withdraw', [A.h160(user), A.h160(tokenHash)], 'withdraw proceeds');
   };
-  FtbDapi.prototype.withdrawSupply = function (user, shares) {
-    return this._w(this._need('lend'), 'withdrawSupply', [A.h160(user), A.int(shares)],
-      'Withdraw ' + shares + ' supply shares');
-  };
-  FtbDapi.prototype.withdrawCollateral = function (user, neoWhole, gasBase) {
-    return this._w(this._need('lend'), 'withdrawCollateral', [A.h160(user), A.int(neoWhole), A.int(gasBase)],
-      'Withdraw collateral: ' + neoWhole + ' NEO, ' + fromBaseUnits(gasBase) + ' GAS');
-  };
-  FtbDapi.prototype.liquidate = function (liquidator, repayBase, borrower) {
-    return this._w(this._need('ftb'), 'transfer',
-      [A.h160(liquidator), A.h160(this._need('lend')), A.int(repayBase), A.arr([A.str('liq'), A.h160(borrower)])],
-      'Liquidate ' + borrower + ', repaying up to ' + fromBaseUnits(repayBase) + ' FTB');
-  };
-  // dividends module: stake FTB to earn the holders' 2/9; claim and unstake any time
   FtbDapi.prototype.stakeFtb = function (user, amountBase) {
     return this._w(this._need('ftb'), 'transfer',
       [A.h160(user), A.h160(this._need('dividends')), A.int(amountBase), A.arr([A.str('stake')])],

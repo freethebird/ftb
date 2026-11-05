@@ -1,0 +1,7 @@
+/* governance.css - commandments charter list (shell + cpage base elsewhere). */
+#cmdList{display:flex; flex-direction:column; gap:1px; background:var(--hair); border:1px solid var(--hair)}
+#cmdList .cmdrow{display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:baseline; background:var(--paper); padding:11px 14px}
+#cmdList .cmdn{font-family:var(--disp); color:var(--ok); font-size:13px}
+#cmdList .cmdt{color:var(--ink); font-size:var(--fs-small); line-height:1.6; overflow-wrap:anywhere}
+.cmdhd{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+#cmdCount{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.06em; text-transform:uppercase}

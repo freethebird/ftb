@@ -27,7 +27,7 @@
     // the authoritative bond is read live into the review/sign plan at submit time
     // (Art 11); the ticket states only the rule. #pMetaHint carries validation only.
     FtbRpc.readInt(C.registry, 'proposalCount').then(function (n) {
-      body.innerHTML = '';
+      body.replaceChildren();
       var count = Number(n);
       if (!count) {
         var e = el('div', 'entry');
@@ -58,7 +58,7 @@
         }).catch(function () {});
       })(id); }
     }).catch(function (e) {
-      body.innerHTML = ''; body.appendChild(el('div', 'small', 'board unavailable: ' + errText(e)));
+      body.replaceChildren(); body.appendChild(el('div', 'small', 'board unavailable: ' + errText(e)));
     });
   }
 

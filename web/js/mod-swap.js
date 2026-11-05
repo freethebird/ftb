@@ -94,7 +94,7 @@
   var swFrom = 'GAS', swTo = 'FTB', swQuote = null, qSeq = 0;
   function routerReady() { return !!(FtbState.configured && C.router && C.router.indexOf('0x0000') !== 0); }
   function paintSel(id, cur, setter) {
-    var box = $(id); box.innerHTML = '';
+    var box = $(id); box.replaceChildren();
     Object.keys(TOKENS).forEach(function (sym) {
       var b = el('button', sym === cur ? 'on' : null, sym);
       b.addEventListener('click', function () { setter(sym); });
@@ -155,7 +155,7 @@
       var impact = (1 - (whole(out, swTo) / whole(amtIn, swFrom)) / spot) * 100;
       swQuote = { amtIn: amtIn, out: out, minOut: minOut, rA: rA, rB: rB };
       $('swOut').value = fmtT(out, swTo);
-      var m = $('swMeta'); m.innerHTML = '';
+      var m = $('swMeta'); m.replaceChildren();
       m.appendChild(el('span', null, 'rate 1 ' + swFrom + ' = ' + spot.toPrecision(6) + ' ' + swTo + ' · min received ' + fmtT(minOut, swTo) + ' ' + swTo + ' · '));
       m.appendChild(el('span', impact > 5 ? 'impact-warn' : null, 'price impact ' + impact.toFixed(2) + '%'));
     }).catch(function (e) { if (seq !== qSeq) return; $('swMeta').textContent = 'quote failed: ' + pairErr(e, swFrom + '/' + swTo); });
@@ -201,12 +201,22 @@
 
   // ---------- pool ratios (asset vs asset; no fiat, no oracle) ----------
   var tick = {}, tickBlock = null;
+  // Built as DOM, not an innerHTML string (Canonical Bible, HTML edition: no markup sink).
   function paintTicker() {
     var t = $('ticker'); if (!t) return;
-    var parts = [];
-    Object.keys(tick).forEach(function (k) { parts.push('<b>' + k + '</b> ' + tick[k]); });
-    if (tickBlock) parts.push('<b>block</b> ' + Number(tickBlock).toLocaleString('en-US'));
-    t.innerHTML = parts.length ? '// market&nbsp; ' + parts.join('<span class="sep">·</span>') : '// market: waiting for the pools';
+    var keys = Object.keys(tick);
+    if (!keys.length && tickBlock == null) { t.textContent = '// market: waiting for the pools'; return; }
+    t.replaceChildren();
+    t.appendChild(document.createTextNode('// market\u00A0 '));
+    var first = true;
+    function seg(label, val) {
+      if (!first) { var sp = el('span', 'sep'); sp.textContent = '\u00B7'; t.appendChild(sp); }
+      first = false;
+      t.appendChild(el('b', null, label));
+      t.appendChild(document.createTextNode(' ' + val));
+    }
+    keys.forEach(function (k) { seg(k, tick[k]); });
+    if (tickBlock != null) seg('block', Number(tickBlock).toLocaleString('en-US'));
   }
   function resolveTok(t) { return t === 'FTB' ? C.ftb : (t === 'GAS' ? ((CFG.assets || {}).gas) : (t === 'NEO' ? ((CFG.assets || {}).neo) : t)); }
   // ---------- fiat reference rates (Decision 12: display only, never protocol input) ----------
@@ -251,7 +261,7 @@
     var e = $('tFtbPx'); if (!e) return;
     var v = ftbPx.gas || ftbPx.other;
     if (!v) return;
-    e.innerHTML = '';
+    e.replaceChildren();
     var _u = document.createElement('div'); _u.className = 'tnline'; _u.textContent = fiatFmt(v.usd, '$');
     var _c = document.createElement('div'); _c.className = 'tnline'; _c.textContent = fiatFmt(v.cny, '¥');
     e.appendChild(_u); e.appendChild(_c);
@@ -274,7 +284,7 @@
     var e = $('tTvlFiat'); if (!e) return;
     var fp = ftbPx.gas || ftbPx.other; // derived FTB price
     if (!tvlWhole || !fp) {
-      e.innerHTML = '<div class="tnline">-</div>';
+      e.replaceChildren(el('div', 'tnline', '-'));
       e.title = 'reference TVL in fiat - shows once an FTB pool ratio and the external rate are both live. display only, never a protocol input.';
       return;
     }
@@ -282,7 +292,7 @@
     var usd = tvlWhole.ftb * fp.usd + (np ? tvlWhole.neo * np.usd : 0) + (gp ? tvlWhole.gas * gp.usd : 0);
     var cny = tvlWhole.ftb * fp.cny + (np ? tvlWhole.neo * np.cny : 0) + (gp ? tvlWhole.gas * gp.cny : 0);
     function money(v, cur) { return cur + Math.round(v).toLocaleString('en-US'); }
-    e.innerHTML = '';
+    e.replaceChildren();
     e.appendChild(el('div', 'tnline', money(usd, '$')));
     e.appendChild(el('div', 'tnline', money(cny, '¥')));
     e.title = 'reference only: on-chain TVL x the coingecko rate (FTB priced from the pool ratio). never a protocol input; blank when the rate source is unreachable.';
@@ -292,11 +302,11 @@
     var body = $('poolList'); if (!body) return;
     var pairs = CFG.pairs || [];
     if (!FtbRpc.current() || !FtbState.configured || !C.router || C.router.indexOf('0x0000') === 0 || !pairs.length) {
-      body.innerHTML = ''; body.appendChild(el('div', 'small muted', 'loads when the router and pairs are configured for this network'));
+      body.replaceChildren(); body.appendChild(el('div', 'small muted', 'loads when the router and pairs are configured for this network'));
       return;
     }
     var hist = {}; try { hist = JSON.parse(localStorage.getItem('ftb_ratios') || '{}'); } catch (e) {}
-    body.innerHTML = '';
+    body.replaceChildren();
     pairs.forEach(function (p, pi) {
       var sym = p.label.split('/'), a = resolveTok(p.a), b = resolveTok(p.b);
       var other = sym[0] === 'FTB' ? sym[1] : sym[0]; // the non-FTB leg
@@ -365,7 +375,7 @@
   function buildLpPanels() {
     var body = $('lpList'); if (!body || !lpReady()) return;
     if (lpStates.length) return; // built once; refresh paints
-    body.innerHTML = '';
+    body.replaceChildren();
     (CFG.pairs || []).forEach(function (p, pi) {
       var sym = p.label.split('/');
       var st = {
@@ -579,7 +589,7 @@
     var lend = C.lend, hasLend = !!(lend && lend.indexOf('0x0000') !== 0);
     var router = C.router, hasRouter = !!(router && router.indexOf('0x0000') !== 0);
     if (!hasLend && !hasRouter) {
-      e.innerHTML = '<div class="tnline">0 FTB</div>';
+      e.replaceChildren(el('div', 'tnline', '0 FTB'));
       e.title = 'no lend module or router on this network yet - TVL reads live the moment value is locked.';
       return;
     }
@@ -617,7 +627,7 @@
       // three stacked lines, one size, one color: FTB headline, then the NEO
       // and GAS locked as loan collateral. exact figures in the tooltip.
       function short2(base) { var f = fmt(base).split('.'); return f.length > 1 && f[1].length > 2 ? f[0] + '.' + f[1].slice(0, 2) : f.join('.'); }
-      e.innerHTML = '';
+      e.replaceChildren();
       e.appendChild(el('div', 'tnline', short2(ftb) + ' FTB'));
       if (hasLend) {
         e.appendChild(el('div', 'tnline', FtbUtil.grp(neo.toString()) + ' NEO'));
@@ -631,7 +641,7 @@
       // amounts and paint them against the reference rate (blank until the rate is live).
       tvlWhole = { ftb: Number(ftb) / 1e8, neo: Number(neo), gas: Number(gas) / 1e8 };
       paintTvlFiat();
-    }).catch(function () { e.innerHTML = '<div class="tnline">-</div>'; e.title = 'TVL unreadable'; });
+    }).catch(function () { e.replaceChildren(el('div', 'tnline', '-')); e.title = 'TVL unreadable'; });
   }
 
   FtbState.on('rpc', function () {

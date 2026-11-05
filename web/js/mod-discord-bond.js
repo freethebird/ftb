@@ -11,6 +11,7 @@
 //   #bond?discord=<id>                                  -> prefill the deposit id
 //   #file-case?accused=<bondId>&reason=<code>&evidence=<hex>  -> prefill the file form
 //   #vote?case=<id>&choice=<liquidate|dismiss>          -> prefill + surface the vote
+//   #propose?title=<t>&hash=<sha256hex>[&token=<0xh160>]  -> review + sign a proposal
 (function () {
   'use strict';
   var root = document.getElementById('dbRoot');
@@ -205,6 +206,45 @@
       plan);
   }
 
+  // ---------------- proposals (operator-gated hand-off) ----------------
+  // A verified node operator lands here from the bot's /propose. A listing
+  // proposal (a 20-byte token hash) signs live against the registry; a general
+  // free-text proposal opens through the v2 ballot factory, which is pending on
+  // this network, so it is recorded honestly rather than faked.
+  function startPropose(q) {
+    if (!window.FtbShell) return;
+    var title = String(q.title || '').slice(0, 120);
+    var bodyHash = String(q.hash || '').replace(/^0x/, '');
+    var token = String(q.token || '').trim();
+    var registry = need('registry');
+    if (!registry) {
+      FtbShell.showPlan('proposals not wired',
+        'The governance registry is a placeholder on this deployment. Proposals go live with the registry contract.',
+        [['title', title || '(none)'], ['status', 'registry not configured']], null);
+      return;
+    }
+    if (/^0x[0-9a-fA-F]{40}$/.test(token)) {
+      if (!connected()) { nudgeConnect(null); return; }
+      FtbRpc.readInt(registry, 'proposalBond').then(function (bond) {
+        if (bond <= 0n) throw new Error('proposal bond not configured on-chain');
+        var meta = title || ('listing: ' + token);
+        var plan = FtbState.dapi.submitProposal(FtbState.account, 'listing', token, meta, bond.toString());
+        FtbShell.showPlan('submit listing proposal',
+          'You are a verified node operator. The bond is escrowed by the registry; on approval it seeds the market (50% liquidity / 50% rug-pull reserve) and is refunded if the listing is rejected.',
+          [['type', 'listing'], ['token', short(token)], ['title', meta],
+           ['bond', fmt(bond) + ' FTB'], ['what you sign', plan.summary]], plan);
+      }).catch(function (e) {
+        FtbShell.showPlan('could not prepare the proposal', errText(e), [['title', title]], null);
+      });
+      return;
+    }
+    FtbShell.showPlan('submit a proposal',
+      'You are a verified node operator, so you may open proposals. General free-text proposals open through the v2 ballot factory, which is pending on this network - so this is recorded, not yet signable. Post the full text in #proposals; once the factory is live this same link signs the proposal bond.',
+      [['title', title || '(none)'],
+       ['content hash', bodyHash ? short('0x' + bodyHash) : '(none)'],
+       ['status', 'ballot factory pending']], null);
+  }
+
   // ---------------- deep-link hand-off ----------------
   function parseHash() {
     var h = String(location.hash || '').replace(/^#\/?/, '');
@@ -222,6 +262,8 @@
     } else if (path.indexOf('vote') >= 0 && q['case']) {
       // surface the targeted case once cases are loaded; the per-case buttons do the signing
       pendingVote = { id: q['case'], choice: (q.choice === 'liquidate') };
+    } else if (path.indexOf('propose') >= 0) {
+      startPropose(q);
     }
   }
   var pendingVote = null;

@@ -13,8 +13,9 @@ window.FTB_CONFIG = {
     ftb:       '0x0000000000000000000000000000000000000000', // fill at MainNet deploy
     migrator:  '0x0000000000000000000000000000000000000000',
     registry:  '0x0000000000000000000000000000000000000000',
-    oracle:    '0x0000000000000000000000000000000000000000',
-    lend:      '0x0000000000000000000000000000000000000000',
+    gov:          '0x0000000000000000000000000000000000000000', // FtbGov - staked-FTB governance (binds dividends once, then renounced)
+    loanbook:     '0x0000000000000000000000000000000000000000', // FtbLoanBook - oracleless, keyless P2P term loans (no owner key)
+    commandments: '0x0000000000000000000000000000000000000000', // FtbCommandments - on-chain charter (renounced after inking)
     ballot:    '0x0000000000000000000000000000000000000000', // deployed per proposal
     bondvault: '0x0000000000000000000000000000000000000000',
     treasury:  '0x0000000000000000000000000000000000000000',
@@ -53,7 +54,7 @@ window.FTB_CONFIG = {
   // the published migration proofs - the SAME pre-exploit snapshot binds MainNet:
   // same tree, same root, same electorate; the MainNet migrator is configured with it.
   proofsUrl: './proofs.json',
-  merkleRoot: '0x9b4be5c9052570deccd7ce4fb90d1edb439d5f7f31c5c692e41a638904630cc8',
+  merkleRoot: '0x235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4',
 
   // set these only while a vote is live
   vote: { ftb: '', wait: '' },

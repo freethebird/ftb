@@ -1,0 +1,41 @@
+/* academy — page-specific (shell + tokens from p2-shell.css) */
+.cpage{max-width:var(--col); margin:0 auto; padding:26px 22px 64px}
+.ctitle{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); margin:0}
+.clive{display:inline-block; color:var(--ink-2); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--hair); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
+.csub{color:var(--ink-2); font-size:var(--fs-small); max-width:68ch; margin:6px 0 0; line-height:1.75}
+.csub b{color:var(--ink)}
+.bnote{color:var(--faint); font-size:var(--fs-meta); margin-top:10px; line-height:1.6}
+.bnote b{color:var(--ink-2)}
+
+/* the one-minute framing strip */
+.a60{margin-top:22px; border:1px solid var(--hair); border-left:3px solid var(--ok); background:var(--panel); padding:16px 18px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.75}
+.a60 b{color:var(--ink)}
+
+/* section label */
+.alabel{margin:30px 0 2px; font-size:var(--fs-meta); letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+
+/* the component cards */
+.acards{margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.acard{border:1px solid var(--hair); background:var(--panel); padding:16px 16px 14px; display:flex; flex-direction:column}
+.ahead{display:flex; align-items:center; gap:10px; margin-bottom:10px}
+.aico{width:24px; height:24px; flex:0 0 auto; color:var(--ink)}
+.aname{font-family:var(--disp); font-size:16px; color:var(--ink); flex:1 1 auto}
+.achip{font-size:11px; letter-spacing:.05em; color:var(--ink-2); border:1px solid var(--hair); padding:2px 7px; white-space:nowrap}
+.achip:hover{background:var(--sel); color:var(--sel-ink)}
+.arow{display:grid; grid-template-columns:3.1em 1fr; gap:.3rem .7rem; align-items:baseline; margin-top:7px}
+.ak{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); padding-top:2px}
+.av{font-size:12.5px; color:var(--ink-2); line-height:1.6}
+.av b{color:var(--ink); font-weight:400}
+
+/* accent a couple of cards */
+.acard.ahi{border-color:var(--ok)}
+.acard.ahi .aico{color:var(--ok)}
+.acard.aw .aico{color:var(--amber)}
+
+@media (max-width:620px){ .acards{grid-template-columns:1fr} }
+
+/* utilities (replace former inline style= attributes; CSP style-src is now 'self') */
+.note-foot{margin-top:24px; max-width:68ch}
+.ovlede{max-width:54ch}
+.ovrow{margin-top:.6rem}
+.footmark{font-size:20px}

@@ -3,90 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>free the bird — claim</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="p2-shell.css">
-<style>
-/* claim — page-specific (shell + tokens from p2-shell.css) */
-.cpage{max-width:var(--col); margin:0 auto; padding:26px 22px 64px}
-.ctitle{font-family:var(--disp); font-weight:400; font-size:var(--fs-num); margin:0}
-.clive{display:inline-block; color:var(--ok); font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--ok); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
-.csub{color:var(--ink-2); font-size:var(--fs-small); max-width:66ch; margin:6px 0 0; line-height:1.75}
-.csub b{color:var(--ink)}
-.bsec{margin-top:26px; border:1px solid var(--hair); background:var(--panel); padding:20px}
-.bh{font-size:var(--fs-meta); letter-spacing:.09em; text-transform:uppercase; color:var(--faint); margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; gap:10px}
-.bstep{color:var(--faint)}
-.bfield{display:block}
-.bfield label{display:block; color:var(--faint); font-size:var(--fs-meta); letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px}
-.bfield input{width:100%; background:var(--paper); border:1px solid var(--data-bd); color:var(--ink); font-family:var(--mono); font-size:13px; padding:9px 11px}
-.brow{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px}
-.bkey{display:inline-block; background:var(--keybg); color:var(--keyfg); border:1px solid var(--keyfg); padding:8px 14px; font-family:var(--mono); font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
-.bkey:hover{background:var(--keyfg); color:var(--keybg)}
-.bkey.ghost{background:transparent; color:var(--ink-2); border-color:var(--hair)}
-.bkey.ghost:hover{background:var(--sel); color:var(--sel-ink)}
-.bprev{margin-top:12px; border:1px dashed var(--data-bd); background:var(--paper); padding:12px 14px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.65}
-.bprev.cxerr{border-color:var(--dn); color:var(--dn)}
-.bnote{color:var(--faint); font-size:var(--fs-meta); margin-top:10px; line-height:1.6}
-.cnotice{margin-top:18px; border:1px solid var(--amber); border-left-width:3px; background:var(--panel); padding:13px 16px; color:var(--ink-2); font-size:var(--fs-small); line-height:1.7}
-.cnotice b{color:var(--amber)}
-
-/* status strip (migrated from the index claim card) */
-.claimstate{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem .9rem; font-size:12.5px; color:var(--ink-2)}
-.claimstate .linkish{margin-left:auto; font-size:12px}
-
-/* result */
-.cxresult{margin-top:4px; border:1px solid var(--hair); background:var(--paper); padding:16px 16px 14px}
-.cxbig{display:flex; align-items:baseline; gap:4px; flex-wrap:wrap}
-.cxftb{font-family:var(--disp); font-size:clamp(26px,7.4vw,var(--fs-disp)); line-height:1.05; color:var(--ink); word-break:break-word}
-.cxftbu{font-family:var(--disp); font-size:var(--fs-lead); color:var(--ink-2)}
-.cxsub{color:var(--ink-2); font-size:var(--fs-small); margin-top:8px; line-height:1.6}
-.cxsub b{color:var(--ink)}
-
-/* product bars */
-.cxbars{margin-top:14px; display:flex; flex-direction:column; gap:10px}
-.cxbar{display:grid; grid-template-columns:150px 1fr 190px; gap:12px; align-items:center}
-.cxblabel{display:flex; align-items:center; gap:8px; font-size:var(--fs-small); color:var(--ink-2)}
-.cxdot{width:9px; height:9px; flex:0 0 auto; border-radius:2px; background:var(--ink)}
-.cxtrack{height:12px; background:var(--panel); border:1px solid var(--hair); overflow:hidden}
-.cxfill{display:block; height:100%; background:var(--ink)}
-.cxbval{display:flex; align-items:baseline; justify-content:flex-end; gap:8px; white-space:nowrap}
-.cxbnum{font-family:var(--mono); font-size:13px; color:var(--ink)}
-.cxbpct{font-family:var(--mono); font-size:11px; color:var(--faint); min-width:52px; text-align:right}
-/* product colors */
-.cxdot.p-flm,.cxfill.p-flm{background:var(--ink)}
-.cxdot.p-flk,.cxfill.p-flk{background:var(--amber)}
-.cxdot.p-lp,.cxfill.p-lp{background:var(--ok)}
-.cxdot.p-ob,.cxfill.p-ob{background:var(--ink-2)}
-.cxdot.p-vt,.cxfill.p-vt{background:var(--dn)}
-.cxdot.p-gr,.cxfill.p-gr{background:var(--faint)}
-.cxdot.p-bk,.cxfill.p-bk{background:var(--amber)}
-
-/* meta rows */
-.cxmeta{margin-top:16px; border-top:1px solid var(--hair); padding-top:12px; display:flex; flex-direction:column; gap:7px}
-.cxkv{display:grid; grid-template-columns:8.5em 1fr; gap:.4rem .9rem; align-items:baseline}
-.cxk{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint)}
-.cxv{font-family:var(--mono); font-size:12.5px; color:var(--ink-2); word-break:break-all}
-.cxhead{font-family:var(--disp); font-size:var(--fs-lead); color:var(--ink)}
-.cxnote{color:var(--faint); font-size:var(--fs-meta); line-height:1.6; margin-top:4px}
-.cxnote b{color:var(--ink-2)}
-.cxact{margin-top:16px}
-.cxact .bkey{width:100%; text-align:center}
-
-.crow{display:grid; grid-template-columns:8em 1fr auto; gap:.4rem .9rem; align-items:baseline; font-size:13px; color:var(--ink-2); line-height:1.55}
-.crow .cr-l{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
-.crow .cr-v b{color:var(--ink); font-weight:400}
-.crow .linkish{font-size:12px; white-space:nowrap}
-
-@media (max-width:560px){
-  .cxbar{grid-template-columns:1fr; gap:4px}
-  .cxbval{justify-content:flex-start}
-  .cxbpct{text-align:left}
-  .crow{grid-template-columns:1fr auto}
-  .crow .cr-l{grid-column:1 / 3}
-  .crow .cr-v{grid-column:1 / 3}
-}
-</style>
+<link rel="stylesheet" href="claim.css">
 </head>
 <body>
 <header class="topbar">
@@ -107,27 +29,28 @@
       </span>
       <button id="connectBtn">connect -&gt;</button>
       <button id="disconnectBtn" hidden>disconnect</button>
-      <button class="linkish" id="ownRpcBtn">own node -&gt;</button>
     </div>
   </div>
   <nav class="tabs" aria-label="sections">
     <div class="tabs-main">
-    <a href="index.html#trade">trade</a>
-    <a href="index.html#earn">earn</a>
-    <a href="index.html#lend">lend</a>
-    <a href="index.html#vote">vote</a>
-    <a href="index.html#board">board</a>
+    <a href="librationzero.html">LØ</a>
+    <a href="index.html">trade</a>
+    <a href="lend.html">lend</a>
+    <a href="governance.html">governance</a>
+    <a href="stake.html">stake</a>
     <a class="cur" aria-current="page" href="claim.html">claim</a>
-    <a href="index.html#verify">verify</a>
-    <a href="donate.html">donate</a>
     <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a href="explorer.html" aria-label="explorer" title="explorer"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg></a>
+    <a href="academy.html">academy</a>
+    <a href="donate.html">donate</a>
+    <a href="node.html">node</a>
     <a href="discord-bond.html">discord</a>
     </div>
     <span class="tabsep" aria-hidden="true"></span>
     <div class="tabs-ext">
-    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener">cuetum &#8599;</a>
-    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener">github &#8599;</a>
-    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener">reddit &#8599;</a>
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener noreferrer">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener noreferrer">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener noreferrer">reddit &#8599;</a>
     </div>
   </nav>
 </header>
@@ -181,9 +104,34 @@
     </div>
   </section>
 
-  <div class="bnote" style="margin-top:22px; max-width:66ch">
+  <div class="bnote ufbef3d">
     Reproduce the tree yourself: the leaves are the pre-exploit FLM + FLOCKS holdings plus salvaged LP / order-book / vault positions, summed per address and hashed into the published root. Every claim above shows its merkle proof; the migrator verifies it on-chain before minting, floored to the 100,000,000 FTB hard cap.
   </div>
+
+  <section class="bsec" id="divWrap">
+    <div class="bh"><span>dividends</span><span class="bstep">your share of every fee</span></div>
+    <div class="flockstats">
+      <div class="fs"><div class="l">dividend apy</div><div class="v" id="dApy">-</div></div>
+      <div class="fs"><div class="l">this month</div><div class="v" id="dMonth">-</div></div>
+      <div class="fs"><div class="l">last month</div><div class="v" id="dLast">-</div></div>
+      <div class="fs"><div class="l">i can claim</div><div class="v" id="dPending">-</div></div>
+    </div>
+    <div id="divPos" hidden>
+      <div class="brow"><button class="bkey" id="dvClaimGo">claim dividends -&gt;</button></div>
+      <p class="bnote" id="dvHint">pays out everything your stake has earned to this block. review-and-sign in your wallet &mdash; the page never holds keys.</p>
+    </div>
+    <details class="adv">
+      <summary>fee split &amp; lifetime</summary>
+      <div class="advbody">
+        <div class="flockstats">
+          <div class="fs"><div class="l">lifetime received</div><div class="v" id="dLife">-</div></div>
+          <div class="fs"><div class="l">treasury held</div><div class="v" id="fTres">-</div></div>
+        </div>
+        <p class="advnote">The holders' <b>22.2%</b> of every swap fee sweeps to stakers &mdash; your cut shows in "i can claim." <b>11.1%</b> funds passed, auditor-attested proposals; the rest accrues to the AMM pool. Lending is oracleless and charges no protocol fee. Stake FTB on the <a href="stake.html">stake page</a> to start earning.</p>
+      </div>
+    </details>
+    <p class="bnote" id="divOff">standby &mdash; dividends go live when the module hash is configured for this network.</p>
+  </section>
 </main>
 
 <!-- ================= modal: review & sign ================= -->
@@ -191,12 +139,12 @@
   <div class="panel" tabindex="-1">
     <button class="x" data-close aria-label="close">[ close ]</button>
     <h2 class="disp" id="ovTitle">claim</h2>
-    <p class="muted small" style="max-width:54ch" id="ovDesc">review before you sign. your wallet shows the exact invocation; this panel shows the same thing in words.</p>
+    <p class="muted small u01a8c8" id="ovDesc">review before you sign. your wallet shows the exact invocation; this panel shows the same thing in words.</p>
     <section class="path">
       <h3 id="ovSec">// details</h3>
       <div class="warn" id="ovWarn"></div>
       <div id="ovBody"></div>
-      <div class="row" style="margin-top:.6rem">
+      <div class="row uacef09">
         <button id="ovGo">sign in wallet</button>
         <button class="linkish" data-close>cancel</button>
       </div>
@@ -210,11 +158,11 @@
   <div class="panel" tabindex="-1">
     <button class="x" data-close aria-label="close">[ close ]</button>
     <h2 class="disp">your node</h2>
-    <p class="muted small" style="max-width:54ch">paste the URL of a Neo N3 RPC node you control. a user on their own node cannot be censored. stored only in this browser.</p>
+    <p class="muted small u01a8c8">paste the URL of a Neo N3 RPC node you control. a user on their own node cannot be censored. stored only in this browser.</p>
     <section class="path">
       <h3>// endpoint</h3>
       <input id="ownRpcIn" placeholder="https://your.node.example:443" autocomplete="off">
-      <div class="row" style="margin-top:.6rem">
+      <div class="row uacef09">
         <button id="ownRpcGo">use it</button>
         <button class="linkish" id="ownRpcReset">reset to list</button>
       </div>
@@ -224,7 +172,7 @@
 </div>
 
 <footer class="foot3">
-  <span class="disp" style="font-size:20px">free the bird</span><br>
+  <span class="disp ub9199e">free the bird</span><br>
   <span class="muted" id="shiftLine">// night shift</span><br>
   Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
   MIT code, public proofs - a gift to the Flamingo community.
@@ -237,5 +185,6 @@
 <script src="js/shell.js"></script>
 <script src="js/mod-wallet.js"></script>
 <script src="js/mod-claim-page.js"></script>
+<script src="js/mod-dividends.js"></script>
 </body>
 </html>

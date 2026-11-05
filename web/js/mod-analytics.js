@@ -32,15 +32,9 @@
       if (r[0] != null && r[1] != null && r[1] > 0n) set('anMinted', (Number(r[0] * 10000n / r[1]) / 100).toFixed(2) + '%');
     });
 
-    if (live(C.lend)) {
-      FtbRpc.readInt(C.lend, 'supplyApyBps').then(function (v) { set('anSupplyApy', bps(v)); }).catch(function () {});
-      FtbRpc.readInt(C.lend, 'borrowApyBps').then(function (v) { set('anBorrowApy', bps(v)); }).catch(function () {});
-      FtbRpc.readInt(C.lend, 'utilizationBps').then(function (v) { set('anUtil', bps(v)); }).catch(function () {});
-      FtbRpc.readInt(C.lend, 'totalBorrows').then(function (v) { tileNum($('anBorrows'), v, ' FTB'); }).catch(function () {});
-      Promise.all([
-        FtbRpc.readInt(C.ftb, 'balanceOf', [{ type: 'Hash160', value: C.lend }]).catch(function () { return 0n; }),
-        FtbRpc.readInt(C.lend, 'totalBorrows').catch(function () { return 0n; })
-      ]).then(function (r) { tileNum($('anTvl'), r[0] + r[1], ' FTB'); });
+    if (live(C.loanbook)) {
+      FtbRpc.readInt(C.loanbook, 'offerCount').then(function (v) { tileNum($('anLoanOffers'), v); }).catch(function () {});
+      FtbRpc.readInt(C.ftb, 'balanceOf', [{ type: 'Hash160', value: C.loanbook }]).then(function (v) { tileNum($('anLoanTvl'), v, ' FTB'); tileNum($('anTvl'), v, ' FTB'); }).catch(function () {});
     }
     if (live(C.dividends)) {
       FtbRpc.readInt(C.dividends, 'totalStaked').then(function (v) { tileNum($('anStaked'), v, ' FTB'); }).catch(function () {});
@@ -49,6 +43,7 @@
       FtbRpc.readInt(C.ftb, 'balanceOf', [{ type: 'Hash160', value: C.treasury }]).then(function (v) { tileNum($('anTreasury'), v, ' FTB'); }).catch(function () {});
     }
     renderBallots();
+    readDoors();
   }
 
   // Governance: one card per configured ballot. Bars are SHARES of votes cast
@@ -122,11 +117,95 @@
     spark('anChartNeoFtb', [11.8, 12.0, 12.3, 12.1, 12.6, 12.9, 12.7, 13.1, 13.0, 13.3, 13.2, 13.45], true);
   }
 
+  // ---- decentralization meter: irreversible on-chain one-way doors ----
+  // Measured, never asserted. Each door is a power the protocol gives up for good;
+  // we read each live. A door we cannot CONFIRM crossed scores zero, and the
+  // denominator is the full weight (100) — so unknown and still-open both depress
+  // the figure. The meter can only over-read by seeing a door as crossed, and every
+  // read fails safe to 'unknown'. No indexer, no event scan: pure current-state reads.
+  var DOORS = [
+    { key: 'renounce', name: 'owner key renounced', w: 55 },   // token immutable: no Update, no re-point, no re-mint
+    { key: 'mint',     name: 'mint permanently sealed', w: 30 },// supply can never grow again (CloseMigration)
+    { key: 'gov',      name: 'governance bootstrap finished', w: 15 } // seams move only through the timelock
+  ];
+  // true iff a base64 storage value decodes to a nonzero byte sequence (Neo stores an
+  // integer 0 as empty bytes, so empty/all-zero == a cleared flag; atob is dependency-free).
+  function isMainnet() { return (CFG && CFG.network) === 'MainNet'; } // meters are MainNet-only
+  function b64nz(v) {
+    if (v == null || v === '') return false;
+    try { var s = atob(v); for (var i = 0; i < s.length; i++) { if (s.charCodeAt(i) !== 0) return true; } return false; } catch (e) { return false; }
+  }
+  function buildDoors() {
+    var host = $('dcDoors'); if (!host || host.dataset.built) return;
+    host.dataset.built = '1'; clear(host);
+    DOORS.forEach(function (d) {
+      var row = el('div', 'mtdoor');
+      var nm = el('span', 'mtdname', d.name); nm.appendChild(el('span', 'mtdw', d.w + '%'));
+      row.appendChild(nm);
+      var stt = el('span', 'mtdstate');
+      var dot = el('span', 'mtdot'); dot.id = 'dcdot_' + d.key;
+      var txt = el('span', '', '…'); txt.id = 'dcstate_' + d.key;
+      stt.appendChild(dot); stt.appendChild(txt); row.appendChild(stt);
+      host.appendChild(row);
+    });
+  }
+  function doorState(key, s) {
+    var dot = $('dcdot_' + key), txt = $('dcstate_' + key);
+    if (txt) txt.textContent = (s === 'crossed') ? 'crossed' : (s === 'open' ? 'not yet' : 'unknown');
+    if (dot) dot.className = 'mtdot' + (s === 'crossed' ? ' mtok' : (s === 'unknown' ? ' mtunk' : ''));
+    var par = dot && dot.parentNode; if (par) par.className = 'mtdstate' + (s === 'crossed' ? ' mtok' : '');
+  }
+  function readDoors() {
+    if (!isMainnet()) return;                 // never read/show on TestNet
+    if (!window.FtbRpc || !FtbRpc.current() || !FtbState.configured) return;
+    buildDoors();
+    var st = {};
+    function fin() {
+      var crossed = 0, nCrossed = 0, any = false, nTot = DOORS.length;
+      DOORS.forEach(function (d) {
+        var s = st[d.key] || 'unknown';
+        if (s !== 'unknown') any = true;
+        if (s === 'crossed') { crossed += d.w; nCrossed++; }
+        doorState(d.key, s);
+      });
+      var fill = $('dcFill');
+      if (!any) { set('dcPct', '—'); set('dcSub', 'chain unreadable — retrying'); if (fill) fill.style.width = '0%'; return; }
+      set('dcPct', crossed + '%'); if (fill) fill.style.width = crossed + '%';
+      set('dcSub', nCrossed === nTot ? ('fully ownerless — all ' + nTot + ' one-way doors closed')
+               : (nCrossed === 0 ? 'keys still held — no doors closed yet (expected pre-launch)'
+               : (nCrossed + ' of ' + nTot + ' one-way doors closed — control not yet fully retired')));
+    }
+    // Read raw contract STORAGE, not getter methods: storage is the canonical, version-
+    // independent ground truth (older deployments may lack a 'MigrationOpen'/'Finished'
+    // getter, but the one-way-door keys below are fixed and set at deploy). Keys, from the
+    // contract source: token keyOwner=0x11 ('EQ=='), token keyOpen=0x13 ('Ew=='),
+    // registry keyFinished=0x03 ('Aw=='). Each read fails safe to 'unknown'; a door is only
+    // ever 'crossed' on a definitive value, so the meter cannot over-read decentralization.
+    Promise.all([
+      // owner renounced == owner slot emptied (b64nz false); a 20-byte owner is still held.
+      FtbRpc.call('getstorage', [C.ftb, 'EQ==']).then(function (v) {
+        st.renounce = (v == null) ? 'unknown' : (b64nz(v) ? 'open' : 'crossed');
+      }).catch(function () { st.renounce = 'unknown'; }),
+      // mint sealed == keyOpen integer 0 (stored empty); 1 ('AQ==') while still open.
+      FtbRpc.call('getstorage', [C.ftb, 'Ew==']).then(function (v) {
+        st.mint = (v == null) ? 'unknown' : (b64nz(v) ? 'open' : 'crossed');
+      }).catch(function () { st.mint = 'unknown'; }),
+      // bootstrap finished == keyFinished nonzero; absent/zero == not yet (open).
+      (C.registry && live(C.registry))
+        ? FtbRpc.call('getstorage', [C.registry, 'Aw==']).then(function (v) { st.gov = b64nz(v) ? 'crossed' : 'open'; }).catch(function () { st.gov = 'unknown'; })
+        : Promise.resolve().then(function () { st.gov = 'unknown'; })
+    ]).then(fin);
+  }
+
   var refreshC = FtbUtil.coalesce(refresh, 3000);
   FtbState.on('rpc', refreshC);
   FtbState.on('refresh', refreshC);
   charts();                                    // illustrative shapes render immediately
   renderBallots();                             // ballot cards from config (shares fill on rpc)
+  if (isMainnet()) {                             // reveal the MainNet-only safety-meter section
+    var _sms = $('safetyMeterSec'); if (_sms) _sms.classList.remove('mnet-only');
+    buildDoors();                                // door skeleton; states fill on rpc
+  }
   if (window.FtbRpc && !FtbRpc.current()) {     // boot RPC ourselves (shell.js does this on index)
     FtbRpc.pick().then(function (url) { FtbState.emit('rpc', url); }).catch(function () { /* standby: tiles stay '-' per R8 */ });
   } else { refreshC(); }

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>free the bird &#8212; run a node</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="p2-shell.css">
+<link rel="stylesheet" href="node.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-main">
+    <div class="brand">
+      <a class="bird3" href="index.html" aria-label="Free the Bird">
+        <svg viewBox="0 0 220 130" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M14 84 C 46 30, 82 26, 110 62 C 138 26, 174 30, 206 84"/>
+          <circle cx="110" cy="66" r="7"/>
+          <line x1="110" y1="73" x2="110" y2="112"/>
+        </svg>
+      </a>
+      <a class="wordmark" href="index.html">FTB</a>
+    </div>
+    <div class="topright">
+      <span class="netswitch" role="group" aria-label="network">
+        <span class="cur net-test">testnet</span><a class="net-main" href="mainnet.html">mainnet</a>
+      </span>
+      <button id="connectBtn">connect -&gt;</button>
+      <button id="disconnectBtn" hidden>disconnect</button>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="sections">
+    <div class="tabs-main">
+    <a href="librationzero.html">LØ</a>
+    <a href="index.html">trade</a>
+    <a href="lend.html">lend</a>
+    <a href="governance.html">governance</a>
+    <a href="stake.html">stake</a>
+    <a href="claim.html">claim</a>
+    <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a href="explorer.html" aria-label="explorer" title="explorer"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg></a>
+    <a href="academy.html">academy</a>
+    <a href="donate.html">donate</a>
+    <a class="cur" aria-current="page" href="node.html">node</a>
+    <a href="discord-bond.html">discord</a>
+    </div>
+    <span class="tabsep" aria-hidden="true"></span>
+    <div class="tabs-ext">
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener noreferrer">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener noreferrer">github &#8599;</a>
+    <a class="ext" href="https://www.reddit.com/user/freethebird_co/" target="_blank" rel="noopener noreferrer">reddit &#8599;</a>
+    </div>
+  </nav>
+</header>
+
+<div class="statusline">
+  <span class="idstate" id="idstate">[ no wallet ]</span>
+  <span class="rpc" id="rpcNote">rpc: connecting...</span>
+</div>
+<div class="launchbar" id="launchbar">TESTNET: LIVE &nbsp;&middot;&nbsp; MAIN-NET NOV 7 &nbsp;&middot;&nbsp; <span class="tminus" id="tminus">T-&hellip;</span></div>
+
+<main class="nd">
+  <header class="nd-hero">
+    <svg class="nd-glyph" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="24" cy="9" r="4"/><circle cx="9" cy="33" r="4"/><circle cx="39" cy="33" r="4"/>
+      <path d="M24 13 L11 29 M24 13 L37 29 M12 33 h24"/>
+    </svg>
+    <div class="nd-htext">
+      <div class="nd-kicker">freethebird.co &#183; mirror</div>
+      <h1 class="nd-title">Run an FTB node</h1>
+      <p class="nd-sub">Host Free the Bird's app yourself. One small program pins the site and keeps a live copy on your machine -- one more place no one can take down. You support FTB directly, not a Neo chain node.</p>
+    </div>
+  </header>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">What an FTB node is</h2>
+    <p class="nd-p">FTB's whole app is a bundle of static files published to <b>IPFS</b> and addressed by its content hash. Any machine can hold that bundle and serve it. When you run an FTB node it keeps a bit-for-bit copy and shares it -- so even if every FTB-run machine vanished, the app is still reachable from yours. It holds no wallet and no keys.</p>
+    <div class="cx good">
+      <span class="cxl">FTB, not NEO</span>
+      This is <b>not</b> a Neo blockchain node. A Neo node serves the whole Neo network; an FTB node serves <b>FTB</b> -- its website and app. Your bandwidth and disk go to keeping Free the Bird alive, nothing else.
+    </div>
+  </section>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">Easiest &#8212; one install</h2>
+    <p class="nd-p"><code>ftb-node</code> is a single program: it sets up everything (it fetches its own IPFS engine), pins FTB, auto-follows every new release, and serves your copy locally. No config.</p>
+    <div class="nd-steps">
+      <div class="nd-step">
+        <div class="st-h"><span class="st-n">1</span><span class="st-t">Install (Linux / macOS)</span></div>
+        <pre class="cmd">curl -fsSL https://freethebird.co/node/install.sh | sh</pre>
+        <p class="st-b">Prefer a file? Grab the build for your system from the <a href="https://github.com/freethebird/ftb-node/releases" target="_blank" rel="noopener noreferrer">latest release &#8599;</a> (macOS, Linux, Windows; Intel or ARM) and run it. On a server you can also <code>docker run</code> it -- see the README.</p>
+      </div>
+      <div class="nd-step">
+        <div class="st-h"><span class="st-n">2</span><span class="st-t">Run it</span></div>
+        <pre class="cmd">ftb-node</pre>
+        <p class="st-b">That is the whole job. Leave it running (a server, or just your machine while it is on). It prints your local copy of FTB and keeps mirroring in the background. Ctrl-C to stop; your pinned copy stays.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">Become a contributor</h2>
+    <p class="nd-p">Everyone joins the FTB Discord by posting the 1000 FTB bond. Run a node on top of that and you are recognized as a <b>contributor</b> -- a higher role in the server. Attach your Discord user ID to your node; it publishes a claim only your node can sign, and the verifier confirms you are genuinely mirroring before lifting your role.</p>
+    <div class="nd-steps">
+      <div class="nd-step">
+        <div class="st-h"><span class="st-n">1</span><span class="st-t">Attach your Discord ID</span></div>
+        <p class="st-b">In Discord: Settings &#8594; Advanced &#8594; Developer Mode on, then right-click your name &#8594; <b>Copy User ID</b>. Then:</p>
+        <pre class="cmd">ftb-node set-discord <span class="v">your-discord-user-id</span></pre>
+      </div>
+      <div class="nd-step">
+        <div class="st-h"><span class="st-n">2</span><span class="st-t">Run, then verify in Discord</span></div>
+        <pre class="cmd">ftb-node            <span class="cm"># leave running</span>
+ftb-node id         <span class="cm"># shows your Node ID</span></pre>
+        <p class="st-b">In the FTB Discord run <code>/verify</code> and give your <b>Node ID</b>. The bot confirms your node is a live provider of the current release and that it claims your Discord ID, then raises you to the contributor role.</p>
+      </div>
+    </div>
+    <div class="cx warn">
+      <span class="cxl">The bond still stands</span>
+      The 1000 FTB bond is how everyone gets in and stays accountable -- it is collateral the community can slash for misbehaviour. Running a node does not replace it; it earns you a higher <b>contributor</b> role on top, recognition for keeping FTB alive. The role tracks your live mirroring -- let the node go dark and it lapses back to member.
+    </div>
+  </section>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">Check you are mirroring</h2>
+    <pre class="cmd">ftb-node verify     <span class="cm"># VERIFIED once your node announces the current release</span></pre>
+    <p class="nd-p">Or open the local copy it serves (printed on start, e.g. <code>http://127.0.0.1:8080/ipns/&#8230;</code>) -- that is the same FTB app your node now helps serve to the world.</p>
+  </section>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">Do it by hand (advanced)</h2>
+    <p class="nd-p muted">If you would rather run IPFS yourself instead of the <code>ftb-node</code> program, the raw steps are: install Kubo, start it, and pin the FTB name. <code>ftb-follow.sh</code> (below) auto-tracks releases from cron; <code>ipfs-node-setup.sh</code> sets up a hardened always-on node on a VPS.</p>
+    <pre class="cmd"><span class="cm"># install Kubo, then:</span>
+ipfs init --profile=server
+ipfs daemon &amp;
+ipfs pin add /ipns/k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq</pre>
+    <p class="nd-p muted">For a public mirror on your own domain (so FTB's live mirror tile counts you), front the local gateway with Caddy and allow one header -- full steps in the downloadable README.</p>
+  </section>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">Be clear on the deal</h2>
+    <div class="cx warn">
+      <span class="cxl">No reward &#8212; and that is the point</span>
+      Mirroring costs a little bandwidth and disk and earns <b>no token</b>. FTB mints nothing for mirrors, ever. You do it so the app cannot be switched off, censored, or lost -- the site has no single server in the critical path, only publishers and mirrors like yours. The Discord operator role is a thank-you, not a yield.
+    </div>
+  </section>
+
+  <section class="nd-sec">
+    <h2 class="nd-h">Downloads</h2>
+    <div class="nd-dl">
+      <a href="https://github.com/freethebird/ftb-node/releases" target="_blank" rel="noopener noreferrer"><span class="dn">ftb-node (all platforms) &#8599;</span><span class="dget">release</span><span class="dd">Prebuilt binaries: macOS, Linux, Windows (Intel + ARM), with checksums.</span></a>
+      <a href="node-files/install.sh" download><span class="dn">install.sh</span><span class="dget">download</span><span class="dd">The one-command installer (Linux / macOS).</span></a>
+      <a href="node-files/ftb-follow.sh" download><span class="dn">ftb-follow.sh</span><span class="dget">download</span><span class="dd">By-hand path: auto-track FTB releases from cron.</span></a>
+      <a href="node-files/ipfs-node-setup.sh" download><span class="dn">ipfs-node-setup.sh</span><span class="dget">download</span><span class="dd">By-hand path: hardened always-on Kubo node on a VPS.</span></a>
+      <a href="node-files/README.md" download><span class="dn">README.md</span><span class="dget">download</span><span class="dd">Every path, written out step by step.</span></a>
+    </div>
+  </section>
+
+  <footer class="nd-foot">
+    <b>How it works.</b> FTB's front-end is content-addressed on IPFS: whoever holds the hash serves bit-identical, verifiable content. The stable IPNS name always points at the latest release; <code>ftb-node</code> re-resolves it every 15 minutes and re-pins, so your mirror tracks releases hands-free. The claim your node publishes is signed under its own key, so it cannot be forged for someone else's node. The node holds no keys and serves only public data. Volunteer infrastructure, not financial advice.
+  </footer>
+</main>
+<script src="config.js"></script>
+<script src="ftb-dapi.js"></script>
+<script src="js/ftb-rpc.js"></script>
+<script src="js/ftb-state.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/mod-wallet.js"></script>
+</body>
+</html>

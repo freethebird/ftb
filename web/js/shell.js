@@ -63,14 +63,14 @@
   if ($('ovGo')) $('ovGo').addEventListener('click', function () {
     if (!pendingPlan || !FtbState.dapi) return;
     var plan = pendingPlan;
-    var msg = $('ovMsg'); msg.innerHTML = ''; msg.appendChild(el('div', 'small muted', 'waiting for your wallet...'));
+    var msg = $('ovMsg'); msg.replaceChildren(); msg.appendChild(el('div', 'small muted', 'waiting for your wallet...'));
     $('ovGo').disabled = true;
     FtbState.dapi.execute(plan).then(function (res) {
       var txid = res && res.txid;
       // the confirmation stays open: amount (from the plan summary) + tx id,
       // then a live on-chain confirmation once the tx lands in a block.
       // "ok & refresh" closes the panel and forces a module refresh.
-      msg.innerHTML = '';
+      msg.replaceChildren();
       msg.appendChild(el('div', 'small muted', 'signed and relayed - ' + (plan.summary || 'see your wallet') + '. Not final yet - waiting for the chain to confirm it actually went through.'));
       if (txid) msg.appendChild(el('div', 'keybox', 'tx: ' + txid));
       var st = el('div', 'small muted', 'waiting for a block - this panel updates itself, no need to refresh.');
@@ -115,7 +115,7 @@
         });
       }, 5000);
     }).catch(function (e) {
-      msg.innerHTML = ''; msg.appendChild(el('div', 'err', 'not sent: ' + errText(e)));
+      msg.replaceChildren(); msg.appendChild(el('div', 'err', 'not sent: ' + errText(e)));
     }).finally(function () { $('ovGo').disabled = false; });
   });
 
@@ -123,14 +123,14 @@
   function showPlan(title, warn, rows, plan) {
     $('ovTitle').textContent = title;
     $('ovWarn').textContent = warn;
-    var body = $('ovBody'); body.innerHTML = '';
+    var body = $('ovBody'); body.replaceChildren();
     rows.forEach(function (r) {
       var kv = el('div', 'kv');
       var lbl = el('div', 'lbl'); lbl.appendChild(el('span', null, r[0]));
       var box = el('div', 'keybox', r[1]);
       kv.appendChild(lbl); kv.appendChild(box); body.appendChild(kv);
     });
-    $('ovMsg').innerHTML = '';
+    $('ovMsg').replaceChildren();
     pendingPlan = plan;
     $('ovGo').style.display = '';
     $('ovGo').disabled = !plan;

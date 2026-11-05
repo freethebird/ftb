@@ -105,23 +105,39 @@
   // a user on their own node cannot be censored; the choice is stored only in
   // this browser. validated with getblockcount before it is allowed to serve.
   function wire() {
-    var btn = $('ownRpcBtn'); if (!btn) return;
-    btn.addEventListener('click', function () { $('ovRpc').hidden = false; });
-    $('ownRpcGo').addEventListener('click', function () {
+    var ov = $('ovRpc'); if (!ov) return;              // no own-node modal on this page
+    // The top-right button was retired; the rpc status note is the opener now, so the
+    // 'use your own node' control sits next to the node it would replace.
+    var opener = $('ownRpcBtn') || $('rpcNote');
+    if (opener) {
+      opener.addEventListener('click', function () { ov.hidden = false; });
+      if (opener.id === 'rpcNote') {
+        opener.classList.add('is-clickable');
+        opener.title = 'use your own node';
+        opener.setAttribute('role', 'button');
+        opener.setAttribute('tabindex', '0');
+        opener.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ov.hidden = false; }
+        });
+      }
+    }
+    var go = $('ownRpcGo');
+    if (go) go.addEventListener('click', function () {
       var url = $('ownRpcIn').value.trim(); if (!url) return;
       call(url, 'getblockcount').then(function (h) {
         if (!(h > 0)) throw new Error('not a healthy node');
         try { localStorage.setItem('ftb_rpc', url); } catch (e) {}
         RPC = url; paintNote(url);
-        $('ovRpc').hidden = true;
+        ov.hidden = true;
         if (window.FtbState) window.FtbState.emit('rpc', url);
       }).catch(function (e) {
-        var m = $('ownRpcMsg'); m.innerHTML = '';
+        var m = $('ownRpcMsg'); m.replaceChildren();
         var d = document.createElement('div'); d.className = 'err'; d.textContent = 'unusable: ' + e.message;
         m.appendChild(d);
       });
     });
-    $('ownRpcReset').addEventListener('click', function () {
+    var rst = $('ownRpcReset');
+    if (rst) rst.addEventListener('click', function () {
       try { localStorage.removeItem('ftb_rpc'); } catch (e) {}
       location.reload();
     });
