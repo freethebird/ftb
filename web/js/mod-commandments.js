@@ -24,21 +24,32 @@
     if (off) off.hidden = true;
     FtbRpc.readInt(C.commandments, 'count', []).then(function (cntB) {
       var n = Number(cntB), ids = [];
-      for (var i = 0; i < n && i < 100; i++) ids.push(i);
+      for (var i = 1; i <= n && i <= 100; i++) ids.push(i);   // FtbCommandments is 1-indexed (ids 1..n)
       var cc = $('cmdCount'); if (cc) cc.textContent = n ? (n + ' inked') : 'none yet';
       return Promise.all(ids.map(function (i) {
         return FtbRpc.read(C.commandments, 'commandment', [iarg(i)])
-          .then(function (st) { return (st && st[0]) ? b64utf8(st[0].value) : ''; })
+          .then(function (st) {
+            var s = st && st[0] && st[0].value;            // the commandment struct (array of fields)
+            if (!s || !s.length) return null;
+            var val = function (k) { return s[k] && s[k].value; };
+            var opts = val(3) || [];                        // field 3: option list
+            var w = Number(val(5)) || 0;                    // field 5: winning option, 1-indexed
+            return {
+              id: Number(val(0)) || i,                      // field 0: id
+              q: b64utf8(val(1)),                           // field 1: question
+              win: (w >= 1 && opts[w - 1]) ? b64utf8(opts[w - 1].value) : ''
+            };
+          })
           .catch(function () { return null; });
-      })).then(function (texts) {
+      })).then(function (rows) {
         if (!list) return;
         list.replaceChildren();
         if (!n) { list.appendChild(el('div', 'small muted', 'no commandments inked on this network yet.')); return; }
-        texts.forEach(function (t, i) {
-          if (t === null) return; // read failed: skip, never fabricate
+        rows.forEach(function (c) {
+          if (c === null) return; // read failed: skip, never fabricate
           var row = el('div', 'cmdrow');
-          row.appendChild(el('span', 'cmdn', String(i + 1)));
-          row.appendChild(el('span', 'cmdt', t || '(empty)'));
+          row.appendChild(el('span', 'cmdn', String(c.id)));
+          row.appendChild(el('span', 'cmdt', c.q ? (c.win ? (c.q + ' \u2192 ' + c.win) : c.q) : '(empty)'));
           list.appendChild(row);
         });
       });
