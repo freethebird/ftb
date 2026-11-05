@@ -5,7 +5,7 @@
 set -eu
 
 # Where the release binaries live. Override with FTB_NODE_BASE if you host them elsewhere.
-BASE="${FTB_NODE_BASE:-https://github.com/freethebird/ftb-node/releases/latest/download}"
+BASE="${FTB_NODE_BASE:-https://github.com/freethebird/ftb/releases/latest/download}"
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m)
