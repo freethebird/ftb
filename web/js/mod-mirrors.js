@@ -1,9 +1,9 @@
 // mod-mirrors.js - the "mirrors live" tile (#tMirrors) on the main page.
-// Shows how many distinct nodes are currently PROVIDING this exact front-end
-// release on the IPFS DHT: the real, permissionless mirror count. Every node
-// that pins and announces the build self-registers on the DHT, so this counts
-// ALL of them (not a fixed list of base URLs): the decentralization / safety
-// signal for the site. Source: the node's own /status.json ("mirrors" field),
+// Shows how many distinct nodes are currently mirroring freethebird.co, counted
+// on the IPFS DHT: the real, permissionless mirror count. Every node announces a
+// fixed shared beacon, so this counts ALL live nodes (not a fixed list of base
+// URLs, and it does not dip when the front end is redeployed): the decentralization
+// and safety signal for the site. Source: the node's own /status.json ("mirrors" field),
 // written each minute by ftb-status and served by Caddy OUTSIDE the IPFS bundle
 // (so it is live between deploys). textContent + title only; no innerHTML, no
 // handlers (R8). Inert on any page without the tile (R2). If the feed is stale
@@ -28,7 +28,7 @@
     }
     tile.textContent = String(n);
     tile.title = (n === 1 ? '1 node is' : n + ' nodes are')
-      + ' serving this exact build on the IPFS DHT'
+      + ' mirroring freethebird.co on the IPFS DHT'
       + (stale
           ? ' · last reported ' + Math.max(1, Math.round(ageMs / 60000)) + ' min ago'
           : ' · live, refreshes each minute');

@@ -5,6 +5,7 @@ SLACK = 50
 IPFS_API = "http://127.0.0.1:5001/api/v0"
 IPNS = "k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq"
 FINDPROVS_SECS = 30
+BEACON = b"freethebird.co mirror beacon v1\n"   # MUST byte-match ftb-node beaconContent
 MIRRORS_TTL = 300                                  # recompute DHT provider count at most every 5 min
 MIRRORS_CACHE = "/var/lib/ftb-status/mirrors.cache"
 def rpc(port, method, params=None):
@@ -33,16 +34,33 @@ def watchdog_active():
         return r.stdout.strip() == "active"
     except Exception:
         return False
-def _findprovs_count():
-    # Resolve the live front-end release CID, then count distinct DHT providers for it.
+def _beacon_cid():
+    # Add the fixed beacon to the local store (idempotent; identical bytes -> identical
+    # CID as every ftb-node) and return its CID. The add also makes THIS node a provider,
+    # so the origin node counts itself in the mirror total.
+    r = subprocess.run(["curl","-s","--max-time","10","-X","POST",
+        "-F","file=@-;filename=beacon", IPFS_API + "/add?quiet=true&pin=true"],
+        input=BEACON, capture_output=True, timeout=15)
+    cid = None
+    for line in r.stdout.decode("utf-8","replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            cid = json.loads(line).get("Hash") or cid
+        except Exception:
+            pass
+    return cid
+def _resolve_root():
+    # Current front-end release CID (IPNS -> /ipfs/<cid>), or None.
     r = subprocess.run(["curl","-s","--max-time","20","-X","POST",
         IPFS_API + "/name/resolve?arg=/ipns/" + IPNS + "&nocache=true&recursive=true"],
         capture_output=True, text=True, timeout=25)
-    cid = json.loads(r.stdout or "{}").get("Path","").replace("/ipfs/","")
-    if not cid:
-        return None
+    return (json.loads(r.stdout or "{}").get("Path","") or "").replace("/ipfs/","") or None
+def _providers(cid):
+    # Set of distinct DHT provider peer IDs for one CID (NDJSON; Type 4 carries providers).
     r = subprocess.run(["curl","-s","--max-time",str(FINDPROVS_SECS),"-X","POST",
-        IPFS_API + "/routing/findprovs?arg=" + cid + "&num-providers=200"],
+        IPFS_API + "/routing/findprovs?arg=" + cid + "&num-providers=500"],
         capture_output=True, text=True, timeout=FINDPROVS_SECS + 5)
     peers = set()
     for line in r.stdout.splitlines():
@@ -58,13 +76,12 @@ def _findprovs_count():
                 pid = resp.get("ID")
                 if pid:
                     peers.add(pid)
-    return len(peers)
+    return peers
 def ipfs_mirrors():
-    # Distinct peers currently PROVIDING the live front-end release on the IPFS DHT.
-    # Every node that pins and announces the release self-registers, so this is the real
-    # mirror count. Cached to MIRRORS_CACHE and refreshed at most every MIRRORS_TTL seconds
-    # so the 1-min timer does not walk the DHT on every tick; on a transient failure the
-    # last good value is reused rather than dropping to null.
+    # Live mirror count = distinct nodes announcing EITHER the stable FTB beacon (v0.1.3+
+    # nodes; never changes on a redeploy) OR the current release CID (v0.1.2 nodes). The
+    # union means the rollout needs no sequencing and the count does not dip on a publish.
+    # Cached to MIRRORS_CACHE; on a transient failure the last good value is reused.
     now = time.time()
     cached = None
     try:
@@ -76,7 +93,15 @@ def ipfs_mirrors():
     except Exception:
         pass
     try:
-        n = _findprovs_count()
+        peers = set()
+        queried = False
+        b = _beacon_cid()
+        if b:
+            peers |= _providers(b); queried = True
+        root = _resolve_root()
+        if root:
+            peers |= _providers(root); queried = True
+        n = len(peers) if queried else None
     except Exception:
         n = None
     if n is None:

@@ -50,7 +50,7 @@ import (
 // release; pinning and following it is what keeps a mirror current.
 const defaultIPNS = "k51qzi5uqu5diamhszrr4bca4ncq45a5xcp0fsh2mvpy0namgg0m3h147f6cfq"
 
-const ftbNodeVersion = "0.1.2"
+const ftbNodeVersion = "0.1.3"
 
 type cfg struct {
 	dataDir   string
@@ -171,10 +171,16 @@ func run(c cfg) error {
 	peer := firstLine(try(ipfsOut(c, ipfsBin, "id", "-f=<id>")))
 	logf("node is up")
 
+	beaconCID, err := ensureBeacon(c, ipfsBin)
+	if err != nil {
+		logf("could not create the mirror beacon: %v (this node may be undercounted in the mirror total)", err)
+	}
+
 	cid, _ := followOnce(c, ipfsBin)
 	banner(c, peer)
 	publishClaim(c, ipfsBin, peer, cid)
-	provide(c, ipfsBin, cid) // announce to the DHT now - pinning alone does not
+	provide(c, ipfsBin, cid)       // announce the release - pinning alone does not
+	provide(c, ipfsBin, beaconCID) // stable marker so the mirror count never dips on a redeploy
 
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
@@ -192,6 +198,7 @@ func run(c cfg) error {
 					ncid = readState(c)
 				}
 				provide(c, ipfsBin, ncid)
+				provide(c, ipfsBin, beaconCID) // keep the stable marker fresh too
 			}
 		}
 	}()
@@ -448,6 +455,27 @@ func followOnce(c cfg, ipfsBin string) (string, bool) {
 	writeState(c, cid)
 	logf("mirroring current release: %s", cid)
 	return cid, true
+}
+
+// beaconContent is a fixed, build-independent marker. Every node writes these exact
+// bytes and adds them, so every node derives the SAME content CID; announcing that one
+// stable CID to the DHT lets the status feed count live mirrors by findprovs on it.
+// Unlike the release CID it never changes when the front end is redeployed, so the
+// mirror count does not dip to the publisher on every publish.
+const beaconContent = "freethebird.co mirror beacon v1\n"
+
+// ensureBeacon writes the fixed beacon and adds it to the local blockstore (pinned, so
+// GC never drops it), returning its content CID - identical on every node.
+func ensureBeacon(c cfg, ipfsBin string) (string, error) {
+	path := filepath.Join(c.dataDir, "beacon")
+	if err := os.WriteFile(path, []byte(beaconContent), 0o600); err != nil {
+		return "", err
+	}
+	out, err := ipfsOut(c, ipfsBin, "add", "-Q", "--pin", path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(firstLine(out)), nil
 }
 
 // provide announces to the DHT that this node serves the release CID, so other
