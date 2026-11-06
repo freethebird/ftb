@@ -53,7 +53,7 @@ window.FTB_CONFIG = {
 
   // the published migration proofs - the SAME pre-exploit snapshot binds MainNet:
   // same tree, same root, same electorate; the MainNet migrator is configured with it.
-  proofsUrl: './proofs.json',
+  proofsUrl: './proofs_v4.json',
   merkleRoot: '0x235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4',
 
   // set these only while a vote is live
