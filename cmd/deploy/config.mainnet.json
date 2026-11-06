@@ -4,7 +4,7 @@
   "password_env": "FTB_DEPLOY_PASS",
   "contracts_dir": "build",
   "merkle_root_hex": "235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4",
-  "timelock_blocks": 20,
+  "timelock_blocks": 11520,
   "ballot_options": 0,
   "launch2": true,
   "claim_window_ms": 15768000000,
