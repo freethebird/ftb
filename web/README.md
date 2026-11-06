@@ -35,17 +35,6 @@ is exactly this folder: everything here builds and reads, the wallet signs.
 - `UI_RATIONALE.md` ... every design decision mapped to its source (Hyperliquid, THORSwap,
   Terra Station, NEAR) plus the invariants future contributors must not break. Read it before
   touching `index.html`.
-- `demo.html` ... a minimal reference page. Read-only by default; every write is build, review,
-  then sign. Not a product, a worked example.
-- `config.example.js` ... copy to `config.js` and set your contract hashes.
-
-## Run the demo
-
-NeoLine is a browser extension, so the demo needs a real browser with it installed, not a preview
-pane. Install NeoLine, set it to TestNet, then open `demo.html` from this folder (double-click, or
-serve the folder with any static server). Fill in the contract hashes (or prefill them by copying
-`config.example.js` to `config.js`), connect, and try the reads first. Writes show you the exact
-invocation and only send after you press Sign.
 
 ## Use the adapter in your own page
 
@@ -81,7 +70,7 @@ ballotVoted`. Subscribe to wallet changes with `ftb.on('accountChanged', fn)` an
 
 ## Safety
 
-- Read-only until you call a write builder and then `execute()`. The demo makes this a two-step
+- Read-only until you call a write builder and then `execute()`. This is a two-step
   review-then-sign on purpose.
 - Least privilege: FTB-native writes sign with `CalledByEntry` (the connected account only). Only
   swap needs `CustomContracts`, and `signerFor()` builds that signer explicitly.
@@ -122,9 +111,9 @@ are in `UI_RATIONALE.md`.
   markup and CSS only; all behavior lives in `js/` (`ftb-rpc.js`, `ftb-state.js`,
   `shell.js`, and one `mod-*.js` per panel) under the rules of `MODULES.md` - edit the
   module files, never inline scripts.
-- `archive/` - the frozen pre-split designs (`template1/2/3.html`) and their builders
-  (`build_template2/3.py`), moved there 18 October 2026 (WEB-04 closed). Reference
-  weight only: `ops/ipfs/ftb-push-ipfs.sh` excludes `archive/`, so it is never pinned.
+- `archive/` - reference-weight drafts, never pinned (`ops/ipfs/ftb-push-ipfs.sh` and the
+  deploy script exclude `archive/`). The retired pre-split template designs were cleared on
+  6 November 2026; the design history lives in git.
 
 ## Profiles and the QA gate
 

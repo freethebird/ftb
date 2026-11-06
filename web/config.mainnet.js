@@ -20,8 +20,6 @@ window.FTB_CONFIG = {
     bondvault: '0x0000000000000000000000000000000000000000',
     treasury:  '0x0000000000000000000000000000000000000000',
     dividends: '0x0000000000000000000000000000000000000000',
-    // bNEO (NeoBurger) MainNet hash - ratio-board listing only.
-    bneo:     '0x48c40d4666f93408be1bef038b6722404d9a4c2a',
     // router is the external Flamingo swap; set only when swap is wired and verified.
     router:   '0x0000000000000000000000000000000000000000'
   },
@@ -68,8 +66,6 @@ window.FTB_CONFIG = {
 
   // AMM pairs for ratio tracking, once pools exist on MainNet.
   pairs: [
-    { label: 'bNEO/FTB', a: '0x48c40d4666f93408be1bef038b6722404d9a4c2a', b: 'FTB' },
-    { label: 'GAS/FTB',  a: 'GAS', b: 'FTB' },
-    { label: 'bNEO/GAS', a: '0x48c40d4666f93408be1bef038b6722404d9a4c2a', b: 'GAS' }
+    { label: 'GAS/FTB',  a: 'GAS', b: 'FTB' }
   ]
 };

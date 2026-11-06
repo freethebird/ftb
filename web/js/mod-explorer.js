@@ -32,7 +32,6 @@
   reg(C.ftb, 'FTB', 8, 't-ftb');
   reg(A.gas, 'GAS', 8, 't-gas');
   reg(A.neo, 'NEO', 0, 't-neo');
-  reg(C.bneo, 'bNEO', 8, 't-bneo');
   reg('0xf0151f528127558851b39c2cd8aa47da7418ab28', 'FLM', 8, 't-flm');
   reg('0xdad88d8c8d4643548aa0f63c83796e81c3c6b04c', 'FLOCKS', 8, 't-flk');
   var tokCache = {};

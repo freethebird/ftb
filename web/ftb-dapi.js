@@ -281,7 +281,7 @@
     this.cfg = {
       network: cfg.network || 'TestNet',
       timeoutMs: cfg.timeoutMs || 3000,
-      contracts: cfg.contracts || {}, // ftb, migrator, registry, oracle, lend, ballot, bneo, router
+      contracts: cfg.contracts || {}, // ftb, migrator, registry, oracle, lend, ballot, router
       assets: Object.assign({ gas: GAS }, cfg.assets || {}),
       vote: cfg.vote || {} // { ftb: '<address>', wait: '<address>' }
     };

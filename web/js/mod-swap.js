@@ -238,7 +238,6 @@
         fiatRates = {
           GAS: { usd: j.gas.usd, cny: j.gas.cny },
           NEO: { usd: j.neo.usd, cny: j.neo.cny },
-          bNEO: { usd: j.neo.usd, cny: j.neo.cny }, // bNEO tracks NEO 1:1
           FLM: { usd: j['flamingo-finance'].usd, cny: j['flamingo-finance'].cny }
         };
         fiatAt = Date.now();
