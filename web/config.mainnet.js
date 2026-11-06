@@ -10,16 +10,16 @@ window.FTB_CONFIG = {
   network: 'MainNet',
 
   contracts: {
-    ftb:       '0x0000000000000000000000000000000000000000', // fill at MainNet deploy
-    migrator:  '0x0000000000000000000000000000000000000000',
-    registry:  '0x0000000000000000000000000000000000000000',
-    gov:          '0x0000000000000000000000000000000000000000', // FtbGov - staked-FTB governance (binds dividends once, then renounced)
-    loanbook:     '0x0000000000000000000000000000000000000000', // FtbLoanBook - oracleless, keyless P2P term loans (no owner key)
+    ftb:       '0xf85f93d672cbf79f7749fb50a2d46a48421d7e71', // FreeTheBird (v4, cap 100M, per-account claim ledger)
+    migrator:  '0x51a82390734d9d38cc89fed6bab26e72419c7ad2', // FtbMigratorR6 (root 235e7118, mints floor(FLM x 0.173173))
+    registry:  '0xb796337672703c7d111364f3acf8dea54f7a714e', // FtbRegistry (finished, 2-day timelock)
+    gov:          '0x0000000000000000000000000000000000000000', // FtbGov deployed 0x277095a7bc8567b4040ecf7b6253767d1451192f; dark until the governance milestone (audit + soak + renounce)
+    loanbook:     '0x19414f2c1b04bd2fd705d065887ec7cbdc244aaf', // FtbLoanBook - oracleless, keyless P2P term loans (no owner key)
     commandments: '0x0000000000000000000000000000000000000000', // FtbCommandments - on-chain charter (renounced after inking)
     ballot:    '0x0000000000000000000000000000000000000000', // deployed per proposal
-    bondvault: '0x0000000000000000000000000000000000000000',
-    treasury:  '0x0000000000000000000000000000000000000000',
-    dividends: '0x0000000000000000000000000000000000000000',
+    bondvault: '0x0000000000000000000000000000000000000000', // FtbBondVault deployed 0xc77d27432a2f82b4aeb30b81bbc5e012a04ddf1c; dark until the governance milestone
+    treasury:  '0x0000000000000000000000000000000000000000', // FtbTreasury deployed 0x64f8fe20340211954ace5a99f63a05663c9a280c; dark until the governance milestone
+    dividends: '0x0000000000000000000000000000000000000000', // FtbDividends deployed 0x5066582708c4d273b3a7b7eadf8dc94855e4c1a8; dark until the governance milestone
     // router is FTB's own C# AMM (self-contained, no Flamingo runtime dependency); set to the
     // deployed MainNet router after the AMM is deployed, seeded, and frozen.
     router:   '0x0000000000000000000000000000000000000000'
