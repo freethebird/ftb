@@ -211,3 +211,25 @@ func TestUpgradeTimelock(t *testing.T) {
 	dv.Invoke(t, stackitem.Make(0), "pendingUpgradeEta")
 	dv.InvokeFail(t, "nothing pending", "applyUpgrade")
 }
+
+// TestRenounceFreezesOwner is the keyless end state: after RenounceOwnership no owner power
+// (configure, the self-timelocked upgrade) can ever be called again, yet the pure accounting
+// -- stake, distribute, claim, unstake -- keeps working with no keys at all. This is the
+// de-keying step that lets dividends ship keyless.
+func TestRenounceFreezesOwner(t *testing.T) {
+	s := setup(t)
+	// non-owner cannot renounce
+	s.e.NewInvoker(s.div, s.other).InvokeFail(t, "only owner", "renounceOwnership")
+	// owner renounces -> keyless, one-way
+	owner := s.e.NewInvoker(s.div, s.owner)
+	owner.Invoke(t, stackitem.Null{}, "renounceOwnership")
+	// every owner power is dead now, forever
+	owner.InvokeFail(t, "only owner", "renounceOwnership")
+	owner.InvokeFail(t, "only owner", "proposeUpgrade", []byte{1, 2, 3}, []byte{4, 5, 6})
+	owner.InvokeFail(t, "only owner", "configure", s.ftb.BytesBE())
+	// accounting still works with no keys: stake, distribute, claim
+	s.stake(t, s.alice, 1000)
+	s.revenue(t, 500)
+	s.e.NewInvoker(s.div, s.alice).Invoke(t, stackitem.Null{}, "claim", s.alice.ScriptHash().BytesBE())
+	s.e.NewInvoker(s.div, s.alice).Invoke(t, stackitem.Make(0), "pendingOf", s.alice.ScriptHash().BytesBE())
+}

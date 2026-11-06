@@ -57,6 +57,8 @@ func setupWith(t *testing.T, bAmt, bBps, win int) *sys {
 	e.DeployContract(t, callC, nil)
 	s.caller = callC.Hash
 	e.NewInvoker(s.ftb, owner).Invoke(t, stackitem.Null{}, "setMigrator", s.caller.BytesBE())
+	// claim-window deadline must be set before any mint (production: the deploy sets it)
+	e.NewInvoker(s.ftb, owner).Invoke(t, stackitem.Null{}, "setClaimWindow", 15768000000, owner.ScriptHash().BytesBE())
 
 	vaultC := neotest.CompileFile(t, e.Validator.ScriptHash(), "../dbondvault/dbondvault.go", "../dbondvault/dbondvault.yml")
 	e.DeployContract(t, vaultC, owner.ScriptHash().BytesBE())

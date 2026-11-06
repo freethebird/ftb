@@ -67,6 +67,12 @@ type config struct {
 	// the seam board: Propose now, Apply once the timelock elapses (the driver waits).
 	// Single-key path only; a multisig owner gets the core printed wiring instead.
 	Launch2 bool `json:"launch2"`
+	// ClaimWindowMs is the governance-ratified migration claim window in milliseconds; at
+	// wiring it is baked into the token as a wall-clock deadline (SetClaimWindow). The FTB
+	// claim-window vote ratified 6 months. ClaimWindowProposal is the authorizing ballot or
+	// commandment hash, recorded on-chain as the deadline provenance.
+	ClaimWindowMs       int    `json:"claim_window_ms"`
+	ClaimWindowProposal string `json:"claim_window_proposal"`
 	// Core, when set, skips deploying the core and reuses already-deployed contract
 	// hashes — resume mode for Launch 2 on a chain where the core is already live
 	// (N3 contract hashes are deterministic on sender+nef+name, so a redeploy of an
@@ -95,7 +101,7 @@ func main() {
 	check(err)
 	check(json.Unmarshal(raw, &cfg))
 
-	cli, err := rpcclient.New(context.Background(), cfg.RPC, rpcclient.Options{})
+	cli, err := rpcclient.New(context.Background(), cfg.RPC, rpcclient.Options{RequestTimeout: 60 * time.Second})
 	check(err)
 	check(cli.Init())
 
@@ -186,7 +192,7 @@ func main() {
 		// 1. deploy core (owner passed explicitly as deploy data; the multisig does not need
 		// to sign anything yet, _deploy just stores the hash)
 		token = deploy("ftb_token", owner.BytesBE())
-		migrator = deploy("ftb_migrator", owner.BytesBE())
+		migrator = deploy("ftb_migrator_r6", owner.BytesBE())
 		registry = deploy("registry", owner.BytesBE())
 
 		// 2. validate the migrator's snapshot root here so both wiring paths, automatic and
@@ -206,6 +212,13 @@ func main() {
 
 		// 2. the token's only minter is the migrator
 		call(token, "setMigrator", migrator)
+
+		// 2b. bake the governance-ratified claim-window deadline + its authorizing proposal,
+		// so the migration self-seals at the deadline and the owner can renounce on day one.
+		if cfg.ClaimWindowMs <= 0 {
+			check(fmt.Errorf("claim_window_ms must be > 0 (the ratified claim window in ms)"))
+		}
+		call(token, "setClaimWindow", cfg.ClaimWindowMs, mustHash("claim_window_proposal", cfg.ClaimWindowProposal))
 
 		// 3. configure the migrator (write-once, FTB-02: double-check root before running)
 		call(migrator, "configure", token, root)
@@ -243,7 +256,7 @@ func main() {
 	// -phase all (default) does everything, waiting out the timelock itself.
 	l2 := map[string]util.Uint160{}
 	if cfg.Launch2 {
-		order := []string{"oracle", "lend", "bondvault", "treasury", "dividends"}
+		order := []string{"dividends", "ftb_gov", "treasury", "bondvault", "ftb_loanbook"}
 		l2hash := func(name string) util.Uint160 {
 			ne, m := load(cfg.ContractsDir, name)
 			return state.CreateContractHash(sender, ne.Checksum, m.Name)
@@ -256,7 +269,11 @@ func main() {
 					l2[n] = h
 					continue
 				}
-				l2[n] = deploy(n, owner.BytesBE())
+				data := owner.BytesBE()
+				if n == "ftb_loanbook" {
+					data = token.BytesBE() // loanbook injects the FTB token at _deploy; no owner, immutable
+				}
+				l2[n] = deploy(n, data)
 			}
 		} else {
 			for _, n := range order {
@@ -268,11 +285,12 @@ func main() {
 			}
 		}
 		if *phase == "all" || *phase == "wire" {
-			call(l2["oracle"], "setReporter", sender, true) // TestNet: deployer is the reporter; real quorum before MainNet
-			call(l2["lend"], "configure", registry, token)
-			call(l2["bondvault"], "configure", token, owner) // committee = owner on single-key TestNet
-			call(l2["treasury"], "configure", token, owner, registry)
+			// de-keyed launch-2 wiring: the gov stack binds to FtbGov (not a committee key);
+			// ftb_loanbook is keyless (FTB injected at _deploy, no configure, immutable).
 			call(l2["dividends"], "configure", token)
+			call(l2["ftb_gov"], "configure", l2["dividends"])
+			call(l2["treasury"], "configure", token, l2["ftb_gov"], registry)
+			call(l2["bondvault"], "configure", token, l2["ftb_gov"])
 			for _, n := range order {
 				call(registry, "propose", n, l2[n])
 			}
@@ -333,9 +351,9 @@ func main() {
 		}
 		return ""
 	}
-	fmt.Printf("FTB_HASHES {\"ftb\":%q,\"migrator\":%q,\"registry\":%q,\"ballot\":%q,\"oracle\":%q,\"lend\":%q,\"bondvault\":%q,\"treasury\":%q,\"dividends\":%q}\n",
+	fmt.Printf("FTB_HASHES {\"ftb\":%q,\"migrator\":%q,\"registry\":%q,\"ballot\":%q,\"gov\":%q,\"loanbook\":%q,\"bondvault\":%q,\"treasury\":%q,\"dividends\":%q}\n",
 		"0x"+token.StringLE(), "0x"+migrator.StringLE(), "0x"+registry.StringLE(), ballotStr,
-		l2h("oracle"), l2h("lend"), l2h("bondvault"), l2h("treasury"), l2h("dividends"))
+		l2h("ftb_gov"), l2h("ftb_loanbook"), l2h("bondvault"), l2h("treasury"), l2h("dividends"))
 	if cfg.OwnerMultisig == nil && cfg.OwnerScriptHash == "" {
 		fmt.Println("WARNING: the owner is the deployer's SINGLE key. Dev/TestNet only;")
 		fmt.Println("for any real launch set owner_multisig in the config and redeploy (FTB-14).")
@@ -441,14 +459,16 @@ func printMultisigWiring(cfg config, token, migrator, registry util.Uint160, roo
 	fmt.Println("witness, so the multisig members execute it (see ops/DECENTRALIZED_OPS.md).")
 	fmt.Println("Calls, in order, each signed by the multisig:")
 	fmt.Printf("  1. %s setMigrator 0x%s\n", token.StringLE(), migrator.StringLE())
+	fmt.Printf("  1b. %s setClaimWindow %d 0x%s   (ratified claim window: bakes the deadline + provenance)\n", token.StringLE(), cfg.ClaimWindowMs, mustHash("claim_window_proposal", cfg.ClaimWindowProposal).StringLE())
 	fmt.Printf("  2. %s configure 0x%s 0x%s\n", migrator.StringLE(), token.StringLE(), hex.EncodeToString(root))
 	fmt.Printf("  3. %s setInitialDelay %d\n", registry.StringLE(), cfg.TimelockBlocks)
 	fmt.Printf("  4. %s bootstrap \"token\" 0x%s\n", registry.StringLE(), token.StringLE())
 	fmt.Printf("  5. %s bootstrap \"migrator\" 0x%s\n", registry.StringLE(), migrator.StringLE())
 	fmt.Printf("  6. %s finishBootstrap\n", registry.StringLE())
-	fmt.Println("After the migration window, in order and multisig-signed:")
-	fmt.Printf("  7. %s close            (seals the mint forever)\n", migrator.StringLE())
-	fmt.Printf("  8. %s renounceOwnership (makes the token immutable; close FIRST, FTB-03)\n", token.StringLE())
+	fmt.Println("The claim-window deadline self-seals the mint, so the owner renounces on day one:")
+	fmt.Printf("  7. %s renounceOwnership (day-one renounce; the deadline seals the mint on its own)\n", token.StringLE())
+	fmt.Println("After the deadline, anyone (no key) may flip the visible flag:")
+	fmt.Printf("  8. %s closeMigration    (optional, permissionless; minting is already dead)\n", token.StringLE())
 	fmt.Println("Publish this output next to proofs.json so anyone can verify the wiring.")
 }
 

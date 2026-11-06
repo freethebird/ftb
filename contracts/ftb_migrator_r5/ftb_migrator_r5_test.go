@@ -34,6 +34,8 @@ func TestClaimFlowR5(t *testing.T) {
 
 	// token trusts the R5 migrator as its only minter
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", migC.Hash.BytesBE())
+	// claim-window deadline must be set before any mint (production: the deploy sets it)
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", 15768000000, owner.ScriptHash().BytesBE())
 
 	// snapshot of two holders, built with the SAME pkg/merkle the CLI uses
 	a1 := e.NewAccount(t)

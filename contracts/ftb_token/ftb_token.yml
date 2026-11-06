@@ -10,6 +10,8 @@ safemethods:
   - getMigrator
   - claimed
   - claimedAmount
+  - deadline
+  - claimWindowProposal
 events:
   - name: Transfer
     parameters:
@@ -26,6 +28,12 @@ events:
   - name: MigrationClosed
   - name: OwnershipRenounced
   - name: Updated
+  - name: ClaimWindowSet
+    parameters:
+      - name: deadline
+        type: Integer
+      - name: proposal
+        type: Hash160
 permissions:
   - contract: '*'
     methods:

@@ -47,6 +47,8 @@ var (
 	keyMigrator   = []byte{0x12} // the only minter
 	keyOpen       = []byte{0x13} // 1 while migration open, 0 once sealed forever
 	prefixClaimed = []byte{0x14} // prefixClaimed + account -> FTB amount claimed (once, ever)
+	keyDeadline   = []byte{0x15} // unix ms; minting forbidden at/after this instant (0 = unset)
+	keyClaimProp  = []byte{0x16} // authorizing claim-window proposal hash (governance provenance)
 )
 
 // _deploy sets the owner explicitly from deploy data (MO: visible, no hidden constant).
@@ -145,6 +147,15 @@ func MintForMigration(to interop.Hash160, amount int) {
 	if getIntCtx(ctx, keyOpen) == 0 {
 		panic("mint: migration closed")
 	}
+	// Claim window: a wall-clock deadline fixed once at SetClaimWindow and never moved.
+	// Minting ends by itself when the deadline passes - no owner action, no transaction.
+	deadline := getIntCtx(ctx, keyDeadline)
+	if deadline == 0 {
+		panic("mint: claim window not set")
+	}
+	if runtime.GetTime() >= deadline {
+		panic("mint: claim window closed")
+	}
 	claimedKey := append(prefixClaimed, to...)
 	if storage.Get(ctx, claimedKey) != nil {
 		panic("mint: already claimed") // once per account, across all migrators, forever
@@ -182,13 +193,45 @@ func ClaimedAmount(account interop.Hash160) int {
 
 // CloseMigration permanently ends minting. One-way door. After this, no FTB can ever be
 // created again, regardless of who holds any key.
+//
+// Before the deadline, only the owner may seal early. At or after the deadline, anyone may
+// call it: minting is already dead by then, so this only flips the visible flag and emits
+// the event - there is no owner left to do it after the day-one renounce.
 func CloseMigration() {
-	requireOwner()
-	storage.Put(storage.GetContext(), keyOpen, 0)
+	ctx := storage.GetContext()
+	deadline := getIntCtx(ctx, keyDeadline)
+	if deadline == 0 || runtime.GetTime() < deadline {
+		requireOwner()
+	}
+	storage.Put(ctx, keyOpen, 0)
 	runtime.Notify("MigrationClosed")
 }
 
-func MigrationOpen() bool { return getInt(keyOpen) != 0 }
+// MigrationOpen reports whether a claim can still be minted right now: the flag is up and,
+// once a deadline is set, it has not passed. It flips to false at the deadline on its own,
+// before anyone calls CloseMigration.
+func MigrationOpen() bool {
+	ctx := storage.GetContext()
+	if getIntCtx(ctx, keyOpen) == 0 {
+		return false
+	}
+	deadline := getIntCtx(ctx, keyDeadline)
+	return deadline == 0 || runtime.GetTime() < deadline
+}
+
+// Deadline is the wall-clock instant (unix ms) at which the claim window seals, or 0 if not
+// yet set. At or after this instant MintForMigration refuses and MigrationOpen is false.
+func Deadline() int { return getInt(keyDeadline) }
+
+// ClaimWindowProposal is the governance proposal that authorized the claim window (its
+// 20-byte hash), so the authority behind the deadline is checkable on-chain. nil if unset.
+func ClaimWindowProposal() interop.Hash160 {
+	p := storage.Get(storage.GetContext(), keyClaimProp)
+	if p == nil {
+		return nil
+	}
+	return p.(interop.Hash160)
+}
 
 // ---- admin (all renounceable) ----
 
@@ -209,6 +252,28 @@ func SetMigrator(migrator interop.Hash160) {
 	runtime.Notify("MigratorSet", migrator)
 }
 
+// SetClaimWindow fixes the migration wall-clock deadline and records the governance
+// proposal that authorized it. Owner only, write-once: it is set during wiring, before the
+// first claim, and can never be moved afterwards. The deadline is now + windowMs, stamped
+// relative to this call block time.
+func SetClaimWindow(windowMs int, proposal interop.Hash160) {
+	requireOwner()
+	ctx := storage.GetContext()
+	if getIntCtx(ctx, keyDeadline) != 0 {
+		panic("claimWindow: already set (write-once)")
+	}
+	if windowMs <= 0 {
+		panic("claimWindow: window must be positive")
+	}
+	if len(proposal) != 20 {
+		panic("claimWindow: proposal must be a 20-byte hash")
+	}
+	deadline := runtime.GetTime() + windowMs
+	storage.Put(ctx, keyDeadline, deadline)
+	storage.Put(ctx, keyClaimProp, proposal)
+	runtime.Notify("ClaimWindowSet", deadline, proposal)
+}
+
 func GetMigrator() interop.Hash160 {
 	mig := storage.Get(storage.GetContext(), keyMigrator)
 	if mig == nil {
@@ -227,13 +292,17 @@ func Update(nef []byte, manifest []byte, data any) {
 }
 
 // RenounceOwnership makes the token fully immutable: no more SetMigrator, no more Update,
-// no more CloseMigration (migration should already be closed). One-way door, by design.
+// no more owner CloseMigration. One-way door, by design - the keys are destroyed.
 func RenounceOwnership() {
 	requireOwner()
-	// One-way doors in order: the mint must be sealed BEFORE the owner disappears, or
-	// CloseMigration becomes permanently unreachable with minting still open. Audit item FTB-03.
-	if getInt(keyOpen) != 0 {
-		panic("renounce: close migration first")
+	// FTB-03 revisited: the original rule required CloseMigration BEFORE renounce so the
+	// owner could not vanish while minting stayed reachable. A claim-window deadline makes
+	// that automatic - minting ends by itself at the deadline with no owner - so once a
+	// deadline is set the owner may step down at once (day-one renounce) and the chain seals
+	// on its own. Refuse only if neither the deadline is set NOR migration is closed, which
+	// would leave minting reachable with no way to ever stop it.
+	if getInt(keyOpen) != 0 && getInt(keyDeadline) == 0 {
+		panic("renounce: set the claim window or close migration first")
 	}
 	storage.Put(storage.GetContext(), keyOwner, []byte{}) // empty owner -> requireOwner always fails
 	runtime.Notify("OwnershipRenounced")

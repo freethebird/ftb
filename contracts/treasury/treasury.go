@@ -22,7 +22,9 @@ package treasury
 import (
 	"github.com/nspcc-dev/neo-go/pkg/interop"
 	"github.com/nspcc-dev/neo-go/pkg/interop/contract"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/crypto"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/ledger"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/std"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
 )
@@ -39,22 +41,23 @@ const (
 )
 
 var (
-	keyOwner     = []byte{0x01} // deploy owner; may Configure once
-	keyFTB       = []byte{0x02} // the FTB token hash
-	keyCommittee = []byte{0x03} // operator multisig executing passed ballots
-	keyRegistry  = []byte{0x04} // the registry (resolves "dividends" for excess returns)
-	keyEscrowed  = []byte{0x05} // total FTB locked in live escrows
+	keyOwner    = []byte{0x01} // deploy owner; may Configure once
+	keyFTB      = []byte{0x02} // the FTB token hash
+	keyGov      = []byte{0x03} // the FtbGov governance executor: authorises payouts by passed vote
+	keyRegistry = []byte{0x04} // the registry (resolves "dividends" for excess returns)
+	keyEscrowed = []byte{0x05} // total FTB locked in live escrows
 
-	prefixState  = []byte{0x10} // + id -> state
-	prefixAmount = []byte{0x11} // + id -> remaining escrowed amount
-	prefixDev    = []byte{0x12} // + id -> dev team address
-	prefixAud    = []byte{0x13} // + id -> auditor address
-	prefixHash   = []byte{0x14} // + id -> audited NEF hash (32 bytes)
-	prefixHeight = []byte{0x15} // + id -> attestation block height
-	prefixBps    = []byte{0x16} // + id -> tranche A share of the escrow, bps
-	prefixSoak   = []byte{0x17} // + id -> soak blocks between attestation and tranche B
-	prefixExpect = []byte{0x18} // + id -> the expected NEF hash the auditor must attest (T2)
-	prefixAudOK  = []byte{0x19} // + auditor -> 1 if on the committee-registered auditor set (T1)
+	prefixState    = []byte{0x10} // + id -> state
+	prefixAmount   = []byte{0x11} // + id -> remaining escrowed amount
+	prefixDev      = []byte{0x12} // + id -> dev team address
+	prefixAud      = []byte{0x13} // + id -> auditor address
+	prefixHash     = []byte{0x14} // + id -> audited NEF hash (32 bytes)
+	prefixHeight   = []byte{0x15} // + id -> attestation block height
+	prefixBps      = []byte{0x16} // + id -> tranche A share of the escrow, bps
+	prefixSoak     = []byte{0x17} // + id -> soak blocks between attestation and tranche B
+	prefixExpect   = []byte{0x18} // + id -> the expected NEF hash the auditor must attest (T2)
+	prefixAudOK    = []byte{0x19} // + auditor -> 1 if on the vetted auditor set (T1)
+	prefixConsumed = []byte{0x1A} // + govId -> 1 once a passed proposal has executed (anti-replay)
 )
 
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
@@ -71,9 +74,9 @@ func _deploy(data any, isUpdate bool) {
 
 // Configure binds the FTB token, the operator committee, and the registry. Owner only,
 // write-once: who holds the money and who turns the key must never change after publication.
-func Configure(ftb, committee, registry interop.Hash160) {
+func Configure(ftb, gov, registry interop.Hash160) {
 	requireOwner()
-	if len(ftb) != 20 || len(committee) != 20 || len(registry) != 20 {
+	if len(ftb) != 20 || len(gov) != 20 || len(registry) != 20 {
 		panic("configure: bad address")
 	}
 	ctx := storage.GetContext()
@@ -81,9 +84,9 @@ func Configure(ftb, committee, registry interop.Hash160) {
 		panic("configure: already configured (write-once)")
 	}
 	storage.Put(ctx, keyFTB, ftb)
-	storage.Put(ctx, keyCommittee, committee)
+	storage.Put(ctx, keyGov, gov)
 	storage.Put(ctx, keyRegistry, registry)
-	runtime.Notify("Configured", ftb, committee, registry)
+	runtime.Notify("Configured", ftb, gov, registry)
 }
 
 // OnNEP17Payment receives income: the lend reserve split, future swap fees, donations.
@@ -115,11 +118,11 @@ const minSoak = 5760
 // in-the-open committee act — a puppet auditor cannot be conjured inside the same call that
 // funds the escrow. Committee only. (Binding this set to an on-chain ballot tally, so the
 // committee cannot self-enroll a confederate, is the Tier-3 governance-contract item.)
-func SetAuditor(auditor interop.Hash160, enabled bool) {
-	requireCommittee()
+func SetAuditor(govID int, auditor interop.Hash160, enabled bool) {
 	if len(auditor) != 20 {
 		panic("auditor: bad address")
 	}
+	requireGov(govID, subjectSetAuditor(auditor, enabled))
 	ctx := storage.GetContext()
 	if enabled {
 		storage.Put(ctx, append(prefixAudOK, auditor...), 1)
@@ -141,21 +144,12 @@ func AuditorEnabled(auditor interop.Hash160) bool {
 // (SetAuditor), the soak must meet the minSoak floor (no same-block drain), and the exact NEF
 // hash the auditor will later have to attest is bound here, up-front (T2) — payment is tied to
 // a specific set of bytes committed at creation, not to whatever 32 bytes get supplied later.
-func CreateEscrow(id int, dev, auditor interop.Hash160, amount, trancheABps, soakBlocks int, expectedHash []byte) {
-	requireCommittee()
-	if id < 0 || id >= maxEscrowID {
-		panic("escrow: bad id") // escKey packs the id into 4 bytes; the bound is proven, not hoped
-	}
+func CreateEscrow(govID int, dev, auditor interop.Hash160, amount, trancheABps, soakBlocks int, expectedHash []byte) {
 	if len(dev) != 20 || len(auditor) != 20 || eq(dev, auditor) {
 		panic("escrow: bad dev/auditor")
 	}
-	ctx := storage.GetContext()
-	committee := storage.Get(ctx, keyCommittee).(interop.Hash160)
-	if eq(dev, committee) || eq(auditor, committee) {
-		panic("escrow: dev/auditor must not be the committee") // T1: no committee self-deal
-	}
-	if storage.Get(ctx, append(prefixAudOK, auditor...)) == nil {
-		panic("escrow: auditor not on the registered set") // T1: vetted auditors only
+	if len(expectedHash) != 32 {
+		panic("escrow: expected NEF hash must be 32 bytes") // T2: bind the reviewed bytes
 	}
 	if amount <= 0 || trancheABps <= 0 || trancheABps >= 10000 {
 		panic("escrow: bad terms")
@@ -163,8 +157,12 @@ func CreateEscrow(id int, dev, auditor interop.Hash160, amount, trancheABps, soa
 	if soakBlocks < minSoak {
 		panic("escrow: soak below the minimum floor") // T1: no zero-soak same-block drain
 	}
-	if len(expectedHash) != 32 {
-		panic("escrow: expected NEF hash must be 32 bytes") // T2: bind the reviewed bytes
+	// The passed vote authorises EXACTLY these parameters -- the committee key is gone (FTB-B1).
+	requireGov(govID, subjectCreateEscrow(dev, auditor, amount, trancheABps, soakBlocks, expectedHash))
+	id := govID // the escrow is keyed by its authorising proposal id
+	ctx := storage.GetContext()
+	if storage.Get(ctx, append(prefixAudOK, auditor...)) == nil {
+		panic("escrow: auditor not on the vetted set") // T1: vetted auditors only
 	}
 	sk := escKey(prefixState, id)
 	if getIntCtx(ctx, sk) != stateNone {
@@ -276,8 +274,8 @@ func ClaimB(id int) {
 
 // Cancel returns an un-attested escrow to the free balance. Once an audit is attested the
 // funds are earned; there is no clawback of reviewed work.
-func Cancel(id int) {
-	requireCommittee()
+func Cancel(govID, id int) {
+	requireGov(govID, subjectCancel(id))
 	ctx := storage.GetContext()
 	sk := escKey(prefixState, id)
 	if getIntCtx(ctx, sk) != stateOpen {
@@ -291,11 +289,11 @@ func Cancel(id int) {
 // registry-bound address, never an arbitrary one. Fail-closed while unbound. This is the
 // accrual-cap lever: when the treasury holds more than near-term proposals need, the
 // committee returns the excess instead of hoarding it.
-func ReturnExcess(amount int) {
-	requireCommittee()
+func ReturnExcess(govID, amount int) {
 	if amount <= 0 {
 		panic("excess: amount must be positive")
 	}
+	requireGov(govID, subjectReturnExcess(amount))
 	ctx := storage.GetContext()
 	if amount > free(ctx) {
 		panic("excess: over free balance")
@@ -348,8 +346,8 @@ func Escrowed() int { return getInt(keyEscrowed) }
 // Free is the un-escrowed balance: what new proposals can draw on.
 func Free() int { return free(storage.GetContext()) }
 
-func Committee() interop.Hash160 {
-	return storage.Get(storage.GetContext(), keyCommittee).(interop.Hash160)
+func Gov() interop.Hash160 {
+	return storage.Get(storage.GetContext(), keyGov).(interop.Hash160)
 }
 func Token() interop.Hash160 { return ftbHash() }
 
@@ -376,10 +374,10 @@ func escKey(prefix []byte, id int) []byte {
 	if id < 0 || id >= maxEscrowID {
 		panic("treasury: id out of range")
 	}
-	k := append(prefix, byte(id>>24)) // #nosec G115 -- id bounded by the guard above
-	k = append(k, byte(id>>16))       // #nosec G115 -- id bounded by the guard above
-	k = append(k, byte(id>>8))        // #nosec G115 -- id bounded by the guard above
-	k = append(k, byte(id))           // #nosec G115 -- id bounded by the guard above
+	k := append(prefix, byte((id>>24)&0xFF)) // #nosec G115 -- masked to one byte
+	k = append(k, byte((id>>16)&0xFF))       // #nosec G115 -- masked to one byte
+	k = append(k, byte((id>>8)&0xFF))        // #nosec G115 -- masked to one byte
+	k = append(k, byte(id&0xFF))             // #nosec G115 -- masked to one byte
 	return k
 }
 
@@ -444,15 +442,95 @@ func requireOwner() {
 	}
 }
 
-func requireCommittee() {
-	c := storage.Get(storage.GetContext(), keyCommittee)
-	if c == nil {
+// ---- governance binding (FtbGov): the keyless replacement for the committee (FTB-B1) ----
+
+// requireGov authorises an action: an FtbGov proposal must have PASSED, its SUBJECT must equal
+// the hash of exactly this action and parameters, and it must not already have been executed.
+// Any address may execute a passed proposal; no key authorises spending.
+func requireGov(govID int, subject []byte) {
+	ctx := storage.GetContext()
+	ck := escKey(prefixConsumed, govID)
+	if storage.Get(ctx, ck) != nil {
+		panic("gov: proposal already executed")
+	}
+	g := govHash()
+	if !contract.Call(g, "passed", contract.ReadOnly, govID).(bool) {
+		panic("gov: proposal has not passed")
+	}
+	got := contract.Call(g, "subject", contract.ReadOnly, govID).([]byte)
+	if string(got) != string(subject) {
+		panic("gov: subject does not match this action")
+	}
+	storage.Put(ctx, ck, 1)
+}
+
+func govHash() interop.Hash160 {
+	h := storage.Get(storage.GetContext(), keyGov)
+	if h == nil {
 		panic("not configured")
 	}
-	if !runtime.CheckWitness(c.(interop.Hash160)) {
-		panic("only committee")
-	}
+	return h.(interop.Hash160)
 }
+
+// Subject commitments: sha256 over a domain tag + the exact parameters, built one append per
+// statement so the NEF stays reproducible (FTB-33). The SubjectFor* views let a proposer read
+// the exact subject to hand to FtbGov.propose -- no off-chain hashing.
+
+func subjectCreateEscrow(dev, auditor interop.Hash160, amount, trancheABps, soakBlocks int, expectedHash []byte) []byte {
+	b := []byte("ftb.treasury.createEscrow:")
+	b = append(b, dev...)
+	b = append(b, auditor...)
+	b = append(b, ':')
+	b = append(b, []byte(std.Itoa(amount, 10))...)
+	b = append(b, ':')
+	b = append(b, []byte(std.Itoa(trancheABps, 10))...)
+	b = append(b, ':')
+	b = append(b, []byte(std.Itoa(soakBlocks, 10))...)
+	b = append(b, ':')
+	b = append(b, expectedHash...)
+	return []byte(crypto.Sha256(b))
+}
+
+func subjectSetAuditor(auditor interop.Hash160, enabled bool) []byte {
+	b := []byte("ftb.treasury.setAuditor:")
+	b = append(b, auditor...)
+	b = append(b, ':')
+	if enabled {
+		b = append(b, '1')
+	} else {
+		b = append(b, '0')
+	}
+	return []byte(crypto.Sha256(b))
+}
+
+func subjectCancel(id int) []byte {
+	b := []byte("ftb.treasury.cancel:")
+	b = append(b, []byte(std.Itoa(id, 10))...)
+	return []byte(crypto.Sha256(b))
+}
+
+func subjectReturnExcess(amount int) []byte {
+	b := []byte("ftb.treasury.returnExcess:")
+	b = append(b, []byte(std.Itoa(amount, 10))...)
+	return []byte(crypto.Sha256(b))
+}
+
+// SubjectForCreateEscrow returns the subject a proposer hands to FtbGov.propose for a
+// createEscrow with these exact parameters.
+func SubjectForCreateEscrow(dev, auditor interop.Hash160, amount, trancheABps, soakBlocks int, expectedHash []byte) []byte {
+	return subjectCreateEscrow(dev, auditor, amount, trancheABps, soakBlocks, expectedHash)
+}
+
+// SubjectForSetAuditor returns the subject for a setAuditor proposal.
+func SubjectForSetAuditor(auditor interop.Hash160, enabled bool) []byte {
+	return subjectSetAuditor(auditor, enabled)
+}
+
+// SubjectForCancel returns the subject for a cancel proposal over escrow id.
+func SubjectForCancel(id int) []byte { return subjectCancel(id) }
+
+// SubjectForReturnExcess returns the subject for a returnExcess proposal of amount.
+func SubjectForReturnExcess(amount int) []byte { return subjectReturnExcess(amount) }
 
 func eq(a, b interop.Hash160) bool { return string(a) == string(b) }
 func getInt(key []byte) int        { return getIntCtx(storage.GetContext(), key) }

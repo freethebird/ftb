@@ -50,5 +50,14 @@ grep -rEIl -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' -e 'AKIA[0-9A-Z]{16}' \
   -e 'ghp_[0-9A-Za-z]{36}' -e 'xox[baprs]-[0-9A-Za-z-]{10,}' "$STAGE" >/dev/null 2>&1 \
   && note "possible secret in the staged bundle"
 
+# 6) Canonical Bible (HTML + JS editions) — CSP/DOM-sink/link/egress/weight compliance.
+#    Non-compliant client code must not reach the public bundle.
+LINT="$(dirname "$0")/ftb-canon-lint.js"
+if [ -f "$LINT" ] && command -v node >/dev/null 2>&1; then
+  node "$LINT" "$STAGE" 300 || note "canon lint: non-compliant client code (see CANON: lines above)"
+else
+  note "canon lint unavailable (ftb-canon-lint.js beside the gate, or node, missing)"
+fi
+
 [ "$fail" -ne 0 ] && { echo "GATE: FAIL — publish blocked." >&2; exit 1; }
 echo "GATE: PASS"; exit 0

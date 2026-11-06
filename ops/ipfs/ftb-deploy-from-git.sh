@@ -43,6 +43,7 @@ log "deploying commit $COMMIT ($REF)"
 STAGE_PARENT="$(mktemp -d)"; STAGE="$STAGE_PARENT/ftb-web"; mkdir -p "$STAGE"
 trap 'rm -rf "$STAGE_PARENT"' EXIT
 rsync -aL --exclude '.DS_Store' --exclude 'beat.json' --exclude 'archive/' --exclude '__pycache__/' \
+  --exclude 'js/backup/' --exclude 'demo.html' \
   "$REPO_DIR/web/" "$STAGE/"
 
 # config.js is git-ignored (filled config, never committed); materialize it from the

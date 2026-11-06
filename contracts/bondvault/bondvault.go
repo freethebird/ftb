@@ -6,10 +6,10 @@
 //     in this vault; a later version moves it into the locked LP position.
 //   - vault half — the rug-pull bond. Locked for as long as the project is listed.
 //
-// Three states per listing: bonded -> slashed -> delisted. Slash and delist are executed
-// by the operator committee (multisig) ONLY after a passed ballot — the chain decides,
-// this contract holds the money, the committee turns the key. There is no vesting clock
-// and no good-behavior unlock: listed = bonded, delisted = released, nothing in between.
+// Three states per listing: bonded -> slashed -> delisted. Register, slash and delist are
+// authorised by a passed FtbGov vote and executed by anyone -- no committee key (FTB-B1): the
+// chain decides, this contract holds the money, a passed vote turns the key. There is no
+// vesting clock and no good-behavior unlock: listed = bonded, delisted = released.
 //
 // Reference implementation. Internal audit lineage only - no external audit was
 // performed (DECISIONS.md, Decision 7). Verify before trusting value.
@@ -18,6 +18,8 @@ package bondvault
 import (
 	"github.com/nspcc-dev/neo-go/pkg/interop"
 	"github.com/nspcc-dev/neo-go/pkg/interop/contract"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/crypto"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/std"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
 )
@@ -35,14 +37,15 @@ const (
 )
 
 var (
-	keyOwner      = []byte{0x01} // deploy owner; may Configure once
-	keyFTB        = []byte{0x02} // the FTB token hash (bonds are paid in FTB)
-	keyCommittee  = []byte{0x03} // operator multisig executing passed ballots
-	prefixState   = []byte{0x10} // + listed token -> state
-	prefixVault   = []byte{0x11} // + listed token -> remaining vault half
-	prefixLiq     = []byte{0x12} // + listed token -> remaining liquidity half
-	prefixProject = []byte{0x13} // + listed token -> project address (committee-registered refund target)
-	prefixComp    = []byte{0x14} // + listed token -> compensation sink a slash pays out to (committee-registered)
+	keyOwner       = []byte{0x01} // deploy owner; may Configure once
+	keyFTB         = []byte{0x02} // the FTB token hash (bonds are paid in FTB)
+	keyGov         = []byte{0x03} // the FtbGov governance executor: authorises register/slash/delist by vote
+	prefixState    = []byte{0x10} // + listed token -> state
+	prefixVault    = []byte{0x11} // + listed token -> remaining vault half
+	prefixLiq      = []byte{0x12} // + listed token -> remaining liquidity half
+	prefixProject  = []byte{0x13} // + listed token -> project address (committee-registered refund target)
+	prefixComp     = []byte{0x14} // + listed token -> compensation sink a slash pays out to (vote-registered)
+	prefixConsumed = []byte{0x15} // + itoa(govId) -> 1 once a passed proposal has executed (anti-replay)
 )
 
 //lint:ignore U1000 VM entry point, invoked by the chain via the manifest, not from Go
@@ -59,9 +62,9 @@ func _deploy(data any, isUpdate bool) {
 
 // Configure binds the FTB token and the operator committee. Owner only, write-once:
 // who holds the bonds and who may execute votes must never change after publication.
-func Configure(ftb, committee interop.Hash160) {
+func Configure(ftb, gov interop.Hash160) {
 	requireOwner()
-	if len(ftb) != 20 || len(committee) != 20 {
+	if len(ftb) != 20 || len(gov) != 20 {
 		panic("configure: bad address")
 	}
 	ctx := storage.GetContext()
@@ -69,8 +72,8 @@ func Configure(ftb, committee interop.Hash160) {
 		panic("configure: already configured (write-once)")
 	}
 	storage.Put(ctx, keyFTB, ftb)
-	storage.Put(ctx, keyCommittee, committee)
-	runtime.Notify("Configured", ftb, committee)
+	storage.Put(ctx, keyGov, gov)
+	runtime.Notify("Configured", ftb, gov)
 }
 
 // RegisterListing authorizes a listing after its ballot passes. The committee binds, in the
@@ -86,19 +89,16 @@ func Configure(ftb, committee interop.Hash160) {
 //
 // Committee only, one-time per token (a slashed or delisted token is finished — a new
 // listing is a new proposal with a fresh token record).
-func RegisterListing(token, project, compensation interop.Hash160) {
-	requireCommittee()
+func RegisterListing(govID int, token, project, compensation interop.Hash160) {
 	if len(token) != 20 || len(project) != 20 || len(compensation) != 20 {
 		panic("register: bad address")
-	}
-	ctx := storage.GetContext()
-	committee := storage.Get(ctx, keyCommittee).(interop.Hash160)
-	if eq(compensation, committee) {
-		panic("register: compensation must not be the committee") // BV-02: no self-drain
 	}
 	if eq(compensation, project) {
 		panic("register: compensation must not be the project") // a slash must not refund the rugger
 	}
+	// A passed vote authorises EXACTLY this listing (token + refund + sink) -- no committee (FTB-B1/BV-02).
+	requireGov(govID, subjectRegisterListing(token, project, compensation))
+	ctx := storage.GetContext()
 	sk := append(prefixState, token...)
 	if getIntCtx(ctx, sk) != stateNone {
 		panic("register: listing already exists")
@@ -150,8 +150,8 @@ func OnNEP17Payment(from interop.Hash160, amount int, data any) {
 // in the open and up-front — it is not a parameter here, so a committee key can trigger a
 // slash but cannot choose or redirect where the money goes at slash time. The liquidity half
 // stays locked pending the delisting resolution. Committee only.
-func Slash(token interop.Hash160) {
-	requireCommittee()
+func Slash(govID int, token interop.Hash160) {
+	requireGov(govID, subjectSlash(token))
 	ctx := storage.GetContext()
 	sk := append(prefixState, token...)
 	if getIntCtx(ctx, sk) != stateBonded {
@@ -172,8 +172,8 @@ func Slash(token interop.Hash160) {
 
 // Delist ends a listing after a passed delisting ballot and returns whatever remains
 // (both halves, or only the liquidity half after a slash) to the project. Committee only.
-func Delist(token interop.Hash160) {
-	requireCommittee()
+func Delist(govID int, token interop.Hash160) {
+	requireGov(govID, subjectDelist(token))
 	ctx := storage.GetContext()
 	sk := append(prefixState, token...)
 	st := getIntCtx(ctx, sk)
@@ -221,8 +221,8 @@ func Project(token interop.Hash160) interop.Hash160 {
 	return v.(interop.Hash160)
 }
 
-func Committee() interop.Hash160 {
-	return storage.Get(storage.GetContext(), keyCommittee).(interop.Hash160)
+func Gov() interop.Hash160 {
+	return storage.Get(storage.GetContext(), keyGov).(interop.Hash160)
 }
 func Token() interop.Hash160 { return ftbHash() }
 
@@ -257,15 +257,69 @@ func requireOwner() {
 	}
 }
 
-func requireCommittee() {
-	c := storage.Get(storage.GetContext(), keyCommittee)
-	if c == nil {
+// ---- governance binding (FtbGov): the keyless replacement for the committee (FTB-B1) ----
+
+// requireGov authorises an action: an FtbGov proposal must have PASSED, its SUBJECT must equal
+// the hash of exactly this action and parameters, and it must not already have executed. Any
+// address may execute a passed proposal; no key authorises a slash, delist, or listing.
+func requireGov(govID int, subject []byte) {
+	ctx := storage.GetContext()
+	ck := append(prefixConsumed, []byte(std.Itoa(govID, 10))...)
+	if storage.Get(ctx, ck) != nil {
+		panic("gov: proposal already executed")
+	}
+	g := govHash()
+	if !contract.Call(g, "passed", contract.ReadOnly, govID).(bool) {
+		panic("gov: proposal has not passed")
+	}
+	got := contract.Call(g, "subject", contract.ReadOnly, govID).([]byte)
+	if string(got) != string(subject) {
+		panic("gov: subject does not match this action")
+	}
+	storage.Put(ctx, ck, 1)
+}
+
+func govHash() interop.Hash160 {
+	h := storage.Get(storage.GetContext(), keyGov)
+	if h == nil {
 		panic("not configured")
 	}
-	if !runtime.CheckWitness(c.(interop.Hash160)) {
-		panic("only committee")
-	}
+	return h.(interop.Hash160)
 }
+
+// Subject commitments: sha256 over a domain tag + the exact parameters. The SubjectFor* views
+// let a proposer read the exact subject to hand to FtbGov.propose -- no off-chain hashing.
+
+func subjectRegisterListing(token, project, compensation interop.Hash160) []byte {
+	b := []byte("ftb.bondvault.registerListing:")
+	b = append(b, token...)
+	b = append(b, project...)
+	b = append(b, compensation...)
+	return []byte(crypto.Sha256(b))
+}
+
+func subjectSlash(token interop.Hash160) []byte {
+	b := []byte("ftb.bondvault.slash:")
+	b = append(b, token...)
+	return []byte(crypto.Sha256(b))
+}
+
+func subjectDelist(token interop.Hash160) []byte {
+	b := []byte("ftb.bondvault.delist:")
+	b = append(b, token...)
+	return []byte(crypto.Sha256(b))
+}
+
+// SubjectForRegisterListing returns the subject a proposer hands to FtbGov.propose to list token.
+func SubjectForRegisterListing(token, project, compensation interop.Hash160) []byte {
+	return subjectRegisterListing(token, project, compensation)
+}
+
+// SubjectForSlash returns the subject for a slash proposal over token.
+func SubjectForSlash(token interop.Hash160) []byte { return subjectSlash(token) }
+
+// SubjectForDelist returns the subject for a delist proposal over token.
+func SubjectForDelist(token interop.Hash160) []byte { return subjectDelist(token) }
 
 func eq(a, b interop.Hash160) bool { return string(a) == string(b) }
 func getInt(key []byte) int        { return getIntCtx(storage.GetContext(), key) }

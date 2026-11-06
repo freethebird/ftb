@@ -47,6 +47,8 @@ func setup(t *testing.T) *sys {
 	e.DeployContract(t, callC, nil)
 	s.caller = callC.Hash
 	e.NewInvoker(s.ftb, owner).Invoke(t, stackitem.Null{}, "setMigrator", s.caller.BytesBE())
+	// claim-window deadline must be set before any mint (production: the deploy sets it)
+	e.NewInvoker(s.ftb, owner).Invoke(t, stackitem.Null{}, "setClaimWindow", 15768000000, owner.ScriptHash().BytesBE())
 
 	oracC := neotest.CompileFile(t, e.Validator.ScriptHash(), "../oracle/oracle.go", "../oracle/oracle.yml")
 	e.DeployContract(t, oracC, owner.ScriptHash().BytesBE())

@@ -5,14 +5,17 @@ safemethods:
   - liquidityOf
   - project
   - compensationOf
-  - committee
+  - gov
   - token
+  - subjectForRegisterListing
+  - subjectForSlash
+  - subjectForDelist
 events:
   - name: Configured
     parameters:
       - name: ftb
         type: Hash160
-      - name: committee
+      - name: gov
         type: Hash160
   - name: ListingRegistered
     parameters:
@@ -54,3 +57,5 @@ permissions:
   - contract: '*'
     methods:
       - transfer
+      - passed
+      - subject

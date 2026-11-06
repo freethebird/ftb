@@ -10,14 +10,18 @@ safemethods:
   - escrowed
   - free
   - auditorEnabled
-  - committee
+  - gov
   - token
+  - subjectForCreateEscrow
+  - subjectForSetAuditor
+  - subjectForCancel
+  - subjectForReturnExcess
 events:
   - name: Configured
     parameters:
       - name: ftb
         type: Hash160
-      - name: committee
+      - name: gov
         type: Hash160
       - name: registry
         type: Hash160
@@ -87,3 +91,5 @@ permissions:
       - transfer
       - balanceOf
       - get
+      - passed
+      - subject

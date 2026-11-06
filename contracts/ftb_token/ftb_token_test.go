@@ -19,6 +19,9 @@ import (
 // must equal the maxSupply constant in ftb_token.go (FTB-01: the committed 100M hard cap)
 const maxSupply = 10000000000000000
 
+// testWindowMs is a comfortably-future claim window (ms) for tests that keep migration open.
+const testWindowMs = 15768000000
+
 func deploy(t *testing.T) (*neotest.Executor, *neotest.ContractInvoker, neotest.Signer, neotest.Signer) {
 	bc, validator := chain.NewSingle(t)
 	e := neotest.NewExecutor(t, bc, validator, validator)
@@ -66,6 +69,7 @@ func TestMintOnlyByMigrator(t *testing.T) {
 	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
 	e.DeployContract(t, cc, nil)
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
 
 	to := owner.ScriptHash()
 
@@ -85,6 +89,7 @@ func TestCapIsEnforced(t *testing.T) {
 	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
 	e.DeployContract(t, cc, nil)
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
 
 	callerInv := e.NewInvoker(cc.Hash, owner)
 	// minting one unit over the cap must fault
@@ -96,6 +101,7 @@ func TestCloseMigrationSealsMint(t *testing.T) {
 	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
 	e.DeployContract(t, cc, nil)
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
 
 	// close migration (owner), then any further mint must fault forever
 	tok.Invoke(t, stackitem.Null{}, "closeMigration")
@@ -110,6 +116,7 @@ func TestTransferRequiresWitnessAndMovesBalance(t *testing.T) {
 	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
 	e.DeployContract(t, cc, nil)
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
 
 	// seed owner with FTB via the migrator
 	callerInv := e.NewInvoker(cc.Hash, owner)
@@ -146,6 +153,7 @@ func TestClaimedLedgerBlocksDoubleMint(t *testing.T) {
 	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
 	e.DeployContract(t, cc, nil)
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
 
 	callerInv := e.NewInvoker(cc.Hash, owner)
 	to := other.ScriptHash()
@@ -184,10 +192,94 @@ func TestSetMigratorFrozenAfterFirstMint(t *testing.T) {
 	to := other.ScriptHash()
 	// migrator A is set before any mint (allowed), then mints -> supply becomes > 0
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc1.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
 	e.NewInvoker(cc1.Hash, owner).Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), to.BytesBE(), 5_000)
 
 	// the owner can no longer swap in a different migrator: frozen after first mint
 	tok.InvokeFail(t, "locked after first mint", "setMigrator", cc2.Hash.BytesBE())
 	// supply unchanged; the rogue-root headroom path is unreachable
 	tok.Invoke(t, stackitem.Make(5_000), "totalSupply")
+}
+
+// --- claim-window deadline: self-sealing migration + day-one renounce ---
+// The FTB claim-window vote ratified 6 months. The deadline is wall-clock (SetClaimWindow),
+// enforced in the token; the migrator stays byte-for-byte. These prove: mint is fail-closed
+// until the window is set; the window is owner-only + write-once; the deadline seals minting
+// with no transaction; the owner may renounce on day one with claims still open; and after
+// the deadline anyone may flip the closed flag.
+
+func TestMintRefusedUntilClaimWindowSet(t *testing.T) {
+	e, tok, owner, _ := deploy(t)
+	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
+	e.DeployContract(t, cc, nil)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	callerInv := e.NewInvoker(cc.Hash, owner)
+	// no setClaimWindow yet -> the mint is fail-closed
+	callerInv.InvokeFail(t, "claim window not set", "mint", tok.Hash.BytesBE(), owner.ScriptHash().BytesBE(), 1_000)
+}
+
+func TestSetClaimWindowOwnerOnlyAndWriteOnce(t *testing.T) {
+	e, tok, _, other := deploy(t)
+	otherInv := e.NewInvoker(tok.Hash, other)
+	otherInv.InvokeFail(t, "only owner", "setClaimWindow", testWindowMs, other.ScriptHash().BytesBE())
+	tok.InvokeFail(t, "window must be positive", "setClaimWindow", 0, other.ScriptHash().BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, other.ScriptHash().BytesBE())
+	tok.InvokeFail(t, "already set", "setClaimWindow", testWindowMs, other.ScriptHash().BytesBE())
+	tok.Invoke(t, stackitem.NewBuffer(other.ScriptHash().BytesBE()), "claimWindowProposal")
+}
+
+func TestClaimOpenBeforeDeadline(t *testing.T) {
+	e, tok, owner, _ := deploy(t)
+	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
+	e.DeployContract(t, cc, nil)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
+	tok.Invoke(t, stackitem.Make(true), "migrationOpen")
+	callerInv := e.NewInvoker(cc.Hash, owner)
+	callerInv.Invoke(t, stackitem.Null{}, "mint", tok.Hash.BytesBE(), owner.ScriptHash().BytesBE(), 5_000)
+	tok.Invoke(t, stackitem.Make(5_000), "totalSupply")
+}
+
+func TestClaimWindowSealsMintAtDeadline(t *testing.T) {
+	e, tok, owner, _ := deploy(t)
+	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
+	e.DeployContract(t, cc, nil)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", 1, owner.ScriptHash().BytesBE())
+	e.GenerateNewBlocks(t, 2) // move wall-clock past the 1 ms deadline, no close call
+	tok.Invoke(t, stackitem.Make(false), "migrationOpen")
+	callerInv := e.NewInvoker(cc.Hash, owner)
+	callerInv.InvokeFail(t, "claim window closed", "mint", tok.Hash.BytesBE(), owner.ScriptHash().BytesBE(), 1_000)
+}
+
+func TestDayOneRenounceWithDeadlineSet(t *testing.T) {
+	e, tok, owner, _ := deploy(t)
+	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
+	e.DeployContract(t, cc, nil)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
+	// migration is OPEN (deadline in the future) yet renounce still succeeds: the deadline
+	// seals the mint on its own, so no key need be held to the end of the window.
+	tok.Invoke(t, stackitem.Make(true), "migrationOpen")
+	tok.Invoke(t, stackitem.Null{}, "renounceOwnership")
+	tok.InvokeFail(t, "only owner", "setClaimWindow", testWindowMs, owner.ScriptHash().BytesBE())
+}
+
+func TestCloseAfterDeadlineIsPermissionless(t *testing.T) {
+	e, tok, owner, other := deploy(t)
+	cc := neotest.CompileFile(t, e.Validator.ScriptHash(), "testdata/caller/caller.go", "testdata/caller/caller.yml")
+	e.DeployContract(t, cc, nil)
+	tok.Invoke(t, stackitem.Null{}, "setMigrator", cc.Hash.BytesBE())
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", 1, owner.ScriptHash().BytesBE())
+	e.GenerateNewBlocks(t, 2) // past the deadline
+	otherInv := e.NewInvoker(tok.Hash, other)
+	otherInv.Invoke(t, stackitem.Null{}, "closeMigration")
+	tok.Invoke(t, stackitem.Make(false), "migrationOpen")
+}
+
+func TestCloseBeforeDeadlineIsOwnerOnly(t *testing.T) {
+	e, tok, _, other := deploy(t)
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", testWindowMs, other.ScriptHash().BytesBE())
+	otherInv := e.NewInvoker(tok.Hash, other)
+	otherInv.InvokeFail(t, "only owner", "closeMigration")
 }

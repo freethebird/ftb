@@ -201,6 +201,20 @@ func ApplyUpgrade() {
 // PendingUpgradeEta is the height at which a staged upgrade becomes applicable, or 0 if none.
 func PendingUpgradeEta() int { return getInt(keyUpgEta) }
 
+// RenounceOwnership permanently drops the owner: no more Configure, no more upgrade. One-way
+// door -- the keyless end state (the Tier-3 step from the header). Any pending upgrade is
+// discarded so nothing can land after the keys are gone. After this the module is pure,
+// immutable accounting: stake, distribute, claim, unstake, all permissionless/user-witnessed.
+func RenounceOwnership() {
+	requireOwner()
+	ctx := storage.GetContext()
+	storage.Delete(ctx, keyUpgNef)
+	storage.Delete(ctx, keyUpgMan)
+	storage.Delete(ctx, keyUpgEta)
+	storage.Put(ctx, keyOwner, []byte{})
+	runtime.Notify("OwnershipRenounced")
+}
+
 // distribute folds any queued revenue into the new amount and raises the accumulator.
 // With no stakers the revenue queues for the first distribution that has any.
 func distribute(amount int) {
@@ -333,10 +347,10 @@ func monthKey(idx int) []byte {
 	if idx < 0 || idx > 0xFFFFFFFF {
 		panic("dividends: month index out of range")
 	}
-	k := append(prefixMon, byte(idx>>24)) // #nosec G115 -- idx bounded by the guard above
-	k = append(k, byte(idx>>16))          // #nosec G115 -- idx bounded by the guard above
-	k = append(k, byte(idx>>8))           // #nosec G115 -- idx bounded by the guard above
-	k = append(k, byte(idx))              // #nosec G115 -- idx bounded by the guard above
+	k := append(prefixMon, byte((idx>>24)&0xFF)) // #nosec G115 -- masked to one byte
+	k = append(k, byte((idx>>16)&0xFF))          // #nosec G115 -- masked to one byte
+	k = append(k, byte((idx>>8)&0xFF))           // #nosec G115 -- masked to one byte
+	k = append(k, byte(idx&0xFF))                // #nosec G115 -- masked to one byte
 	return k
 }
 
@@ -364,7 +378,11 @@ func requireOwner() {
 	if owner == nil {
 		panic("owner not set")
 	}
-	if !runtime.CheckWitness(owner.(interop.Hash160)) {
+	o := owner.(interop.Hash160)
+	if len(o) != 20 {
+		panic("only owner") // renounced: owner cleared, no witness possible
+	}
+	if !runtime.CheckWitness(o) {
 		panic("only owner")
 	}
 }

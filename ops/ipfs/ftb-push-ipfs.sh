@@ -22,7 +22,7 @@ echo "==> Staging front-end from: $WEB_DIR"
 # A stale local beat.json never rides along — the stamp below is the only one.
 # archive/ (frozen pre-split designs + their builders) is reference weight, not
 # runtime: it stays in the repo but never gets pinned (WEB-04).
-rsync -aL --exclude '.DS_Store' --exclude 'beat.json' --exclude 'archive/' \
+rsync -aL --exclude '.DS_Store' --exclude 'beat.json' --exclude 'archive/' --exclude 'js/backup/' \
   --exclude '__pycache__/' "$WEB_DIR/" "$STAGE/"
 
 # Version stamp: the front end's mirror counter compares this file across origins —

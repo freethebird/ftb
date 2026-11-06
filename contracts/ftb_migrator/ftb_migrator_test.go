@@ -34,6 +34,8 @@ func TestClaimFlow(t *testing.T) {
 
 	// token trusts the migrator as its only minter
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", migC.Hash.BytesBE())
+	// claim-window deadline must be set before any mint (production: the deploy sets it)
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", 15768000000, owner.ScriptHash().BytesBE())
 
 	// snapshot of two holders, built with the SAME pkg/merkle the CLI uses
 	a1 := e.NewAccount(t)
@@ -143,6 +145,8 @@ func TestSecondMigratorCannotReopenClaims(t *testing.T) {
 
 	// migrator A live: a1 claims; this is the first mint, so supply becomes > 0
 	tok.Invoke(t, stackitem.Null{}, "setMigrator", migAC.Hash.BytesBE())
+	// claim-window deadline must be set before any mint (production: the deploy sets it)
+	tok.Invoke(t, stackitem.Null{}, "setClaimWindow", 15768000000, owner.ScriptHash().BytesBE())
 	e.NewInvoker(migAC.Hash, owner).Invoke(t, stackitem.Null{}, "configure", tokC.Hash.BytesBE(), root)
 	e.NewInvoker(migAC.Hash, a1).Invoke(t, stackitem.Null{}, "claim", a1.ScriptHash(), 1000, pArg)
 	tok.Invoke(t, stackitem.Make(true), "claimed", a1.ScriptHash().BytesBE())
