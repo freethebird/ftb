@@ -182,6 +182,8 @@
 .lz-kstat.is-keyless{color:var(--ok)}
 .lz-kstat.is-active{color:var(--amber)}
 .lz-kstat.is-pending{color:var(--faint)}
+.lz-kstat.is-sealed{color:var(--amber)}
+.lz-kcount{display:block; margin-top:3px; font-size:var(--fs-meta); letter-spacing:.04em; color:var(--faint)}
 @media (max-width:560px){ .lz-kname{white-space:normal} .lz-kad{width:auto} }
 
 /* keyless-process explainer (how a key becomes keyless) */

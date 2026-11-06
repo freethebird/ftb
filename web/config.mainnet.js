@@ -25,6 +25,15 @@ window.FTB_CONFIG = {
     router:   '0x0000000000000000000000000000000000000000'
   },
 
+  // deployed but SEALED: shown on the LO key panel (real hash, verified on-chain) and held
+  // dark in `contracts` above until the governance milestone (audit + soak + renounce).
+  sealed: {
+    gov:       '0x277095a7bc8567b4040ecf7b6253767d1451192f',
+    treasury:  '0x64f8fe20340211954ace5a99f63a05663c9a280c',
+    bondvault: '0xc77d27432a2f82b4aeb30b81bbc5e012a04ddf1c',
+    dividends: '0x5066582708c4d273b3a7b7eadf8dc94855e4c1a8'
+  },
+
   // native NEO and GAS, same on every Neo N3 network (NEO is 0 decimals, whole units)
   assets: {
     neo: '0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5',
@@ -60,7 +69,7 @@ window.FTB_CONFIG = {
 
   // committed economics (DECISIONS.md 18 Oct): identical on MainNet - hard cap
   // 100,000,000 FTB, r = 0.173173, electorate 577,458,329.20 FLM-equiv (R6 tree, root 235e7118).
-  governance: { ratio: 0.173173, electorate: 577458329.20 },
+  governance: { ratio: 0.173173, electorate: 577458329.20, unsealAt: '2027-02-05T00:00:00Z' }, // unsealAt: published ISO date the sealed gov contracts renounce (audit + soak milestone); '' => "pending audit"
 
   // no live ballot at MainNet launch
   ballot: { question: '', options: [] },
