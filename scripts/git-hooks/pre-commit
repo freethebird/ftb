@@ -48,7 +48,7 @@ for f in "${FILES[@]}"; do
   fi
 
   case "$f" in
-    *.js)
+    web/*.js)
       if grep -nE '\beval[[:space:]]*\(|new[[:space:]]+Function[[:space:]]*\(' "$f" >/dev/null 2>&1; then
         note "JS eval()/Function constructor in $f (forbidden — injection seam)"
       fi
@@ -69,6 +69,34 @@ for f in "${FILES[@]}"; do
       ;;
   esac
 done
+
+# Canonical Bible compliance (HTML + JS editions) on the staged web/ tree — node-based and
+# comment-aware; runs only when web/ files are staged. Untracked files are not in the index, so
+# local scaffolding never trips this. The deploy gate re-runs the same lint on the published tree.
+if command -v node >/dev/null 2>&1 && [ -f ops/ipfs/ftb-canon-lint.js ] && \
+   git diff --cached --name-only --diff-filter=ACM -- web/ | grep -q .; then
+  TMP="$(mktemp -d)"
+  git checkout-index -af --prefix="$TMP/" 2>/dev/null
+  if [ -d "$TMP/web" ]; then
+    lintout="$(node ops/ipfs/ftb-canon-lint.js "$TMP/web" 300 2>&1)" || {
+      printf '%s\n' "$lintout" | grep '^CANON:' >&2
+      note "canon lint failed on the staged web/ tree"
+    }
+  fi
+  rm -rf "$TMP"
+fi
+
+# Canonical Bible compliance (C# edition) on the vendored Flamingo AMM — node-based; runs only
+# when a .cs file is staged. Verifies no stale/placeholder [InitialValue] constant and no
+# unresolved #warning before the contracts can be committed. make conformance (cs-canon) and the
+# deploy gate re-run the same lint.
+if command -v node >/dev/null 2>&1 && [ -f ops/ipfs/ftb-canon-cs-lint.js ] && \
+   git diff --cached --name-only --diff-filter=ACM -- contracts/amm-flamingo/ | grep -q '\.cs$'; then
+  csout="$(node ops/ipfs/ftb-canon-cs-lint.js contracts/amm-flamingo 2>&1)" || {
+    printf '%s\n' "$csout" | grep '^CS-CANON:' >&2
+    note "C# canon lint failed on the Flamingo AMM tree"
+  }
+fi
 
 if [ "$fail" -ne 0 ]; then
   printf 'GATE: commit blocked. Fix the above, or override deliberately with: git commit --no-verify\n' >&2

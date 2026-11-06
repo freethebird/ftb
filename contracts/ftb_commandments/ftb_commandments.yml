@@ -1,0 +1,15 @@
+name: FtbCommandments
+safemethods:
+  - commandment
+  - count
+events:
+  - name: Inked
+    parameters:
+      - name: number
+        type: Integer
+      - name: winner
+        type: Integer
+      - name: ratified
+        type: String
+  - name: OwnershipRenounced
+permissions: []

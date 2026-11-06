@@ -1,0 +1,41 @@
+name: FtbGov
+safemethods:
+  - passed
+  - subject
+  - close
+  - yes
+  - no
+  - quorumBase
+  - count
+  - voted
+  - dividends
+events:
+  - name: Configured
+    parameters:
+      - name: dividends
+        type: Hash160
+  - name: Proposed
+    parameters:
+      - name: id
+        type: Integer
+      - name: close
+        type: Integer
+      - name: quorumBase
+        type: Integer
+  - name: Voted
+    parameters:
+      - name: id
+        type: Integer
+      - name: voter
+        type: Hash160
+      - name: support
+        type: Boolean
+      - name: weight
+        type: Integer
+  - name: OwnershipRenounced
+    parameters: []
+permissions:
+  - contract: '*'
+    methods:
+      - stakedOf
+      - totalStaked

@@ -54,7 +54,7 @@ var order = []string{"FlamingoSwapPairWhiteList", "FlamingoSwapFactory", "Flamin
 // claimed ledger inside the token).
 var (
 	gasHash = mustHash("0xd2a4cff31913016155e38e474a2c06d08be276cf")
-	ftbHash = mustHash("0x1ff1f51e63179867367ae8982af583e01e7cbdbd")
+	ftbHash = mustHash("0xce37caa3f6c0ac6d4cbd82b14ccb8ec8740f3e43")
 )
 
 func mustHash(s string) util.Uint160 {
@@ -90,7 +90,8 @@ func main() {
 	rpcURL := flag.String("rpc", "https://testnet1.neo.coz.io:443", "TestNet RPC")
 	walletPath := flag.String("wallet", "cmd/deploy/testnet.wallet.json", "deploy wallet (NEP-6)")
 	passEnv := flag.String("passenv", "FTB_DEPLOY_PASS", "env var holding the wallet password")
-	phase := flag.String("phase", "all", "deploy | wire | seed | all")
+	phase := flag.String("phase", "all", "deploy | wire | seed | all | freeze")
+	burnFlag := flag.String("burn", "0xfe3d48bab4eaf49c2102bfa5a979ff66d1da3822", "freeze target: unspendable admin (non-zero); default is an ABORT-script hash")
 	flag.Parse()
 
 	cli, err := rpcclient.New(context.Background(), *rpcURL, rpcclient.Options{})
@@ -181,6 +182,19 @@ func main() {
 		check(err)
 		fmt.Printf("  wired %-22s tx 0x%s\n", "addLiquidity", txh.StringLE())
 		fmt.Printf("seeded pool: %s GAS + %s FTB\n", seedGAS, seedFTB)
+	}
+
+	if *phase == "freeze" {
+		// one-way: hand every admin to a provably-unspendable address. Run AFTER seeding
+		// and after cmd/neopair has registered the NEO/FTB pair (that needs factory admin).
+		burn := mustHash(*burnFlag)
+		for _, c := range []struct {
+			n string
+			h util.Uint160
+		}{{"whitelist", wl}, {"factory", fact}, {"pair", pair}, {"router", router}} {
+			call(c.h, "setAdmin", burn)
+		}
+		fmt.Printf("frozen: admin -> 0x%s (unspendable) on whitelist, factory, pair, router\n", burn.StringLE())
 	}
 
 	fmt.Printf("\nAMM_HASHES {\"whitelist\":\"0x%s\",\"factory\":\"0x%s\",\"pair\":\"0x%s\",\"router\":\"0x%s\"}\n",

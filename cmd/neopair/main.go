@@ -8,7 +8,7 @@
 //
 //	FTB_DEPLOY_PASS=... go run ./cmd/neopair -phase all
 //
-// Phases: deploy | wire (factory.registerExchangePair) | seed | all.
+// Phases: deploy | wire (factory.registerExchangePair) | seed | all | freeze (setAdmin -> unspendable).
 package main
 
 import (
@@ -47,9 +47,9 @@ var (
 // and the live AMM wiring from contracts/amm-flamingo/DEPLOYED.md.
 var (
 	neoHash = mustHash("0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")
-	ftbHash = mustHash("0x1ff1f51e63179867367ae8982af583e01e7cbdbd")
-	factory = mustHash("0x2b582cdc325e0788a6732a79671687580d985dc4")
-	router  = mustHash("0x7e3fa9356e3294acf709c51062ca051f1df6cb5c")
+	ftbHash = mustHash("0xce37caa3f6c0ac6d4cbd82b14ccb8ec8740f3e43")
+	factory = mustHash("0x0aba578006c63ce7f3770dd65d4c288f23e29114")
+	router  = mustHash("0x6b98c58d952c804880b03acaff4dd767810641f3")
 )
 
 func mustHash(s string) util.Uint160 {
@@ -72,7 +72,8 @@ func main() {
 	rpcURL := flag.String("rpc", "https://testnet1.neo.coz.io:443", "TestNet RPC")
 	walletPath := flag.String("wallet", "cmd/deploy/testnet.wallet.json", "deploy wallet (NEP-6)")
 	passEnv := flag.String("passenv", "FTB_DEPLOY_PASS", "env var holding the wallet password")
-	phase := flag.String("phase", "all", "deploy | wire | seed | all")
+	phase := flag.String("phase", "all", "deploy | wire | seed | all | freeze")
+	burnFlag := flag.String("burn", "0xfe3d48bab4eaf49c2102bfa5a979ff66d1da3822", "freeze target: unspendable admin (non-zero); default is an ABORT-script hash")
 	flag.Parse()
 
 	cli, err := rpcclient.New(context.Background(), *rpcURL, rpcclient.Options{})
@@ -151,6 +152,16 @@ func main() {
 		check(err)
 		fmt.Printf("  wired %-22s tx 0x%s\n", "addLiquidity", txh.StringLE())
 		fmt.Printf("seeded pool: %s FTB + %s NEO (1 NEO = 40 FTB)\n", seedFTB, seedNEO)
+	}
+
+	if *phase == "freeze" {
+		// one-way: hand the NEO/FTB pair's admin to a provably-unspendable address.
+		burn := mustHash(*burnFlag)
+		txh, vub, err := act.SendCall(pair, "setAdmin", burn)
+		check(err)
+		_, err = act.WaitSuccess(context.Background(), txh, vub, err)
+		check(err)
+		fmt.Printf("  frozen %-22s tx 0x%s (admin -> 0x%s)\n", "setAdmin", txh.StringLE(), burn.StringLE())
 	}
 
 	fmt.Printf("\nNEOPAIR_HASH \"0x%s\"\n", pair.StringLE())

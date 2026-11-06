@@ -1,0 +1,78 @@
+name: FtbLoanBook
+safemethods:
+  - offer
+  - offerCount
+  - statusOf
+  - maturityOf
+  - repayAmountOf
+  - claimable
+  - ftb
+events:
+  - name: Deployed
+    parameters:
+      - name: ftb
+        type: Hash160
+  - name: OfferPosted
+    parameters:
+      - name: id
+        type: Integer
+      - name: funder
+        type: Hash160
+      - name: collateralToken
+        type: Hash160
+      - name: collateralAmount
+        type: Integer
+      - name: principal
+        type: Integer
+      - name: rateBps
+        type: Integer
+      - name: termMs
+        type: Integer
+  - name: OfferCancelled
+    parameters:
+      - name: id
+        type: Integer
+      - name: funder
+        type: Hash160
+      - name: principal
+        type: Integer
+  - name: LoanOpened
+    parameters:
+      - name: id
+        type: Integer
+      - name: borrower
+        type: Hash160
+      - name: maturity
+        type: Integer
+      - name: repayAmount
+        type: Integer
+  - name: LoanRepaid
+    parameters:
+      - name: id
+        type: Integer
+      - name: borrower
+        type: Hash160
+      - name: repaid
+        type: Integer
+  - name: LoanDefaulted
+    parameters:
+      - name: id
+        type: Integer
+      - name: funder
+        type: Hash160
+      - name: collateralToken
+        type: Hash160
+      - name: collateralAmount
+        type: Integer
+  - name: Withdrawn
+    parameters:
+      - name: funder
+        type: Hash160
+      - name: token
+        type: Hash160
+      - name: amount
+        type: Integer
+permissions:
+  - contract: '*'
+    methods:
+      - transfer

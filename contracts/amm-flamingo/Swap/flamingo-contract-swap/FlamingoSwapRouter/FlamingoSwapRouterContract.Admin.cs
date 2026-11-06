@@ -10,10 +10,10 @@ namespace FlamingoSwapRouter
     public partial class FlamingoSwapRouterContract
     {
         #region Admin
-        [InitialValue("NeNEyksWAkbJdEXqVta2X1N3rx1hmzwReP", ContractParameterType.Hash160)]
+        [InitialValue("NMK83aXpLED2xaWqFdUukNhiwihcurBsx9", ContractParameterType.Hash160)]
         static readonly UInt160 superAdmin = default;
 
-        [InitialValue("0x2b582cdc325e0788a6732a79671687580d985dc4", ContractParameterType.Hash160)]
+        [InitialValue("0x0aba578006c63ce7f3770dd65d4c288f23e29114", ContractParameterType.Hash160)]
         static readonly UInt160 Factory = default;
 
         const string AdminKey = nameof(superAdmin);

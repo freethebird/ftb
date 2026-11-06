@@ -1,6 +1,6 @@
 NEOGO_VERSION ?= v0.123.0
 
-.PHONY: all tools fmt vet build test test-race vuln nefhash deepcheck conformance discord clean
+.PHONY: all tools fmt vet build test test-race vuln nefhash deepcheck conformance discord cs-canon clean
 
 ## fmt + vet + build + test, the whole audit in one command
 all: fmt vet build test
@@ -56,7 +56,12 @@ deepcheck:
 
 ## the Article 1 guarantee in one named gate: every check, every build
 ## (the Go canon's `make conformance` analog; a failure anywhere is a build failure)
-conformance: fmt vet build test test-race vuln nefhash deepcheck discord
+cs-canon: ## C# edition of the Canonical Bible on the vendored Flamingo AMM
+	@command -v node >/dev/null 2>&1 || { echo "cs-canon: node required for the C# AMM canon gate"; exit 1; }
+	@node ops/ipfs/ftb-canon-cs-lint.js contracts/amm-flamingo
+	@echo "cs-canon: C# AMM canon clean"
+
+conformance: fmt vet build test test-race vuln nefhash deepcheck discord cs-canon
 	@echo "conformance: all gates green"
 
 ## the Discord bots are a nested module (discord/, own go.mod) so their Discord +

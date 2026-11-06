@@ -1,0 +1,13 @@
+{
+  "rpc": "https://mainnet1.neo.coz.io:443",
+  "wallet": "/Users/merlin/ftb-keys/ftb-mainnet-deploy.wallet.json",
+  "password_env": "FTB_DEPLOY_PASS",
+  "contracts_dir": "build",
+  "merkle_root_hex": "235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4",
+  "timelock_blocks": 20,
+  "ballot_options": 0,
+  "launch2": true,
+  "claim_window_ms": 15768000000,
+  "claim_window_proposal": "0xc62269897f6747d52c90ca8fe6b9c9eb02d7f9ad",
+  "owner_scripthash": "NbqbDM5mc3geMfmuq4ygbQjZHqbNKoiLRe"
+}
