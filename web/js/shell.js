@@ -1,6 +1,6 @@
 // shell.js - page chrome and the single review modal (MODULES.md R4).
 //
-// Owns (writes only these): #shiftLine, #tminus (launchbar countdown),
+// Owns (writes only these): #shiftLine,
 // #dateline, and the #ov review modal (#ovTitle, #ovWarn, #ovBody, #ovMsg, #ovGo).
 // All modal close plumbing ([data-close], overlay click, Escape) lives here.
 // Modules request a review via FtbShell.showPlan(title, warn, rows, plan);
@@ -17,22 +17,6 @@
   // is retired. There is no toggle and no theme key in localStorage.
   var sl = $('shiftLine'); if (sl) sl.textContent = '// night shift';
 
-  // ---------- launchbar countdown to the MainNet window, 7 Nov 2026 00:00 UTC ----------
-  (function () {
-    var t = $('tminus'); if (!t) return;
-    var target = Date.UTC(2026, 10, 7, 0, 0, 0);
-    function pad(n) { return (n < 10 ? '0' : '') + n; }
-    function tick() {
-      var ms = target - Date.now();
-      if (ms <= 0) { t.textContent = 'T-0 - MAIN-NET WINDOW OPEN'; return; }
-      var sec = Math.floor(ms / 1000);
-      var d = Math.floor(sec / 86400); sec -= d * 86400;
-      var h = Math.floor(sec / 3600); sec -= h * 3600;
-      var m = Math.floor(sec / 60); sec -= m * 60;
-      t.textContent = 'T-' + d + 'D ' + pad(h) + ':' + pad(m) + ':' + pad(sec);
-    }
-    tick(); setInterval(tick, 1000);
-  })();
 
   // ---------- network switch: MainNet at /, TestNet at /testnet/ (one bundle, two trees) ----------
   // Same page files are served from the root (MainNet, config.mainnet.js) and /testnet/

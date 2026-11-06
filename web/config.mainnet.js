@@ -15,7 +15,7 @@ window.FTB_CONFIG = {
     registry:  '0xb796337672703c7d111364f3acf8dea54f7a714e', // FtbRegistry (finished, 2-day timelock)
     gov:          '0x0000000000000000000000000000000000000000', // FtbGov deployed 0x277095a7bc8567b4040ecf7b6253767d1451192f; dark until the governance milestone (audit + soak + renounce)
     loanbook:     '0x19414f2c1b04bd2fd705d065887ec7cbdc244aaf', // FtbLoanBook - oracleless, keyless P2P term loans (no owner key)
-    commandments: '0x0000000000000000000000000000000000000000', // FtbCommandments - on-chain charter (renounced after inking)
+    commandments: '0x5d89ea321f6c0db71bcc91287c4f9fed8db59f6c', // FtbCommandments - on-chain charter (inked + renounced 6 Nov, immutable)
     ballot:    '0x0000000000000000000000000000000000000000', // deployed per proposal
     bondvault: '0x0000000000000000000000000000000000000000', // FtbBondVault deployed 0xc77d27432a2f82b4aeb30b81bbc5e012a04ddf1c; dark until the governance milestone
     treasury:  '0x0000000000000000000000000000000000000000', // FtbTreasury deployed 0x64f8fe20340211954ace5a99f63a05663c9a280c; dark until the governance milestone

@@ -422,11 +422,6 @@ main{max-width:var(--col); margin:0 auto; padding:0 16px 80px;
 .topbar-main{display:flex; align-items:center; justify-content:space-between;
   gap:12px 16px; flex-wrap:wrap}
 .brand{display:flex; align-items:center; gap:12px; flex-shrink:0}
-/* launch countdown strip: status, not a button - strict grayscale, one line */
-.launchbar{border-bottom:1px solid var(--ink); background:var(--paper); color:var(--ink);
-  text-align:center; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
-  padding:6px 12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.launchbar .tminus{font-weight:bold}
 .topbar .bird3{line-height:0; color:var(--ink); border:0}
 .topbar .bird3:hover{background:transparent}
 .topbar .bird3 svg{height:34px; width:auto; display:block}
@@ -595,8 +590,6 @@ a:hover, button:hover, .linkish:hover, button.linkish:hover,
   .tabs .tabsep::before{content:"links"; font-size:9.5px; letter-spacing:.22em;
     text-transform:uppercase; color:var(--faint)}
   .tabs-ext{display:flex; justify-content:center; flex-wrap:wrap; gap:8px}
-  /* the launch strip wraps to a second line rather than truncating the countdown */
-  .launchbar{white-space:normal; overflow:visible; text-overflow:clip; line-height:1.45}
 }
 @media (max-width:460px){
   .idstate{display:none}
