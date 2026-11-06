@@ -34,7 +34,7 @@ import (
 
 const (
 	migratorHash = "0x08c02e1887b652f9b1cb6a17c668fc9af28047ac"
-	ftbTokenHash = "0xce37caa3f6c0ac6d4cbd82b14ccb8ec8740f3e43"
+	ftbTokenHash = "0xce37caa3f6c0ac6d4cbd82b14ccb8ec8740f3e43" // #nosec G101 -- public Neo N3 contract hash, not a credential
 	rootHex      = "235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4"
 	ftbDecimals  = 8
 )
@@ -57,9 +57,7 @@ func check(err error) {
 }
 
 func mustHash(s string) util.Uint160 {
-	if strings.HasPrefix(s, "0x") {
-		s = s[2:]
-	}
+	s = strings.TrimPrefix(s, "0x")
 	h, err := util.Uint160DecodeStringLE(s)
 	check(err)
 	return h

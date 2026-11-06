@@ -60,7 +60,7 @@ func main() {
 	flag.Parse()
 
 	router, ftb, pair, gas := mustHash(*routerF), mustHash(*ftbF), mustHash(*pairF), mustHash(*gasF)
-	rng := rand.New(rand.NewSource(*seed))
+	rng := rand.New(rand.NewSource(*seed)) // #nosec G404 -- deterministic seeded PRNG for reproducible stress runs; not a security context
 
 	w, err := wallet.NewWalletFromFile(*walletPath)
 	fatal(err)
