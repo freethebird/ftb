@@ -151,7 +151,7 @@ func main() {
 		_, err = seedAct.WaitSuccess(context.Background(), txh, vub, err)
 		check(err)
 		fmt.Printf("  wired %-22s tx 0x%s\n", "addLiquidity", txh.StringLE())
-		fmt.Printf("seeded pool: %s FTB + %s NEO (1 NEO = 40 FTB)\n", seedFTB, seedNEO)
+		fmt.Printf("seeded pool: %s FTB + %s NEO (1 NEO = 72 FTB)\n", seedFTB, seedNEO)
 	}
 
 	if *phase == "freeze" {
