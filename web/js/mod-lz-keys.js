@@ -14,14 +14,15 @@
   var C = window.FTB_CONFIG.contracts || {};
   var SEALED = window.FTB_CONFIG.sealed || {};
   var GOV = window.FTB_CONFIG.governance || {};
+  var BURN = 'fe3d48bab4eaf49c2102bfa5a979ff66d1da3822'; // renounce = burn: AMM admin set unspendable, not zeroed
 
   function zero(h) { return !h || /^0x0+$/.test(h); }
   function keyB64(hexByte) { return btoa(String.fromCharCode(parseInt(hexByte, 16))); }
   function decodeVal(b64) {
-    if (b64 == null || b64 === '') return { len: 0, be: '' };
+    if (b64 == null || b64 === '') return { len: 0, be: '', le: '' };
     var s = atob(b64), le = [];
     for (var i = 0; i < s.length; i++) { var h = s.charCodeAt(i).toString(16); le.push((h.length < 2 ? '0' : '') + h); }
-    return { len: s.length, be: le.reverse().join('') };
+    return { len: s.length, be: le.slice().reverse().join(''), le: le.join('') };
   }
 
   function setState(row, state, beHex) {
@@ -52,7 +53,7 @@
 
   function readKey(row, hash, kb, sealed) {
     function finish(d) {
-      var keyless = (d.len === 0 || /^0+$/.test(d.be));
+      var keyless = (d.len === 0 || /^0+$/.test(d.be) || d.be === BURN || d.le === BURN);
       setState(row, keyless ? 'keyless' : (sealed ? 'sealed' : 'active'), d.be);
     }
     FtbRpc.call('getcontractstate', [hash]).then(function (state) {
