@@ -3,7 +3,7 @@
 // then the owner storage slot shows "Keyless" (ownership renounced on-chain -> immutable) or
 // "Key active" (an owner can still call privileged methods). Contracts listed in CFG.sealed are
 // deployed but held SEALED -- their real hash is shown and verified on-chain, but CFG.contracts
-// stays dark so the app does not wire them until the governance milestone (audit + soak +
+// stays dark so the app does not wire them until the governance milestone (TestNet soak +
 // renounce). Each sealed row carries a countdown to the published unseal target
 // (CFG.governance.unsealAt); the on-chain renounce is the real event it names. Read-only:
 // getcontractstate / getstorage, no wallet, no writes. Canon: fail-closed -- a read that errors
@@ -45,7 +45,7 @@
     var el = st.parentNode.querySelector('.lz-kcount');
     if (!el) { el = document.createElement('span'); el.className = 'lz-kcount'; st.parentNode.appendChild(el); }
     var t = GOV.unsealAt ? Date.parse(GOV.unsealAt) : NaN;
-    if (isNaN(t)) { el.textContent = 'pending audit'; return; }
+    if (isNaN(t)) { el.textContent = 'sealed'; return; }
     function tick() { el.textContent = fmtLeft(t - Date.now()); }
     tick(); setInterval(tick, 60000);
   }

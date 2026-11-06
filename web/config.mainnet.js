@@ -22,7 +22,7 @@ window.FTB_CONFIG = {
     dividends: '0x0000000000000000000000000000000000000000', // FtbDividends deployed 0x5066582708c4d273b3a7b7eadf8dc94855e4c1a8; dark until the governance milestone
     // router is FTB's own C# AMM (self-contained, no Flamingo runtime dependency); set to the
     // deployed MainNet router after the AMM is deployed, seeded, and frozen.
-    router:   '0x0000000000000000000000000000000000000000'
+    router:   '0x41ee590749816ef96a2adde02c375b8f64cb26af'
   },
 
   // deployed but SEALED: shown on the LO key panel (real hash, verified on-chain) and held
@@ -69,7 +69,7 @@ window.FTB_CONFIG = {
 
   // committed economics (DECISIONS.md 18 Oct): identical on MainNet - hard cap
   // 100,000,000 FTB, r = 0.173173, electorate 577,458,329.20 FLM-equiv (R6 tree, root 235e7118).
-  governance: { ratio: 0.173173, electorate: 577458329.20, unsealAt: '2027-02-05T00:00:00Z' }, // unsealAt: published ISO date the sealed gov contracts renounce (audit + soak milestone); '' => "pending audit"
+  governance: { ratio: 0.173173, electorate: 577458329.20, unsealAt: '2027-01-01T00:00:00Z' }, // unsealAt: published ISO date the sealed gov contracts renounce (TestNet soak as the safety net; no external audit); '' => "sealed"
 
   // no live ballot at MainNet launch
   ballot: { question: '', options: [] },

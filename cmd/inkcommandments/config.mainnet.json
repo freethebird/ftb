@@ -1,0 +1,6 @@
+{
+  "rpc": "https://mainnet1.neo.coz.io:443",
+  "wallet": "/Users/merlin/ftb-keys/ftb-mainnet-deploy.wallet.json",
+  "password_env": "FTB_DEPLOY_PASS",
+  "contracts_dir": "build"
+}

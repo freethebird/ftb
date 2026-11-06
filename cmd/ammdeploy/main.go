@@ -54,7 +54,7 @@ var order = []string{"FlamingoSwapPairWhiteList", "FlamingoSwapFactory", "Flamin
 // claimed ledger inside the token).
 var (
 	gasHash = mustHash("0xd2a4cff31913016155e38e474a2c06d08be276cf")
-	ftbHash = mustHash("0xce37caa3f6c0ac6d4cbd82b14ccb8ec8740f3e43")
+	ftbHash = mustHash("0xf85f93d672cbf79f7749fb50a2d46a48421d7e71")
 )
 
 func mustHash(s string) util.Uint160 {

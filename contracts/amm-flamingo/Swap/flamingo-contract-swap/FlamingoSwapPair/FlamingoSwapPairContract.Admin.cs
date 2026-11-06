@@ -20,10 +20,10 @@ namespace FlamingoSwapPair
         //static readonly UInt160 WhiteListContract = default;
 
         //Main
-        [InitialValue("NMK83aXpLED2xaWqFdUukNhiwihcurBsx9", Neo.SmartContract.ContractParameterType.Hash160)]
+        [InitialValue("NbqbDM5mc3geMfmuq4ygbQjZHqbNKoiLRe", Neo.SmartContract.ContractParameterType.Hash160)]
         static readonly UInt160 superAdmin = default;
 
-        [InitialValue("0x51db9a18171c4288dab850938bb9689805dac536", Neo.SmartContract.ContractParameterType.Hash160)]
+        [InitialValue("0xa66e8ba2ab145926a17f8364de9ada6cc26bba6a", Neo.SmartContract.ContractParameterType.Hash160)]
         static readonly UInt160 WhiteListContract = default;
 
         #region TokenAB
@@ -37,7 +37,7 @@ namespace FlamingoSwapPair
         static readonly UInt160 TokenA = default;
         #endregion
 
-        [InitialValue("0xce37caa3f6c0ac6d4cbd82b14ccb8ec8740f3e43", Neo.SmartContract.ContractParameterType.Hash160)]
+        [InitialValue("0xf85f93d672cbf79f7749fb50a2d46a48421d7e71", Neo.SmartContract.ContractParameterType.Hash160)]
         static readonly UInt160 TokenB = default;
 
 

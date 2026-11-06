@@ -47,9 +47,9 @@ var (
 // and the live AMM wiring from contracts/amm-flamingo/DEPLOYED.md.
 var (
 	neoHash = mustHash("0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")
-	ftbHash = mustHash("0xce37caa3f6c0ac6d4cbd82b14ccb8ec8740f3e43")
-	factory = mustHash("0x0aba578006c63ce7f3770dd65d4c288f23e29114")
-	router  = mustHash("0x6b98c58d952c804880b03acaff4dd767810641f3")
+	ftbHash = mustHash("0xf85f93d672cbf79f7749fb50a2d46a48421d7e71")
+	factory = mustHash("0xa809b0f523f7cef26b979707f23e849415dc970b")
+	router  = mustHash("0x41ee590749816ef96a2adde02c375b8f64cb26af")
 )
 
 func mustHash(s string) util.Uint160 {
