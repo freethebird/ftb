@@ -46,13 +46,15 @@ rsync -aL --exclude '.DS_Store' --exclude 'beat.json' --exclude 'archive/' --exc
   --exclude 'js/backup/' --exclude 'demo.html' \
   "$REPO_DIR/web/" "$STAGE/"
 
-# config.js is git-ignored (filled config, never committed); materialize it from the
-# tracked profile so the git-deploy ships a working config. TestNet follows main;
-# a gov-tagged (MainNet) ref uses the mainnet profile.
-CFG_PROFILE=testnet
-case "$REF" in gov-*|release*|*mainnet*) CFG_PROFILE=mainnet ;; esac
-cp "$STAGE/config.$CFG_PROFILE.js" "$STAGE/config.js"
-log "config.js <- config.$CFG_PROFILE.js"
+# config.js is git-ignored (filled config, never committed); materialize BOTH networks so one
+# bundle serves them side by side: the ROOT is MainNet (the default landing), and /testnet/ is
+# TestNet (ongoing dev). The netswitch (shell.js) toggles between them. The ref no longer
+# selects a profile - every publish carries both networks.
+cp "$STAGE/config.mainnet.js" "$STAGE/config.js"
+mkdir -p "$STAGE/testnet"
+rsync -aL --exclude '/testnet/' --exclude 'beat.json' "$STAGE/" "$STAGE/testnet/"
+cp "$STAGE/config.testnet.js" "$STAGE/testnet/config.js"
+log "config.js <- config.mainnet.js (root)  +  config.testnet.js (/testnet/)"
 
 # version stamp (the front-end mirror counter compares this across origins)
 IPNS="$(asipfs key list -l | awk -v k="$IPFS_KEY" '$2==k{print $1}')"
@@ -63,8 +65,9 @@ chown -R ipfs:ipfs "$STAGE_PARENT"
 
 # 2b. GATE - publish-time floor (ftb-deploy-gate.sh). With `set -e`, a failing
 #     gate aborts HERE, before anything is published, so the live site is untouched.
-/usr/local/bin/ftb-deploy-gate.sh "$STAGE" "$CFG_PROFILE"
-log "gate: PASS - publishing"
+/usr/local/bin/ftb-deploy-gate.sh "$STAGE" mainnet
+/usr/local/bin/ftb-deploy-gate.sh "$STAGE/testnet" testnet
+log "gate: PASS (root=mainnet, /testnet/=testnet) - publishing"
 
 # 3. Add + pin + republish IPNS to the 'ftb' key (default CID version, matching the live site)
 ROOT_CID="$(asipfs add -r -Q --pin "$STAGE" | tr -d '[:space:]')"

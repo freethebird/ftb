@@ -34,6 +34,24 @@
     tick(); setInterval(tick, 1000);
   })();
 
+  // ---------- network switch: MainNet at /, TestNet at /testnet/ (one bundle, two trees) ----------
+  // Same page files are served from the root (MainNet, config.mainnet.js) and /testnet/
+  // (TestNet, config.testnet.js), so the toggle is rendered from the live CFG.network here
+  // rather than baked per page. Links preserve the current page.
+  (function () {
+    var sw = document.querySelector('.netswitch'); if (!sw) return;
+    var page = location.pathname.replace(/^\/testnet\//, '/').replace(/^\//, '');
+    if (!page) page = 'index.html';
+    var isMain = NET === 'MainNet';
+    sw.replaceChildren();
+    function tab(cls, label, href, cur) {
+      if (cur) { sw.appendChild(el('span', 'cur ' + cls, label)); return; }
+      var a = el('a', cls, label); a.setAttribute('href', href); sw.appendChild(a);
+    }
+    tab('net-test', 'testnet', '/testnet/' + page, !isMain);
+    tab('net-main', 'mainnet', '/' + page, isMain);
+  })();
+
   // ---------- sticky-header height -> --stick (anchor offset tracks the real bar) ----------
   // The sticky top bar changes height as the nav / controls wrap at narrow widths and when
   // the wallet state flips; publishing its measured height into --stick keeps every
