@@ -20,7 +20,8 @@ window.FTB_CONFIG = {
     bondvault: '0x0000000000000000000000000000000000000000',
     treasury:  '0x0000000000000000000000000000000000000000',
     dividends: '0x0000000000000000000000000000000000000000',
-    // router is the external Flamingo swap; set only when swap is wired and verified.
+    // router is FTB's own C# AMM (self-contained, no Flamingo runtime dependency); set to the
+    // deployed MainNet router after the AMM is deployed, seeded, and frozen.
     router:   '0x0000000000000000000000000000000000000000'
   },
 
@@ -58,8 +59,8 @@ window.FTB_CONFIG = {
   vote: { ftb: '', wait: '' },
 
   // committed economics (DECISIONS.md 18 Oct): identical on MainNet - hard cap
-  // 100,000,000 FTB, r = 0.189832, electorate 526,782,179.10 FLM-equiv.
-  governance: { ratio: 0.189832, electorate: 526782179.10 },
+  // 100,000,000 FTB, r = 0.173173, electorate 577,458,329.20 FLM-equiv (R6 tree, root 235e7118).
+  governance: { ratio: 0.173173, electorate: 577458329.20 },
 
   // no live ballot at MainNet launch
   ballot: { question: '', options: [] },
