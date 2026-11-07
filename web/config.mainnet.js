@@ -47,6 +47,17 @@ window.FTB_CONFIG = {
     // 'https://node1.ftb.example'
   ],
 
+  // known-good public Neo N3 MainNet RPCs - offered in the node dropdown so users can switch
+  // when one is flaky; auto-pick + the read-failover already rotate among them.
+  publicRpcs: [
+    'https://mainnet1.neo.coz.io:443',
+    'https://mainnet2.neo.coz.io:443',
+    'https://n3seed1.ngd.network:443',
+    'https://n3seed2.ngd.network:443',
+    'https://rpc1.n3.nspcc.ru:20332',
+    'https://neo3-mainnet.neoline.io'
+  ],
+
   // who else serves this exact front end (beat.json-probed; see MODULES.md module 8).
   mirrors: [
     'https://freethebird.co',

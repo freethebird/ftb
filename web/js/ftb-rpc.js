@@ -9,11 +9,13 @@
 
   var CFG = window.FTB_CONFIG || {};
   var NET = CFG.network || 'TestNet';
-  var RPCS = (CFG.rpcs && CFG.rpcs.length ? CFG.rpcs.slice() : [])
-    .concat(NET === 'MainNet'
-      ? ['https://mainnet1.neo.coz.io:443', 'https://mainnet2.neo.coz.io:443']
-      : ['https://testnet1.neo.coz.io:443', 'https://testnet2.neo.coz.io:443']);
-  try { var own = localStorage.getItem('ftb_rpc'); if (own) RPCS.unshift(own); } catch (e) {}
+  var PUB = (CFG.publicRpcs && CFG.publicRpcs.length) ? CFG.publicRpcs.slice()
+    : (NET === 'MainNet'
+        ? ['https://mainnet1.neo.coz.io:443', 'https://mainnet2.neo.coz.io:443']
+        : ['https://testnet1.neo.coz.io:443', 'https://testnet2.neo.coz.io:443']);
+  var RPCS = (CFG.rpcs && CFG.rpcs.length ? CFG.rpcs.slice() : []).concat(PUB)
+    .filter(function (u, i, a) { return u && a.indexOf(u) === i; });
+  try { var own = localStorage.getItem('ftb_rpc'); if (own && RPCS.indexOf(own) < 0) RPCS.unshift(own); } catch (e) {}
 
   var RPC = null;
   // probe every endpoint's height, then serve reads from the first one at tip.
@@ -49,6 +51,7 @@
     var ci = (CFG.rpcs || []).indexOf(url), note, attested = true;
     if (url === ownStored()) { note = ' (your node - UNATTESTED; reads trust this node only)'; attested = false; }
     else if (ci >= 0) { note = ' (attested community node #' + (ci + 1) + ')'; }
+    else if (PUB.indexOf(url) >= 0) { note = ' (public Neo N3 node)'; attested = false; }
     else if ((CFG.rpcs || []).length) { note = ' (UNATTESTED public fallback - every community node is unreachable or still syncing)'; attested = false; }
     else { note = NET === 'MainNet' ? ' (UNATTESTED public mainnet endpoint)' : ' (UNATTESTED public testnet endpoint)'; attested = false; }
     n.textContent = 'rpc: ' + url + note;
@@ -57,6 +60,16 @@
   function ownStored() { try { return localStorage.getItem('ftb_rpc'); } catch (e) { return null; } }
 
   function pick() {
+    var manual = null; try { manual = localStorage.getItem('ftb_rpc_pick'); } catch (e) {}
+    if (manual && RPCS.indexOf(manual) >= 0) {
+      return call(manual, 'getblockcount').then(function (h) {
+        if (+h > 0) { RPC = manual; paintNote(RPC); return RPC; }
+        return autoPick();
+      }).catch(function () { return autoPick(); });
+    }
+    return autoPick();
+  }
+  function autoPick() {
     return Promise.all(RPCS.map(function (url) {
       return call(url, 'getblockcount')
         .then(function (h) { return { url: url, h: +h || 0 }; })
@@ -142,7 +155,32 @@
       location.reload();
     });
   }
+  // ---------- rpc picker: a dropdown to switch among the known-good nodes ----------
+  function hostShort(u) { try { return new URL(u).hostname; } catch (e) { return u; } }
+  function buildPicker() {
+    var note = $('rpcNote'); if (!note || $('rpcPick')) return;
+    var sel = document.createElement('select');
+    sel.id = 'rpcPick'; sel.className = 'rpcpick';
+    sel.title = 'switch RPC node'; sel.setAttribute('aria-label', 'switch RPC node');
+    function opt(v, label) { var o = document.createElement('option'); o.value = v; o.textContent = label; return o; }
+    sel.appendChild(opt('', 'auto (fastest)'));
+    RPCS.forEach(function (u) { sel.appendChild(opt(u, hostShort(u))); });
+    if ($('ovRpc')) sel.appendChild(opt('__own__', 'your own node...'));
+    try { var cur = localStorage.getItem('ftb_rpc_pick') || ''; if ([''].concat(RPCS, '__own__').indexOf(cur) >= 0) sel.value = cur; } catch (e) {}
+    sel.addEventListener('change', function () {
+      var v = sel.value;
+      if (v === '__own__') { var ov = $('ovRpc'); if (ov) ov.hidden = false; try { sel.value = localStorage.getItem('ftb_rpc_pick') || ''; } catch (e) {} return; }
+      if (!v) { try { localStorage.removeItem('ftb_rpc_pick'); } catch (e) {} pick().then(function () { if (window.FtbState) window.FtbState.emit('rpc', RPC); }, function () {}); return; }
+      call(v, 'getblockcount').then(function (h) {
+        if (!(+h > 0)) throw new Error('unhealthy');
+        RPC = v; try { localStorage.setItem('ftb_rpc_pick', v); } catch (e) {} paintNote(v);
+        if (window.FtbState) window.FtbState.emit('rpc', v);
+      }).catch(function () { try { sel.value = localStorage.getItem('ftb_rpc_pick') || ''; } catch (e) {} });
+    });
+    note.parentNode.insertBefore(sel, note.nextSibling);
+  }
   wire();
+  buildPicker();
 
   window.FtbRpc = {
     pick: pick,
