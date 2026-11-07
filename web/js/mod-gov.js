@@ -29,7 +29,8 @@
   // the voting window: read from each ballot's on-chain endBlock (authoritative,
   // enforced by the contract), with the config endsAt as a fallback if the read fails.
   // chainHeight/chainEnd are populated on refresh; 0 means unknown, so endsAt is used.
-  var chainHeight = 0, chainEnd = {};
+  var chainHeight = 0, chainEnd = {}, cmdOffset = 0;
+  var SEC_PER_BLOCK = (CFG.network === 'MainNet') ? 3.1 : 15; // nominal, for the approximate close time
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function endsMsOf(b) { return b.endsAt ? Date.parse(b.endsAt) : NaN; }
   function ballotOpen(b) {
@@ -41,7 +42,11 @@
     var e = chainEnd[b.hash];
     if (e && chainHeight) {
       if (chainHeight > e) return 'closed (block ' + e + ')';
-      return 'closes block ' + e + ' (' + Math.max(0, e - chainHeight) + ' blocks left)';
+      var left = e - chainHeight;
+      var d = new Date(Date.now() + left * SEC_PER_BLOCK * 1000);
+      var pad = function (x) { return ('0' + x).slice(-2); };
+      var when = d.getUTCDate() + ' ' + MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear() + ', ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ' UTC';
+      return 'closes ~' + when + ' (block ' + e + ', ' + left + ' blocks left)';
     }
     var ms = endsMsOf(b); if (!(ms > 0)) return ''; var d = new Date(ms); return 'ends ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()];
   }
@@ -100,7 +105,7 @@
 
     var d = el('details', 'poolrow'); if (isFirst) d.setAttribute('open', '');
     var sm = el('summary');
-    sm.appendChild(el('span', 'bnum', ('00' + (idx + 1)).slice(-3)));
+    sm.appendChild(el('span', 'bnum', ('00' + (cmdOffset + idx + 1)).slice(-3)));
     var bqEl = el('span', 'bq', b.question); bqEl.title = b.question; sm.appendChild(bqEl);
     // result: leader (bold) · runner-up, built with DOM so option labels stay text
     var res = el('span', 'bres');
@@ -166,7 +171,7 @@
       var other = lead === 0 ? 1 : 0;
       function ps(p) { return (p >= 99.95 ? '100' : (Math.round(p * 10) / 10)) + '%'; }
       var line = el('div', 'tnline');
-      line.appendChild(document.createTextNode(('00' + (bi + 1)).slice(-3) + ' ' + ps(shares[lead]) + ' '));
+      line.appendChild(document.createTextNode(('00' + (cmdOffset + bi + 1)).slice(-3) + ' ' + ps(shares[lead]) + ' '));
       line.appendChild(el('span', 'ag', '/ ' + ps(shares[other] || 0)));
       host.appendChild(line);
     });
@@ -186,9 +191,13 @@
     var endsP = Promise.all(BL.map(function (b) {
       return FtbRpc.readInt(b.hash, 'endBlock', []).then(function (x) { return Number(x); }).catch(function () { return 0; });
     }));
-    Promise.all([heightP, endsP]).then(function (hc) {
+    var cmdP = (C.commandments && C.commandments.indexOf('0x0000') !== 0)
+      ? FtbRpc.readInt(C.commandments, 'count', []).then(function (n) { return Number(n); }).catch(function () { return 0; })
+      : Promise.resolve(0);
+    Promise.all([heightP, endsP, cmdP]).then(function (hc) {
       chainHeight = hc[0];
       BL.forEach(function (b, i) { chainEnd[b.hash] = hc[1][i]; });
+      cmdOffset = hc[2]; // continue ballot numbering after the ratified commandments
       // 2) tally reads: every option of every ballot (on-chain options are 1-based)
       return Promise.all(BL.map(function (b) {
         return Promise.all((b.options || []).map(function (_, i) {
