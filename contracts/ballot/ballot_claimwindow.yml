@@ -4,12 +4,15 @@ safemethods:
   - voted
   - numOptions
   - root
+  - endBlock
 events:
   - name: Configured
     parameters:
       - name: root
         type: ByteArray
       - name: numOptions
+        type: Integer
+      - name: endBlock
         type: Integer
   - name: Voted
     parameters:

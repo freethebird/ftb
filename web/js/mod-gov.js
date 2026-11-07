@@ -26,13 +26,25 @@
   var BL = ballots();
   var ballotConfigured = BL.length > 0;
 
-  // the voting window (DECISIONS.md, Decision 14), from config - UI-enforced only;
-  // the contracts have no expiry, so late votes still land on-chain but the page
-  // won't offer them.
+  // the voting window: read from each ballot's on-chain endBlock (authoritative,
+  // enforced by the contract), with the config endsAt as a fallback if the read fails.
+  // chainHeight/chainEnd are populated on refresh; 0 means unknown, so endsAt is used.
+  var chainHeight = 0, chainEnd = {};
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function endsMsOf(b) { return b.endsAt ? Date.parse(b.endsAt) : NaN; }
-  function ballotOpen(b) { var ms = endsMsOf(b); return !(ms > 0) || Date.now() < ms; }
-  function endsLabel(b) { var ms = endsMsOf(b); if (!(ms > 0)) return ''; var d = new Date(ms); return 'ends ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()]; }
+  function ballotOpen(b) {
+    var e = chainEnd[b.hash];
+    if (e && chainHeight) return chainHeight <= e;            // on-chain endBlock is authoritative
+    var ms = endsMsOf(b); return !(ms > 0) || Date.now() < ms; // fallback: config endsAt
+  }
+  function endsLabel(b) {
+    var e = chainEnd[b.hash];
+    if (e && chainHeight) {
+      if (chainHeight > e) return 'closed (block ' + e + ')';
+      return 'closes block ' + e + ' (' + Math.max(0, e - chainHeight) + ' blocks left)';
+    }
+    var ms = endsMsOf(b); if (!(ms > 0)) return ''; var d = new Date(ms); return 'ends ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()];
+  }
 
   function decodeVoted(st) {
     var it = st && st[0];
@@ -167,12 +179,22 @@
       return;
     }
     if (!FtbRpc.current()) return;
-    // tally reads: every option of every ballot (on-chain options are 1-based)
-    Promise.all(BL.map(function (b) {
-      return Promise.all((b.options || []).map(function (_, i) {
-        return FtbRpc.readInt(b.hash, 'tally', [{ type: 'Integer', value: String(i + 1) }]);
+    // 1) on-chain deadline state (authoritative): current height + each ballot's endBlock.
+    //    a read failure leaves the value at 0, so endsLabel/ballotOpen fall back to config endsAt.
+    var heightP = FtbRpc.call('getblockcount', []).then(function (h) { return +h || 0; }).catch(function () { return 0; });
+    var endsP = Promise.all(BL.map(function (b) {
+      return FtbRpc.readInt(b.hash, 'endBlock', []).then(function (x) { return Number(x); }).catch(function () { return 0; });
+    }));
+    Promise.all([heightP, endsP]).then(function (hc) {
+      chainHeight = hc[0];
+      BL.forEach(function (b, i) { chainEnd[b.hash] = hc[1][i]; });
+      // 2) tally reads: every option of every ballot (on-chain options are 1-based)
+      return Promise.all(BL.map(function (b) {
+        return Promise.all((b.options || []).map(function (_, i) {
+          return FtbRpc.readInt(b.hash, 'tally', [{ type: 'Integer', value: String(i + 1) }]);
+        }));
       }));
-    })).then(function (all) {
+    }).then(function (all) {
       // did the connected wallet vote in each? (absent wallet -> all false)
       var votedP = FtbState.account
         ? Promise.all(BL.map(function (b) {
