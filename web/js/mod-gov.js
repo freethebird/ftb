@@ -140,10 +140,13 @@
     bt.appendChild(el('b', null, turn.toFixed(1) + '%'));
     bt.appendChild(document.createTextNode(' turnout'));
     bt.appendChild(document.createElement('br'));
-    var sub = el('span', 'muted2', 'of snapshot' + (endsLabel(b) ? ' · ' + endsLabel(b) : ''));
+    var sub = el('span', 'muted2', 'of snapshot');
     bt.appendChild(sub);
     side.appendChild(bt);
     det.appendChild(side);
+
+    var clbl = endsLabel(b);
+    if (clbl) det.appendChild(el('div', 'bclose', clbl)); // deadline on its own full-width line
 
     var act = el('div', 'brow-act');
     var open = ballotOpen(b);

@@ -16,3 +16,11 @@
   font-size: 14px; line-height: 1.45; color: var(--ink);
   margin: 0 0 6px; padding-bottom: 10px; border-bottom: 1px solid var(--hair);
 }
+
+/* deadline on its own full-width line in the expanded ballot, so the long close-time
+   string cannot collide with the option bars / turnout donut. */
+.ballotmenu .pr-detail.bdetail .bclose{
+  grid-column: 1 / -1;
+  font-size: 12.5px; color: var(--ink-2); line-height: 1.4;
+  padding-top: 8px; border-top: 1px solid var(--hair);
+}
