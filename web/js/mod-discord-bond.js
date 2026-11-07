@@ -27,6 +27,12 @@
   var CASE_STATUS = { 0: 'open', 1: 'liquidated', 2: 'dismissed' };
   var REASONS = ['unspecified', 'rate / flood', 'near-duplicate', 'mass-mention', 'link-flood', 'invite-spam', 'post-join burst'];
 
+  // network-aware "live · <net>" label: this one page is served on both networks.
+  (function () {
+    var lv = document.querySelector('.blive');
+    if (lv) lv.textContent = 'live · ' + ((window.FTB_CONFIG && window.FTB_CONFIG.network) === 'MainNet' ? 'mainnet' : 'testnet');
+  })();
+
   var bondAmountBase = null; // BigInt, once read from the chain
   var myBondId = null;       // bond id for the connected user's Discord id; set by checkMyBond
 
