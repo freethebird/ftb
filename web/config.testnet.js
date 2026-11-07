@@ -43,7 +43,7 @@ window.FTB_CONFIG = {
   // #1: ftb-node (1984.is Reykjavík) - neo-go T5 node behind Caddy TLS; syncs via
   // NeoFS block fetcher. HTTPS so the deployed site can call it (no mixed content).
   rpcs: [
-    'https://freethebird.co/rpc'
+    'https://freethebird.co/rpc-testnet'
     // 'https://node2.ftb.example',
     // 'https://node3.ftb.example',
     // 'https://node4.ftb.example',

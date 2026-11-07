@@ -56,18 +56,39 @@
     else { note = NET === 'MainNet' ? ' (UNATTESTED public mainnet endpoint)' : ' (UNATTESTED public testnet endpoint)'; attested = false; }
     n.textContent = 'rpc: ' + url + note;
     try { n.dataset.attested = attested ? '1' : '0'; } catch (e) {} // lets the UI style unattested reads
+    reflectPick(url);
+  }
+  // keep the dropdown honest: with no explicit user choice, show the node actually
+  // served (normally the FTB node; a public fallback only if ours is unreachable).
+  function reflectPick(url) {
+    var sel = $('rpcPick'); if (!sel) return;
+    var mp = null; try { mp = localStorage.getItem('ftb_rpc_pick'); } catch (e) {}
+    if (mp === '__auto__') return;                 // user opted into auto - leave it
+    if (mp && RPCS.indexOf(mp) >= 0) return;       // user pinned a node - leave it
+    for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === url) { sel.value = url; return; } }
   }
   function ownStored() { try { return localStorage.getItem('ftb_rpc'); } catch (e) { return null; } }
 
+  // the default serves the attested primary (RPCS[0] - the FTB node when config.rpcs
+  // is set); a stored per-node choice overrides it, and '__auto__' opts into
+  // fastest-wins. primaryPick falls back to autoPick if our node is unreachable.
   function pick() {
     var manual = null; try { manual = localStorage.getItem('ftb_rpc_pick'); } catch (e) {}
+    if (manual === '__auto__') return autoPick();
     if (manual && RPCS.indexOf(manual) >= 0) {
       return call(manual, 'getblockcount').then(function (h) {
         if (+h > 0) { RPC = manual; paintNote(RPC); return RPC; }
         return autoPick();
       }).catch(function () { return autoPick(); });
     }
-    return autoPick();
+    return primaryPick();
+  }
+  function primaryPick() {
+    var p = RPCS[0]; if (!p) return autoPick();
+    return call(p, 'getblockcount').then(function (h) {
+      if (+h > 0) { RPC = p; paintNote(RPC); return RPC; }
+      return autoPick();
+    }).catch(function () { return autoPick(); });
   }
   function autoPick() {
     return Promise.all(RPCS.map(function (url) {
@@ -163,19 +184,26 @@
     sel.id = 'rpcPick'; sel.className = 'rpcpick';
     sel.title = 'switch RPC node'; sel.setAttribute('aria-label', 'switch RPC node');
     function opt(v, label) { var o = document.createElement('option'); o.value = v; o.textContent = label; return o; }
-    sel.appendChild(opt('', 'auto (fastest)'));
-    RPCS.forEach(function (u) { sel.appendChild(opt(u, hostShort(u))); });
+    var attested = CFG.rpcs || [];
+    function label(u) { return attested.indexOf(u) >= 0 ? hostShort(u) + ' (FTB node)' : hostShort(u); }
+    RPCS.forEach(function (u) { sel.appendChild(opt(u, label(u))); });   // FTB node first = default
+    sel.appendChild(opt('__auto__', 'auto (fastest)'));
     if ($('ovRpc')) sel.appendChild(opt('__own__', 'your own node...'));
-    try { var cur = localStorage.getItem('ftb_rpc_pick') || ''; if ([''].concat(RPCS, '__own__').indexOf(cur) >= 0) sel.value = cur; } catch (e) {}
+    // default selection is the attested FTB node (RPCS[0]); a stored choice wins.
+    try {
+      var cur = localStorage.getItem('ftb_rpc_pick') || '';
+      var valid = cur === '__auto__' || (cur === '__own__' && $('ovRpc')) || RPCS.indexOf(cur) >= 0;
+      sel.value = valid ? cur : (RPCS[0] || '');
+    } catch (e) { sel.value = RPCS[0] || ''; }
     sel.addEventListener('change', function () {
       var v = sel.value;
-      if (v === '__own__') { var ov = $('ovRpc'); if (ov) ov.hidden = false; try { sel.value = localStorage.getItem('ftb_rpc_pick') || ''; } catch (e) {} return; }
-      if (!v) { try { localStorage.removeItem('ftb_rpc_pick'); } catch (e) {} pick().then(function () { if (window.FtbState) window.FtbState.emit('rpc', RPC); }, function () {}); return; }
+      if (v === '__own__') { var ov = $('ovRpc'); if (ov) ov.hidden = false; try { sel.value = localStorage.getItem('ftb_rpc_pick') || (RPCS[0] || ''); } catch (e) {} return; }
+      if (v === '__auto__') { try { localStorage.setItem('ftb_rpc_pick', '__auto__'); } catch (e) {} autoPick().then(function () { if (window.FtbState) window.FtbState.emit('rpc', RPC); }, function () {}); return; }
       call(v, 'getblockcount').then(function (h) {
         if (!(+h > 0)) throw new Error('unhealthy');
         RPC = v; try { localStorage.setItem('ftb_rpc_pick', v); } catch (e) {} paintNote(v);
         if (window.FtbState) window.FtbState.emit('rpc', v);
-      }).catch(function () { try { sel.value = localStorage.getItem('ftb_rpc_pick') || ''; } catch (e) {} });
+      }).catch(function () { try { sel.value = localStorage.getItem('ftb_rpc_pick') || (RPCS[0] || ''); } catch (e) {} });
     });
     note.parentNode.insertBefore(sel, note.nextSibling);
   }

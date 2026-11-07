@@ -40,11 +40,11 @@ window.FTB_CONFIG = {
     gas: '0xd2a4cff31913016155e38e474a2c06d08be276cf'
   },
 
-  // community MainNet nodes lead; public mainnet endpoints are appended automatically.
-  // empty until the first community MainNet node is stood up - the page then reads
-  // from the public fallback and says so in #rpcNote.
+  // the FTB MainNet node (1984, Reykjavik) leads and is the menu default; the public
+  // mainnet endpoints below are appended as dropdown fallbacks. served over Caddy TLS
+  // at /rpc-mainnet so the deployed site reads it with no mixed content.
   rpcs: [
-    // 'https://node1.ftb.example'
+    'https://freethebird.co/rpc-mainnet'
   ],
 
   // known-good public Neo N3 MainNet RPCs - offered in the node dropdown so users can switch
