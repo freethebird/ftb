@@ -5,3 +5,14 @@
 #cmdList .cmdt{color:var(--ink); font-size:var(--fs-small); line-height:1.6; overflow-wrap:anywhere}
 .cmdhd{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
 #cmdCount{color:var(--faint); font-size:var(--fs-meta); letter-spacing:.06em; text-transform:uppercase}
+
+/* ballot motion readability (fix: the question was truncated and never shown in full).
+   never ellipsis the question in the list, and show the full motion at the top of the
+   expanded ballot, just above the vote buttons. */
+.ballotmenu .poolrow > summary{ align-items: start; }
+.ballotmenu .bq{ white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; }
+.ballotmenu .pr-detail.bdetail .bqfull{
+  grid-column: 1 / -1;
+  font-size: 14px; line-height: 1.45; color: var(--ink);
+  margin: 0 0 6px; padding-bottom: 10px; border-bottom: 1px solid var(--hair);
+}

@@ -101,7 +101,7 @@
     var d = el('details', 'poolrow'); if (isFirst) d.setAttribute('open', '');
     var sm = el('summary');
     sm.appendChild(el('span', 'bnum', ('00' + (idx + 1)).slice(-3)));
-    sm.appendChild(el('span', 'bq', b.question));
+    var bqEl = el('span', 'bq', b.question); bqEl.title = b.question; sm.appendChild(bqEl);
     // result: leader (bold) · runner-up, built with DOM so option labels stay text
     var res = el('span', 'bres');
     opts.forEach(function (o, i) {
@@ -117,6 +117,7 @@
     d.appendChild(sm);
 
     var det = el('div', 'pr-detail bdetail');
+    det.appendChild(el('div', 'bqfull', b.question)); // full motion, above the vote buttons
     var bo = el('div', 'bopts');
     opts.forEach(function (o, i) {
       var row = el('div', 'bopt');
