@@ -87,6 +87,7 @@ window.FTB_CONFIG = {
 
   // AMM pairs for ratio tracking, once pools exist on MainNet.
   pairs: [
-    { label: 'GAS/FTB',  a: 'GAS', b: 'FTB' }
+    { label: 'GAS/FTB',  a: 'GAS', b: 'FTB' },
+    { label: 'NEO/FTB',  a: 'NEO', b: 'FTB' }
   ]
 };
