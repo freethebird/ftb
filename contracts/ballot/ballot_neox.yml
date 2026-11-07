@@ -1,0 +1,25 @@
+name: FtbBallotNeoX
+safemethods:
+  - tally
+  - voted
+  - numOptions
+  - root
+  - endBlock
+events:
+  - name: Configured
+    parameters:
+      - name: root
+        type: ByteArray
+      - name: numOptions
+        type: Integer
+      - name: endBlock
+        type: Integer
+  - name: Voted
+    parameters:
+      - name: account
+        type: Hash160
+      - name: option
+        type: Integer
+      - name: weight
+        type: Integer
+permissions: []

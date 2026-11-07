@@ -85,8 +85,23 @@ window.FTB_CONFIG = {
   // 100,000,000 FTB, r = 0.173173, electorate 577,458,329.20 FLM-equiv (R6 tree, root 235e7118).
   governance: { ratio: 0.173173, electorate: 577458329.20, unsealAt: '2027-01-01T00:00:00Z' }, // unsealAt: published ISO date the sealed gov contracts renounce (TestNet soak as the safety net; no external audit); '' => "sealed"
 
-  // no live ballot at MainNet launch
-  ballot: { question: '', options: [] },
+  // live expansion mandate ballots (ftb-expansion-ballots.md). One contract per proposal;
+  // the hash IS the proposal id. All four share the MainNet R6 electorate (root 235e7118)
+  // and an on-chain window enforced by each contract's endBlock (not just this UI date).
+  ballots: [
+    { hash: '0x5f1c2d33a12e22e60fe4973fbd864c39f1c7f1fc', // FtbBallotNeoX
+      question: 'Deploy FTB natively on Neo X, linked to Neo N3 by non-custodial HTLC only, never a bridge?',
+      options: ['Approve', 'Reject', 'Abstain'], endsAt: '2026-11-22T05:00:00Z' },
+    { hash: '0x0fc842913762ae7f3eeffe04962de843358fef0d', // FtbBallotPredMkt
+      question: 'Build ownerless prediction markets resolved by FTB governance, with no external oracle or admin?',
+      options: ['Approve', 'Reject', 'Abstain'], endsAt: '2026-11-22T05:00:00Z' },
+    { hash: '0xa05e901f43c03d6dd2a91f96a13bade9777432e3', // FtbBallotPerps
+      question: 'Build ownerless perps and options on a reporter-keyless oracle, with isolated risk and no shared vault?',
+      options: ['Approve', 'Reject', 'Abstain'], endsAt: '2026-11-22T05:00:00Z' },
+    { hash: '0x1729499377d61a619e01a11615b130ee39a8621c', // FtbBallotXChain
+      question: 'Build non-custodial cross-chain swaps to Bitcoin, Monero and Zcash by HTLC, with no bridge or custody?',
+      options: ['Approve', 'Reject', 'Abstain'], endsAt: '2026-11-22T05:00:00Z' },
+  ],
 
   // AMM pairs for ratio tracking, once pools exist on MainNet.
   pairs: [

@@ -1,0 +1,10 @@
+{
+  "rpc": "https://mainnet1.neo.coz.io:443",
+  "wallet": "/Users/merlin/ftb-keys/ftb-mainnet-deploy.wallet.json",
+  "password_env": "FTB_DEPLOY_PASS",
+  "contracts_dir": "build",
+  "artifact": "ballot_xchain",
+  "merkle_root_hex": "235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4",
+  "num_options": 3,
+  "voting_blocks": 403200
+}

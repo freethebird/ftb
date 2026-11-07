@@ -38,6 +38,7 @@ type config struct {
 	Artifact      string `json:"artifact"`        // build artifact basename, e.g. "ballot_r4"
 	MerkleRootHex string `json:"merkle_root_hex"` // the v2 root (0x9a36b6a0…)
 	NumOptions    int    `json:"num_options"`     // same question as R2: the ratio vote, 2 options
+	VotingBlocks  int    `json:"voting_blocks"`   // voting window length in blocks; endBlock = current height + this
 }
 
 func check(err error) {
@@ -67,6 +68,9 @@ func main() {
 	check(err)
 	if len(root) != 32 {
 		check(fmt.Errorf("merkle root must be 32 bytes, got %d", len(root)))
+	}
+	if cfg.VotingBlocks <= 0 {
+		check(fmt.Errorf("voting_blocks must be positive, got %d", cfg.VotingBlocks))
 	}
 
 	cli, err := rpcclient.New(context.Background(), cfg.RPC, rpcclient.Options{})
@@ -103,13 +107,17 @@ func main() {
 	check(err)
 	fmt.Printf("deployed %s -> 0x%s  tx 0x%s\n", cfg.Artifact, h.StringLE(), txh.StringLE())
 
-	txh, vub, err = act.SendCall(h, "configure", root, cfg.NumOptions)
+	bc, err := cli.GetBlockCount()
+	check(err)
+	endBlock := int(bc) + cfg.VotingBlocks
+
+	txh, vub, err = act.SendCall(h, "configure", root, cfg.NumOptions, endBlock)
 	check(err)
 	_, err = act.WaitSuccess(context.Background(), txh, vub, err)
 	check(err)
 	fmt.Printf("  wired %-22s tx 0x%s\n", "configure", txh.StringLE())
 
-	fmt.Printf("\n%s LIVE. new ballot 0x%s (root 0x%s, %d options)\n",
-		cfg.Artifact, h.StringLE(), hex.EncodeToString(root), cfg.NumOptions)
+	fmt.Printf("\n%s LIVE. new ballot 0x%s (root 0x%s, %d options, closes at block %d / +%d blocks)\n",
+		cfg.Artifact, h.StringLE(), hex.EncodeToString(root), cfg.NumOptions, endBlock, cfg.VotingBlocks)
 	fmt.Printf("update web/config.testnet.js + web/config.js (ballot) and redeploy the front end.\n")
 }

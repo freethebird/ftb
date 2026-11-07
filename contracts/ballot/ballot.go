@@ -17,6 +17,7 @@ package ballot
 import (
 	"github.com/nspcc-dev/neo-go/pkg/interop"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/crypto"
+	"github.com/nspcc-dev/neo-go/pkg/interop/native/ledger"
 	"github.com/nspcc-dev/neo-go/pkg/interop/native/std"
 	"github.com/nspcc-dev/neo-go/pkg/interop/runtime"
 	"github.com/nspcc-dev/neo-go/pkg/interop/storage"
@@ -26,6 +27,7 @@ var (
 	keyOwner    = []byte{0x01}
 	keyRoot     = []byte{0x02} // the migration snapshot root (same as the migrator's)
 	keyNumOpts  = []byte{0x03} // number of options
+	keyEnd      = []byte{0x04} // last block index that accepts a vote (the voting window close)
 	prefixTally = []byte{0x10} // prefixTally + option byte -> accumulated weight
 	prefixVoted = []byte{0x11} // prefixVoted + account -> option chosen (one vote, ever)
 )
@@ -42,9 +44,10 @@ func _deploy(data any, isUpdate bool) {
 	storage.Put(storage.GetContext(), keyOwner, owner)
 }
 
-// Configure binds the migration snapshot root and the option count. Owner only, write-once:
-// a ballot's question and electorate must never change after publication.
-func Configure(merkleRoot []byte, numOptions int) {
+// Configure binds the migration snapshot root, the option count, and the block at which
+// voting closes. Owner only, write-once: a ballot's question, electorate and window must
+// never change after publication. endBlock is the last block index that accepts a vote.
+func Configure(merkleRoot []byte, numOptions int, endBlock int) {
 	requireOwner()
 	ctx := storage.GetContext()
 	if storage.Get(ctx, keyRoot) != nil {
@@ -56,9 +59,13 @@ func Configure(merkleRoot []byte, numOptions int) {
 	if numOptions < 2 || numOptions > 16 {
 		panic("configure: 2 to 16 options")
 	}
+	if endBlock <= ledger.CurrentIndex() {
+		panic("configure: endBlock must be in the future")
+	}
 	storage.Put(ctx, keyRoot, merkleRoot)
 	storage.Put(ctx, keyNumOpts, numOptions)
-	runtime.Notify("Configured", merkleRoot, numOptions)
+	storage.Put(ctx, keyEnd, endBlock)
+	runtime.Notify("Configured", merkleRoot, numOptions, endBlock)
 }
 
 // Vote casts the caller's snapshot weight behind one option. The proof is the voter's
@@ -75,6 +82,9 @@ func Vote(account interop.Hash160, amount int, option int, proof [][]byte) {
 	n := getIntCtx(ctx, keyNumOpts)
 	if n == 0 {
 		panic("vote: not configured")
+	}
+	if ledger.CurrentIndex() > getIntCtx(ctx, keyEnd) {
+		panic("vote: voting closed")
 	}
 	if option < 1 || option > n {
 		panic("vote: no such option")
@@ -134,6 +144,10 @@ func Voted(account interop.Hash160) int {
 }
 
 func NumOptions() int { return getInt(keyNumOpts) }
+
+// EndBlock exposes the last block index that accepts a vote, so the UI can show the real,
+// on-chain-enforced close rather than a front-end-only estimate.
+func EndBlock() int { return getInt(keyEnd) }
 
 // Root exposes the bound snapshot root so anyone can check it against the published one.
 func Root() []byte {

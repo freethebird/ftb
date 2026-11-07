@@ -71,3 +71,15 @@ for v in dividends_r2 lend_r2 bondvault_r2 treasury_r2; do
 		-m "build/$v.manifest.json"
 done
 echo "contracts compiled to build/"
+
+# Expansion mandate ballots (Neo X, prediction markets, perps/options, cross-chain HTLC).
+# One deployment per proposal; distinct manifest name -> distinct contract hash.
+for v in ballot_neox ballot_predmkt ballot_perps ballot_xchain; do
+  echo "compiling $v"
+  neo-go contract compile \
+    -i contracts/ballot/ballot.go \
+    -c "contracts/ballot/$v.yml" \
+    -o "build/$v.nef" \
+    -m "build/$v.manifest.json"
+done
+echo "expansion ballots compiled to build/"
