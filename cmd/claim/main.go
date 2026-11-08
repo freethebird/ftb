@@ -7,7 +7,7 @@
 // example the AMM seed wallet). Reusable for the MainNet treasury/LP claim.
 //
 //	FTB_DEPLOY_PASS=... go run ./cmd/claim -wallet <claimant.wallet.json> \
-//	  -proofs web/proofs_v4.json [-account N...] [-to N... -amount 1500]
+//	  -proofs web/proofs.json [-account N...] [-to N... -amount 1500]
 //
 // Pinned to neo-go v0.123; N3 addresses are network-agnostic. Amount is an exact
 // decimal string scaled by 8 (no float on the money path), same as cmd/sendtoken.
@@ -111,7 +111,7 @@ func main() {
 	rpcURL := flag.String("rpc", "https://testnet1.neo.coz.io:443", "RPC")
 	walletPath := flag.String("wallet", "cmd/deploy/testnet.wallet.json", "claimant wallet (NEP-6)")
 	passEnv := flag.String("passenv", "FTB_DEPLOY_PASS", "env var holding the wallet password")
-	proofsPath := flag.String("proofs", "web/proofs_v4.json", "proofs JSON (entries[].address/amount/proof)")
+	proofsPath := flag.String("proofs", "web/proofs.json", "proofs JSON (entries[].address/amount/proof)")
 	acctFlag := flag.String("account", "", "address to claim for (default: the wallet's account)")
 	toFlag := flag.String("to", "", "optional: transfer part of the minted FTB to this address")
 	amtFlag := flag.String("amount", "", "optional: FTB amount (decimal) to transfer to -to")

@@ -18,7 +18,7 @@ ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l | awk "\$2==\
 IPNS="$(ssh "$HOST" 'sudo -u ipfs IPFS_PATH=/var/lib/ipfs ipfs key list -l' | awk '$2=="ftb" {print $1}' | tr -d '[:space:]')"
 
 echo "==> Staging front-end from: $WEB_DIR"
-# -L resolves symlinks (web/proofs.json -> ../../proofs.json) so IPFS gets real files.
+# -L resolves any symlinks so IPFS gets real files.
 # A stale local beat.json never rides along — the stamp below is the only one.
 # archive/ (frozen pre-split designs + their builders) is reference weight, not
 # runtime: it stays in the repo but never gets pinned (WEB-04).

@@ -32,10 +32,10 @@ const (
 	decimals = 8
 	one      = 100_000_000 // 1 FTB in base units
 	// Audit item FTB-01: the committed hard cap, DECISIONS.md 18 Oct — 100,000,000 FTB
-	// flat, the governance ratio r = 100,000,000 ÷ 526,782,179.10 = 0.189832 FTB per
+	// flat, the governance ratio r = 100,000,000 ÷ 577,458,329.20225836 = 0.173173 FTB per
 	// FLM/FLOCKS applied at claim time by the migrator (the tree stays in FLM units,
-	// so 1 FLM of snapshot = 1 vote). Claims total ~57M FTB (the 4,830-wallet tree
-	// × r); the rest of the cap is unclaimable headroom, never printed.
+	// so 1 FLM of snapshot = 1 vote). Claims draw from the v4 snapshot tree (5,233
+	// wallets) at r; the rest of the cap is unclaimable headroom, never printed.
 	maxSupply = 10000000000000000
 )
 

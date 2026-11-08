@@ -65,7 +65,7 @@ window.FTB_CONFIG = {
   statusUrl: 'https://freethebird.co/status.json',
 
   // the published migration proofs (also on IPFS; keep the CID in the repo)
-  proofsUrl: './proofs_v4.json',
+  proofsUrl: './proofs.json',
   merkleRoot: '0x235e7118608baf1880ef0fd50ed291900cbff26f6447725765403f85da1e75b4',
 
   // set these only while a vote is live (the two published addresses)

@@ -7,8 +7,8 @@
 // the FTB it mints at the 100M cap, and its merkle proof. The claim signature
 // runs only for the connected wallet, one claim per address, verified on-chain.
 //
-// Data: claim_breakdown_v3.json (small, loaded upfront - drives the whole
-// explorer) and proofs_v3.json (the 5k-leaf proof set, loaded lazily only when
+// Data: claim_breakdown_v4.json (small, loaded upfront - drives the whole
+// explorer) and proofs.json (the 5k-leaf proof set, loaded lazily only when
 // a wallet actually claims).
 //
 // Owns (writes only these): #migState, #supplyLine, #capLine, #refreshBtn,
@@ -22,7 +22,7 @@
   var CFG = FtbState.CFG, C = FtbState.C;
 
   // v3 / R5 final tree - the files this page serves (committed beside it).
-  var PROOFS_URL = './proofs_v4.json';
+  var PROOFS_URL = './proofs.json';
   var BREAKDOWN_URL = './claim_breakdown_v4.json';
 
   // the committed cap arithmetic (DECISIONS.md): hard cap 100,000,000 FTB =
@@ -61,7 +61,7 @@
   function loadProofs() {
     if (proofsIdx) return Promise.resolve(proofsIdx);
     return fetch(PROOFS_URL).then(function (r) {
-      if (!r.ok) throw new Error('proofs_v4.json not found'); return r.json();
+      if (!r.ok) throw new Error('proofs.json not found'); return r.json();
     }).then(function (pf) {
       proofsIdx = {}; for (var i = 0; i < pf.entries.length; i++) proofsIdx[pf.entries[i].address] = pf.entries[i];
       return proofsIdx;
@@ -201,7 +201,7 @@
     }
     loadProofs().then(function (idx) {
       var e = idx[addr];
-      if (!e) { FtbShell.showPlan('proof unavailable', 'could not find a proof for this address in proofs_v4.json.', [['address', addr]], null); return; }
+      if (!e) { FtbShell.showPlan('proof unavailable', 'could not find a proof for this address in proofs.json.', [['address', addr]], null); return; }
       var ftb = ftbOf(e.amount);
       var plan = FtbState.dapi.claim(FtbState.account, e.amount, e.proof);
       FtbShell.showPlan('claim ' + fmt2(ftb.toString()) + ' FTB',

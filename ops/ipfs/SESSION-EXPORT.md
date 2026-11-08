@@ -47,7 +47,7 @@ Rules learned the hard way:
 ## 4. Repo layout (github.com/freethebird/ftb)
 
 ```
-ftb/web/                     static front-end (no build step; proofs.json is a symlink)
+ftb/web/                     static front-end (no build step)
 ftb/ops/ipfs/
   ipfs-node-setup.sh         full node bootstrap (Kubo + systemd + ufw) for any Ubuntu 24.04 VM
   ftb-deploy-from-git.sh     CURRENT deploy model: runs ON the node, pulls canonical git,
