@@ -57,7 +57,7 @@
         var plan = FtbState.dapi.claim(FtbState.account, en.amount, en.proof);
         FtbState.quoteFtb(en.amount).then(function (q) {
           FtbShell.showPlan('claim ' + fmt(q) + ' FTB',
-            'one claim per address, verified on-chain against the published merkle root. the migrator converts at the committed r = 0.189832 (1 FLM/FLOCKS = 0.189832 FTB). check the hashes in section IV before you sign.',
+            'one claim per address, verified on-chain against the published merkle root. the migrator converts at the committed r = 0.173173 (1 FLM/FLOCKS = 0.173173 FTB). check the hashes in section IV before you sign.',
             [['address', en.address],
              ['entitlement', fmt(en.amount) + ' FLM-equiv'],
              ['you receive', fmt(q) + ' FTB'],

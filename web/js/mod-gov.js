@@ -1,9 +1,10 @@
 // mod-gov.js - module 5: governance (MODULES.md). v0.11 - serialized ballot menu.
 // The live ballots rendered as a disclosure menu: one row per ballot (number,
 // question, running result, and whether the connected wallet voted), opening to
-// that ballot's own option bars, turnout donut, and vote options. Weight is your
-// snapshot balance in FLM (1 FLM = 1 vote), proven with the same merkle proof as
-// the claim. Also owns the stat-band "active ballots" tile (#tBallots).
+// that ballot's own option bars, turnout donut, and vote options. Weight is shown
+// in FTB (your snapshot holding); the on-chain vote is weighted by the FLM-equiv
+// entitlement, proven with the same merkle proof as the claim. Also owns the
+// stat-band "active ballots" tile (#tBallots).
 //
 // Owns (writes only these): #vote card - #ballotMenu, #govRefresh - and the
 // stat tile #tBallots. The single-ballot ids (#govQ/#govHint/#govBody/#govDonut/
@@ -243,10 +244,11 @@
         }
         var plan = FtbState.dapi.ballotVote(FtbState.account, en.amount, idx, en.proof, b.hash);
         FtbShell.showPlan('vote: ' + label,
-          'your weight is your snapshot balance in FLM - 1 FLM = 1 vote - proven with the same merkle proof as your claim. one vote per address per ballot, counted on-chain.',
+          'your weight is your snapshot FTB holding, proven with the same merkle proof as your claim. one vote per address per ballot, counted on-chain. the snapshot basis is the proof-bound figure the vote carries.',
           [['question', b.question],
            ['option', '#' + idx + ' ' + label],
-           ['weight', fmt(en.amount) + ' FLM'],
+           ['weight', fmt(FtbDapi.util.ftbOf(en.amount)) + ' FTB'],
+           ['snapshot basis', fmt(en.amount) + ' FLM-equiv'],
            ['ballot contract', b.hash],
            ['what you sign', plan.summary]],
           plan);

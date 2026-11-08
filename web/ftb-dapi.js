@@ -363,7 +363,7 @@
   FtbDapi.prototype.claim = function (account, amountBase, proofHexArray) {
     var proof = A.arr((proofHexArray || []).map(function (h) { return A.bytesHex(h); }));
     return this._w(this._need('migrator'), 'claim', [A.h160(account), A.int(amountBase), proof],
-      'Claim ' + fromBaseUnits(amountBase) + ' FLM-equiv as ' + fromBaseUnits(ftbOf(amountBase)) + ' FTB (r = 0.189832) for ' + account);
+      'Claim ' + fromBaseUnits(amountBase) + ' FLM-equiv as ' + fromBaseUnits(ftbOf(amountBase)) + ' FTB (r = 0.173173) for ' + account);
   };
   // ---- FtbLoanBook: oracleless, keyless P2P term loans (post / take / repay / close / cancel / withdraw) ----
   // Value moves via NEP-17 transfer with a typed data payload the contract decodes in
@@ -410,8 +410,9 @@
   // On-chain weighted vote (preferred over the dust-signal vote above): proves snapshot weight
   // with the SAME migration Merkle proof, one vote per snapshot address. proofHexArray is the
   // array of hex node hashes from proofs.json for `account`; amountBase is its snapshot balance
-  // in FLM-equivalent base units — the genesis vote weighs exactly 1 FLM = 1 vote (DECISIONS.md
-  // 18 Oct). The ballot contract is deployed per proposal; its hash IS the proposal id.
+  // in FLM-equivalent base units (the on-chain weight; the proof binds this exact figure). The UI
+  // shows it as FTB = floor(amount × r), the holder's minted balance, so the ranking is identical.
+  // The ballot contract is deployed per proposal; its hash IS the proposal id.
   FtbDapi.prototype.ballotVote = function (account, amountBase, option, proofHexArray, hashOverride) {
     var proof = A.arr((proofHexArray || []).map(function (h) { return A.bytesHex(h); }));
     // one contract per proposal: the hash rides with the ballot config entry;
@@ -419,7 +420,7 @@
     var hash = hashOverride || this._need('ballot');
     return this._w(hash, 'vote',
       [A.h160(account), A.int(amountBase), A.int(option), proof],
-      'Vote option #' + option + ' with weight ' + fromBaseUnits(amountBase) + ' FLM (1 FLM = 1 vote) for ' + account);
+      'Vote option #' + option + ' with weight ' + fromBaseUnits(ftbOf(amountBase)) + ' FTB (snapshot ' + fromBaseUnits(amountBase) + ' FLM-equiv, merkle-proof bound) for ' + account);
   };
   // Submit a proposal to the board (registry v2): the exact bond IS the transfer amount and
   // the proposal rides as the payment data [kind, ref, meta]. The registry escrows the bond;
@@ -547,10 +548,10 @@
     return function () { global.removeEventListener(name, wrapped); };
   };
 
-  // exact mirror of migrator.quote() on-chain (DECISIONS.md 18 Oct): the committed
-  // conversion r = 100,000,000 FTB ÷ 526,782,179.10 FLM-equiv = 0.189832, computed in
-  // integers with floor semantics — floor(amount × 10^16 / 52,678,217,910,000,000).
-  var RATIO_NUM = 10000000000000000n, RATIO_DEN = 52678217910000000n;
+  // exact mirror of migrator.quote() on-chain (contracts/ftb_migrator_r6): the committed
+  // conversion r = 100,000,000 FTB ÷ 577,458,329.20225836 FLM-equiv = 0.173173, computed in
+  // integers with floor semantics — floor(amount × 10^16 / 57,745,832,920,225,836).
+  var RATIO_NUM = 10000000000000000n, RATIO_DEN = 57745832920225836n;
   function ftbOf(flmBase) { return (BigInt(flmBase) * RATIO_NUM / RATIO_DEN).toString(); }
 
   // expose helpers for pages and tests

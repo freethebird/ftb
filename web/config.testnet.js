@@ -72,7 +72,7 @@ window.FTB_CONFIG = {
   vote: { ftb: '', wait: '' },
 
   // committed economics (DECISIONS.md 18 Oct): hard cap 100,000,000 FTB.
-  // r = 100,000,000 ÷ 526,782,179.10 = 0.189832 FTB per FLM/FLOCKS - the migrator
+  // r = 100,000,000 ÷ 577,458,329.20225836 = 0.173173 FTB per FLM/FLOCKS - the migrator
   // mints floor(entitlement × r), verifiable on-chain via migrator.quote().
   // the genesis vote weighs 1 FLM = 1 vote over the v2 claim tree (R4 ballot, 19 Oct -
   // 5,194 wallets, 526,782,179.10 FLM-equiv electorate, incl. dev + salvage wallets);
