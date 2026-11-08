@@ -20,6 +20,8 @@
   var CFG = FtbState.CFG;
   var NET = CFG.network || 'TestNet';
   var LSK = 'ftb.wallet.linked'; // per-browser intent flag (never an address or key)
+  var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+  var NOPROV = isMobile ? '[ open this site in the NeoLine mobile dApp browser ]' : '[ install NeoLine or a dApi wallet ]';
 
   function linked(v) {
     try {
@@ -76,7 +78,7 @@
       $('idstate').textContent = '[ reconnecting... ]';
       return dapi.connect().then(function () { adopt(); })
         .catch(function () { linked(false); setState(); });
-    }).catch(function () { $('idstate').textContent = '[ install NeoLine or a dApi wallet ]'; });
+    }).catch(function () { $('idstate').textContent = NOPROV; });
     dapi.on && dapi.on('accountChanged', function (a) {
       FtbState.account = a && a.address ? a.address : null;
       if (FtbState.dapi) FtbState.dapi.account = FtbState.account;
@@ -91,7 +93,7 @@
   // the seam other modules use to nudge the user toward connecting - they never
   // write #idstate directly (R1: one writer per element).
   window.FtbWallet = {
-    needConnect: function () { $('idstate').textContent = '[ connect first ]'; }
+    needConnect: function () { $('idstate').textContent = (FtbState.dapi && FtbState.dapi.n3) ? '[ connect first ]' : NOPROV; }
   };
 
   setState();
