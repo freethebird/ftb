@@ -1,7 +1,0 @@
-/* connect-check.css - diagnostic only; self-origin so the self-only CSP allows it. */
-body{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.5;margin:16px;max-width:100%;color:#111;background:#fff}
-h1{font-size:18px}
-#out>div{word-break:break-all;white-space:pre-wrap;border-bottom:1px solid #eee;padding:3px 0}
-#out>div.hd{font-weight:bold;color:#06c;border-bottom:0;margin-top:10px}
-#out>div.yes{color:#070}
-#out>div.no{color:#999}

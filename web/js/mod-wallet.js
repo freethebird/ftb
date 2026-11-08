@@ -21,7 +21,7 @@
   var NET = CFG.network || 'TestNet';
   var LSK = 'ftb.wallet.linked'; // per-browser intent flag (never an address or key)
   var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
-  var NOPROV = isMobile ? '[ open this site in the NeoLine mobile dApp browser ]' : '[ install NeoLine or a dApi wallet ]';
+  var NOPROV = isMobile ? '[ mobile is read-only - connect on desktop with the NeoLine extension ]' : '[ install NeoLine or a dApi wallet ]';
 
   function linked(v) {
     try {
