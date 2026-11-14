@@ -2,18 +2,22 @@ module github.com/freethebird/ftb
 
 go 1.26.0
 
-// Toolchain floor: go1.27.3 patches crypto/x509 GO-2026-6809 (the `make vuln` /
+// Toolchain floor: go1.27.4 patches crypto/x509 GO-2026-6809 and net/http GO-2026-6859 (the `make vuln` /
 // govulncheck gate). Pinned here so the conformance gate uses the fixed stdlib
 // reproducibly, independent of any developer's system Go. Does not affect NEF output
 // (that comes from the neo-go compiler binary, not the host toolchain).
-toolchain go1.27.3
+toolchain go1.27.4
 
 // Pin to the current neo-go. `go mod tidy` will resolve the exact patch and deps.
 // neo-go provides the Go->NeoVM contract compiler, the SDK, and the node, so this
 // single dependency covers contracts, backend, and node (one language end to end).
 require github.com/nspcc-dev/neo-go v0.123.0
 
-require github.com/nspcc-dev/neo-go/pkg/interop v0.0.0-20260827144453-45263cbaf873
+require (
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1
+	github.com/nspcc-dev/neo-go/pkg/interop v0.0.0-20260827144453-45263cbaf873
+	github.com/stretchr/testify v1.12.1
+)
 
 require (
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
@@ -23,7 +27,6 @@ require (
 	github.com/consensys/gnark-crypto v0.21.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/decred/dcrd/crypto/ripemd160 v1.0.2 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
@@ -43,7 +46,6 @@ require (
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
