@@ -1,0 +1,17 @@
+# Foundry config for the Neo X (EVM) leg of FtbHtlc.
+# Reproducible bytecode: no metadata hash in the deployed bytes (bytecode_hash = none,
+# cbor_metadata = false), so the artifact is a byte-deterministic function of the source,
+# matching the N3 side's NEF determinism. evm_version is pinned to paris for maximal Neo X
+# fork compatibility (no PUSH0, no transient storage, no MCOPY); confirm against the Neo X
+# target fork before a mainnet build and raise it only if the chain supports it.
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+libs = ["lib"]
+solc = "0.8.26"
+evm_version = "paris"
+optimizer = true
+optimizer_runs = 200
+bytecode_hash = "none"
+cbor_metadata = false

@@ -1,0 +1,34 @@
+{
+  "_comment": "ftb-solver serve config. HOLDS FUNDED KEYS - copy to solver.json (gitignored) and fill in. The solver market-makes between the two legs: it fronts liquidity on the destination chain and receives the user's funds on the source chain, keeping the fee.",
+  "listen": ":8787",
+  "corsOrigin": "https://freethebird.co",
+  "m": 2,
+  "feeBps": 20,
+  "minAmount": "1000000",
+  "maxAmount": "1000000000000000000",
+  "maxOpen": 64,
+  "n3": {
+    "chain": "n3",
+    "rpc": "https://rpc.t5.n3.nspcc.ru:20331",
+    "contract": "0x3d7e6916972f550ba3405204d3f3bf328996d656",
+    "token": "0xd2a4cff31913016155e38e474a2c06d08be276cf",
+    "wallet": "/Users/you/ftb-keys/solver-n3.wallet.json",
+    "walletPass": "...",
+    "account": "N<solver n3 address>",
+    "blockMs": 15000,
+    "confs": 1,
+    "claimSeconds": 600,
+    "decimals": 8
+  },
+  "neox": {
+    "chain": "neox",
+    "rpc": "https://testnet.rpc.banelabs.org/",
+    "contract": "0x607FBFC1E22Dcbe152D6e8A7ffD7902f0DD7da85",
+    "token": "0x0000000000000000000000000000000000000000",
+    "key": "<solver neox secp256k1 hex>",
+    "blockMs": 1000,
+    "confs": 5,
+    "claimSeconds": 600,
+    "decimals": 18
+  }
+}

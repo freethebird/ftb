@@ -1,0 +1,486 @@
+package main
+
+import (
+	"context"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"log"
+	"math/big"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/freethebird/ftb/pkg/fasp"
+)
+
+// serve runs the solver as a service: it takes the OTHER side of a user's cross-chain
+// swap. On a request it locks the destination leg first (so the user risks nothing),
+// hands the user the instructions to lock their source leg, then a janitor watches both
+// chains and claims the user's leg once the user reveals the secret - or refunds the
+// solver's leg if the swap stalls past its timelock. The HTTP intake is a liveness
+// dependency only: the on-chain HTLC bounds safety, so a misbehaving or offline solver
+// can never take a protocol-following user's funds (they refund after their timelock).
+
+type serveCfg struct {
+	Listen     string `json:"listen"`     // e.g. ":8787"
+	M          int    `json:"m"`          // congestion multiplier (>= 2)
+	FeeBps     int    `json:"feeBps"`     // solver fee, basis points of the input
+	MinAmount  string `json:"minAmount"`  // decimal base units (inclusive)
+	MaxAmount  string `json:"maxAmount"`  // decimal base units (inclusive)
+	MaxOpen    int    `json:"maxOpen"`    // cap on concurrent in-flight swaps (0 => 64)
+	CorsOrigin string `json:"corsOrigin"` // the front-end origin allowed to call, or "*"
+	N3         legCfg `json:"n3"`         // the Neo N3 leg (chain must be "n3")
+	NeoX       legCfg `json:"neox"`       // the Neo X leg (chain must be "neox")
+}
+
+type swapRec struct {
+	mu         sync.Mutex
+	Hashlock   [32]byte
+	Dir        string // "n3_to_neox" | "neox_to_n3"
+	AmountIn   *big.Int
+	AmountOut  *big.Int
+	UserA      string // user's address on the source (A) leg
+	TimelockA  int64
+	TimelockB  int64
+	TokenA     string
+	TokenB     string
+	State      string // b_locked | a_claimed | refunded | failed
+	Created    time.Time
+	sw         *fasp.Swap
+	legA, legB leg
+}
+
+type server struct {
+	cfg     serveCfg
+	legN3   leg
+	legX    leg
+	minA    *big.Int
+	maxA    *big.Int
+	writeMu sync.Mutex // serializes every solver on-chain write (one tx in flight per process => no nonce races)
+	mu      sync.Mutex
+	swaps   map[string]*swapRec
+}
+
+func serveCmd(args []string) {
+	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	cfgPath := fs.String("config", "", "path to the solver service config JSON (holds funded keys)")
+	_ = fs.Parse(args)
+	if *cfgPath == "" {
+		fail("serve: -config is required")
+	}
+	raw, err := os.ReadFile(*cfgPath)
+	if err != nil {
+		fail(err.Error())
+	}
+	var cfg serveCfg
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		fail("serve: config: " + err.Error())
+	}
+	if cfg.M < fasp.MinMultiplier {
+		cfg.M = fasp.MinMultiplier
+	}
+	if cfg.Listen == "" {
+		cfg.Listen = ":8787"
+	}
+	if cfg.MaxOpen <= 0 {
+		cfg.MaxOpen = 64
+	}
+	if cfg.N3.Chain != "n3" || cfg.NeoX.Chain != "neox" {
+		fail("serve: config n3.chain must be \"n3\" and neox.chain must be \"neox\"")
+	}
+	minA, ok := new(big.Int).SetString(cfg.MinAmount, 10)
+	if !ok || minA.Sign() < 0 {
+		fail("serve: minAmount must be a non-negative decimal integer string")
+	}
+	maxA, ok := new(big.Int).SetString(cfg.MaxAmount, 10)
+	if !ok || maxA.Sign() <= 0 || maxA.Cmp(minA) < 0 {
+		fail("serve: maxAmount must be a positive decimal >= minAmount")
+	}
+
+	if cfg.N3.Decimals <= 0 || cfg.NeoX.Decimals <= 0 {
+		fail("serve: n3.decimals and neox.decimals must be set (GAS: n3=8, neox=18)")
+	}
+
+	ctx := context.Background()
+	legN3, err := openSwapLeg(ctx, cfg.N3)
+	if err != nil {
+		fail("serve: n3 leg: " + err.Error())
+	}
+	legX, err := openSwapLeg(ctx, cfg.NeoX)
+	if err != nil {
+		fail("serve: neox leg: " + err.Error())
+	}
+	s := &server{cfg: cfg, legN3: legN3, legX: legX, minA: minA, maxA: maxA, swaps: map[string]*swapRec{}}
+
+	jctx, jcancel := context.WithCancel(ctx)
+	var jwg sync.WaitGroup
+	jwg.Add(1)
+	go func() { defer jwg.Done(); s.janitor(jctx) }()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/info", s.handleInfo)
+	mux.HandleFunc("/v1/swaps", s.handleSwaps)    // POST: request a swap
+	mux.HandleFunc("/v1/swaps/", s.handleSwapGet) // GET /v1/swaps/{hashlock}
+	srv := &http.Server{Addr: cfg.Listen, Handler: s.cors(mux), ReadHeaderTimeout: 10 * time.Second}
+
+	go func() {
+		log.Printf("ftb-solver serve: listening on %s  n3=%s  neox=%s  fee=%dbps", cfg.Listen, legN3.addr, legX.addr, cfg.FeeBps)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("serve: %v", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	log.Printf("serve: shutting down")
+	sctx, scancel := context.WithTimeout(ctx, 10*time.Second)
+	defer scancel()
+	_ = srv.Shutdown(sctx)
+	jcancel()
+	jwg.Wait()
+}
+
+// ---- HTTP ----
+
+func (s *server) cors(h http.Handler) http.Handler {
+	o := s.cfg.CorsOrigin
+	if o == "" {
+		o = "*"
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", o)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
+func writeJSON(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func httpErr(w http.ResponseWriter, code int, msg string) {
+	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+func (s *server) handleInfo(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"solver":     map[string]string{"n3": s.legN3.addr, "neox": s.legX.addr},
+		"contracts":  map[string]string{"n3": s.cfg.N3.Contract, "neox": s.cfg.NeoX.Contract},
+		"tokens":     map[string]string{"n3": s.cfg.N3.Token, "neox": s.cfg.NeoX.Token},
+		"feeBps":     s.cfg.FeeBps,
+		"m":          s.cfg.M,
+		"min":        s.cfg.MinAmount,
+		"max":        s.cfg.MaxAmount,
+		"directions": []string{"n3_to_neox", "neox_to_n3"},
+	})
+}
+
+type swapReq struct {
+	Direction string `json:"direction"`
+	Amount    string `json:"amount"`
+	UserN3    string `json:"userN3"`
+	UserNeoX  string `json:"userNeoX"`
+	Hashlock  string `json:"hashlock"`
+}
+
+// netOut applies the solver fee to a destination-scaled amount, FLOORING the user's credit
+// (Go bible IV.12 / DEX I7): the solver keeps the sub-unit dust, so rounding never leaks a
+// satoshi to the user. amountOut = floor(in * (10000 - feeBps) / 10000).
+func netOut(in *big.Int, feeBps int) *big.Int {
+	return new(big.Int).Div(new(big.Int).Mul(in, big.NewInt(int64(10000-feeBps))), big.NewInt(10000))
+}
+
+func (s *server) handleSwaps(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httpErr(w, http.StatusMethodNotAllowed, "POST only")
+		return
+	}
+	var req swapReq
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil {
+		httpErr(w, http.StatusBadRequest, "bad json: "+err.Error())
+		return
+	}
+	if req.Direction != "n3_to_neox" && req.Direction != "neox_to_n3" {
+		httpErr(w, http.StatusBadRequest, "direction must be n3_to_neox or neox_to_n3")
+		return
+	}
+	h, err := parseHashlock(req.Hashlock)
+	if err != nil {
+		httpErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	amountIn, ok := new(big.Int).SetString(req.Amount, 10)
+	if !ok || amountIn.Sign() <= 0 {
+		httpErr(w, http.StatusBadRequest, "amount must be a positive decimal integer string")
+		return
+	}
+	if amountIn.Cmp(s.minA) < 0 || amountIn.Cmp(s.maxA) > 0 {
+		httpErr(w, http.StatusBadRequest, fmt.Sprintf("amount out of range [%s, %s]", s.cfg.MinAmount, s.cfg.MaxAmount))
+		return
+	}
+	if req.UserN3 == "" || req.UserNeoX == "" {
+		httpErr(w, http.StatusBadRequest, "userN3 and userNeoX are required")
+		return
+	}
+
+	key := hex.EncodeToString(h[:])
+	s.mu.Lock()
+	if _, exists := s.swaps[key]; exists {
+		s.mu.Unlock()
+		httpErr(w, http.StatusConflict, "hashlock already requested")
+		return
+	}
+	if len(s.swaps) >= s.cfg.MaxOpen {
+		s.mu.Unlock()
+		httpErr(w, http.StatusServiceUnavailable, "solver is at capacity, retry shortly")
+		return
+	}
+	s.mu.Unlock()
+
+	// amountOut: rescale amountIn from the source decimals to the destination decimals,
+	// then take the fee. GAS is 8 decimals on N3 and 18 on Neo X, so the two legs are not
+	// the same base-unit scale; skipping the rescale underpays the user by ~10^10.
+	var srcDec, dstDec int
+	if req.Direction == "n3_to_neox" {
+		srcDec, dstDec = s.cfg.N3.Decimals, s.cfg.NeoX.Decimals
+	} else {
+		srcDec, dstDec = s.cfg.NeoX.Decimals, s.cfg.N3.Decimals
+	}
+	scaled := new(big.Int).Set(amountIn)
+	if dstDec >= srcDec {
+		scaled.Mul(scaled, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dstDec-srcDec)), nil))
+	} else {
+		scaled.Div(scaled, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(srcDec-dstDec)), nil))
+	}
+	// I7 / Go bible IV.12: credit floored via netOut, so rounding never leaks a satoshi to the user.
+	amountOut := netOut(scaled, s.cfg.FeeBps)
+	if amountOut.Sign() <= 0 {
+		httpErr(w, http.StatusBadRequest, "amount too small after fee")
+		return
+	}
+
+	// map direction -> (source leg A = user locks, dest leg B = solver locks)
+	var legA, legB leg
+	var tokenA, tokenB, userA, userB string
+	if req.Direction == "n3_to_neox" {
+		legA, legB = s.legN3, s.legX
+		tokenA, tokenB = s.cfg.N3.Token, s.cfg.NeoX.Token
+		userA, userB = req.UserN3, req.UserNeoX
+	} else {
+		legA, legB = s.legX, s.legN3
+		tokenA, tokenB = s.cfg.NeoX.Token, s.cfg.N3.Token
+		userA, userB = req.UserNeoX, req.UserN3
+	}
+
+	userT, solverT, err := fasp.ComputeTimelocks(legA.profile, legB.profile, s.cfg.M)
+	if err != nil {
+		httpErr(w, http.StatusInternalServerError, "ladder: "+err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
+	tlB, err := absTimelock(ctx, legB, solverT)
+	if err != nil {
+		httpErr(w, http.StatusBadGateway, "timelock B: "+err.Error())
+		return
+	}
+	tlA, err := absTimelock(ctx, legA, userT)
+	if err != nil {
+		httpErr(w, http.StatusBadGateway, "timelock A: "+err.Error())
+		return
+	}
+
+	sw := &fasp.Swap{
+		ChainA: legA.htlc, ChainB: legB.htlc,
+		UserA: userA, SolverA: legA.addr,
+		UserB: userB, SolverB: legB.addr,
+		TokenA: tokenA, TokenB: tokenB,
+		AmountA: amountIn, AmountB: amountOut,
+		TimelockA: tlA, TimelockB: tlB,
+		Hashlock: h,
+	}
+
+	// lock the destination leg (B) first - this is the solver fronting liquidity.
+	s.writeMu.Lock()
+	err = sw.SolverLockB()
+	s.writeMu.Unlock()
+	if err != nil {
+		httpErr(w, http.StatusBadGateway, "solver lock failed: "+err.Error())
+		return
+	}
+
+	rec := &swapRec{
+		Hashlock: h, Dir: req.Direction, AmountIn: amountIn, AmountOut: amountOut,
+		UserA: userA, TimelockA: tlA, TimelockB: tlB, TokenA: tokenA, TokenB: tokenB,
+		State: "b_locked", Created: time.Now(), sw: sw, legA: legA, legB: legB,
+	}
+	s.mu.Lock()
+	s.swaps[key] = rec
+	s.mu.Unlock()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"hashlock":  key,
+		"direction": req.Direction,
+		"amountIn":  amountIn.String(),
+		"amountOut": amountOut.String(),
+		"feeBps":    s.cfg.FeeBps,
+		"legB": map[string]any{ // what the solver locked FOR the user (the user will claim this)
+			"chain": legB.htlc.Name(), "contract": contractOf(s, legB), "token": tokenB,
+			"recipient": userB, "amount": amountOut.String(), "timelock": tlB, "refundAt": time.Now().Add(solverT).Unix(),
+		},
+		"legA": map[string]any{ // instructions: the user must lock this on the source chain
+			"chain": legA.htlc.Name(), "contract": contractOf(s, legA), "token": tokenA,
+			"payTo": legA.addr, "amount": amountIn.String(), "timelock": tlA, "refundAt": time.Now().Add(userT).Unix(),
+		},
+	})
+}
+
+func (s *server) handleSwapGet(w http.ResponseWriter, r *http.Request) {
+	key := strings.TrimPrefix(r.URL.Path, "/v1/swaps/")
+	if key == "" {
+		httpErr(w, http.StatusBadRequest, "hashlock required")
+		return
+	}
+	s.mu.Lock()
+	rec := s.swaps[key]
+	s.mu.Unlock()
+	if rec == nil {
+		httpErr(w, http.StatusNotFound, "unknown hashlock")
+		return
+	}
+	rec.mu.Lock()
+	state := rec.State
+	rec.mu.Unlock()
+	recA, okA := rec.sw.ChainA.Get(rec.Hashlock)
+	recB, okB := rec.sw.ChainB.Get(rec.Hashlock)
+	_, secretSeen := rec.sw.ChainB.Preimage(rec.Hashlock)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"hashlock": key, "direction": rec.Dir, "state": state,
+		"secretRevealed": secretSeen,
+		"legA":           onchainLeg(recA, okA),
+		"legB":           onchainLeg(recB, okB),
+	})
+}
+
+// ---- janitor: drives the solver's half of every live swap ----
+
+func (s *server) janitor(ctx context.Context) {
+	t := time.NewTicker(15 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			s.sweep(ctx)
+		}
+	}
+}
+
+func (s *server) sweep(ctx context.Context) {
+	s.mu.Lock()
+	recs := make([]*swapRec, 0, len(s.swaps))
+	for _, r := range s.swaps {
+		recs = append(recs, r)
+	}
+	s.mu.Unlock()
+	for _, rec := range recs {
+		s.drive(ctx, rec)
+	}
+}
+
+func (s *server) drive(ctx context.Context, rec *swapRec) {
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if rec.State != "b_locked" {
+		return
+	}
+	// 1) user revealed the secret on B => claim A (the solver's incoming leg).
+	if _, ok := rec.sw.ChainB.Preimage(rec.Hashlock); ok {
+		s.writeMu.Lock()
+		err := rec.sw.SolverClaimA()
+		s.writeMu.Unlock()
+		if err != nil {
+			log.Printf("swap %x: claim A failed: %v", rec.Hashlock[:6], err)
+			return
+		}
+		rec.State = "a_claimed"
+		log.Printf("swap %x: claimed A - settled", rec.Hashlock[:6])
+		return
+	}
+	// 2) past T_B and the user never claimed B => refund the solver's leg.
+	expired, err := s.pastTimelock(ctx, rec.legB, rec.TimelockB)
+	if err != nil {
+		return // transient read error; try again next sweep
+	}
+	if expired {
+		s.writeMu.Lock()
+		err := rec.sw.SolverRefundB()
+		s.writeMu.Unlock()
+		if err != nil {
+			log.Printf("swap %x: refund B failed: %v", rec.Hashlock[:6], err)
+			return
+		}
+		rec.State = "refunded"
+		log.Printf("swap %x: refunded B after T_B", rec.Hashlock[:6])
+	}
+}
+
+// pastTimelock reports whether the chain has passed an absolute timelock (height for a
+// Height chain, unix seconds for a Timestamp chain).
+func (s *server) pastTimelock(ctx context.Context, l leg, tl int64) (bool, error) {
+	if l.profile.Kind == fasp.Timestamp {
+		return time.Now().Unix() >= tl, nil
+	}
+	h, err := l.height(ctx)
+	if err != nil {
+		return false, err
+	}
+	return int64(h) >= tl, nil
+}
+
+// ---- helpers ----
+
+func parseHashlock(s string) ([32]byte, error) {
+	var h [32]byte
+	b, err := hex.DecodeString(strings.TrimPrefix(s, "0x"))
+	if err != nil || len(b) != 32 {
+		return h, errors.New("hashlock must be 32-byte hex")
+	}
+	copy(h[:], b)
+	return h, nil
+}
+
+func contractOf(s *server, l leg) string {
+	if l.addr == s.legN3.addr {
+		return s.cfg.N3.Contract
+	}
+	return s.cfg.NeoX.Contract
+}
+
+func onchainLeg(r fasp.SwapRecord, ok bool) map[string]any {
+	if !ok {
+		return map[string]any{"state": "none"}
+	}
+	st := map[fasp.SwapState]string{fasp.StateNone: "none", fasp.StateLocked: "locked", fasp.StateClaimed: "claimed", fasp.StateRefunded: "refunded"}
+	amt := ""
+	if r.Amount != nil {
+		amt = r.Amount.String()
+	}
+	return map[string]any{"state": st[r.State], "sender": r.Sender, "recipient": r.Recipient, "token": r.Token, "amount": amt, "timelock": r.Timelock}
+}

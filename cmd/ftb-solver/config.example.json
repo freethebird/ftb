@@ -1,0 +1,28 @@
+{
+  "_comment": "Template for ftb-solver run. Copy to config.json (gitignored) and fill in keys/wallet. legA is the user's leg (longer timelock), legB the solver's leg (shorter).",
+  "m": 2,
+  "legA": {
+    "chain": "n3",
+    "rpc": "https://testnet1.neo.coz.io:443",
+    "contract": "0x3d7e6916972f550ba3405204d3f3bf328996d656",
+    "token": "0xd2a4cff31913016155e38e474a2c06d08be276cf",
+    "amount": "100000",
+    "wallet": "/Users/you/ftb-keys/your.wallet.json",
+    "walletPass": "...",
+    "account": "NMK83aXpLED2xaWqFdUukNhiwihcurBsx9",
+    "blockMs": 15000,
+    "confs": 1,
+    "claimSeconds": 120
+  },
+  "legB": {
+    "chain": "neox",
+    "rpc": "https://testnet.rpc.banelabs.org/",
+    "contract": "0x607FBFC1E22Dcbe152D6e8A7ffD7902f0DD7da85",
+    "token": "0x0000000000000000000000000000000000000000",
+    "amount": "1000000000000000",
+    "key": "<32-byte secp256k1 hex>",
+    "blockMs": 1000,
+    "confs": 5,
+    "claimSeconds": 120
+  }
+}

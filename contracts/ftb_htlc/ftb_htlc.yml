@@ -1,0 +1,39 @@
+name: FtbHtlc
+safemethods:
+  - swap
+  - stateOf
+  - exists
+  - version
+events:
+  - name: Deployed
+    parameters:
+      - name: version
+        type: Integer
+  - name: Locked
+    parameters:
+      - name: hashlock
+        type: ByteArray
+      - name: sender
+        type: Hash160
+      - name: recipient
+        type: Hash160
+      - name: token
+        type: Hash160
+      - name: amount
+        type: Integer
+      - name: timelock
+        type: Integer
+  - name: Claimed
+    parameters:
+      - name: hashlock
+        type: ByteArray
+      - name: preimage
+        type: ByteArray
+  - name: Refunded
+    parameters:
+      - name: hashlock
+        type: ByteArray
+permissions:
+  - contract: '*'
+    methods:
+      - transfer
