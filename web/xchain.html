@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0a0a0a">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>free the bird &mdash; NEOX CHAIN</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20fill%3D'%230a0a0a'%2F%3E%3Cpath%20d%3D'M4%2020%20Q11%208%2016%2015%20Q21%208%2028%2020'%20stroke%3D'%23ededed'%20stroke-width%3D'2.6'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="p2-shell.css">
+<link rel="stylesheet" href="cpage.css">
+<link rel="stylesheet" href="xchain.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-main">
+    <div class="brand">
+      <a class="bird3" href="index.html" aria-label="Free the Bird"><svg viewBox="1 8.5 30 15.5" aria-hidden="true"><path d="M4 20 Q11 8 16 15 Q21 8 28 20" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg></a>
+      <a class="wordmark" href="index.html">FTB</a>
+    </div>
+    <div class="topright">
+      <span class="netswitch" role="group" aria-label="network">
+        <span class="cur net-test">testnet</span><a class="net-main" href="index.html">mainnet</a>
+      </span>
+      <button id="connectBtn">connect -&gt;</button>
+      <button id="disconnectBtn" hidden>disconnect</button>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="sections">
+    <div class="tabs-main">
+    <a href="librationzero.html">L&Oslash;</a>
+    <a href="index.html">trade</a>
+    <a class="cur" aria-current="page" href="xchain.html">neox chain</a>
+    <a href="lend.html">lend</a>
+    <a href="governance.html">governance</a>
+    <a href="stake.html">stake</a>
+    <a href="claim.html">claim</a>
+    <a href="analytics.html" aria-label="analytics" title="analytics"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3V20H21"/><path d="M7 14l3.5-4 3 2.5L20 6"/></svg></a>
+    <a href="explorer.html" aria-label="explorer" title="explorer"><svg class="navico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg></a>
+    <a href="academy.html">academy</a>
+    <a href="donate.html">donate</a>
+    <a href="node.html">node</a>
+    <a href="discord-bond.html">discord</a>
+    </div>
+    <span class="tabsep" aria-hidden="true"></span>
+    <div class="tabs-ext">
+    <a class="ext" href="https://cuetum.com/" target="_blank" rel="noopener noreferrer">cuetum &#8599;</a>
+    <a class="ext" href="https://github.com/freethebird/ftb" target="_blank" rel="noopener noreferrer">github &#8599;</a>
+    </div>
+  </nav>
+</header>
+<div class="statusline">
+  <span class="idstate" id="idstate">[ no wallet ]</span>
+  <span class="rpc" id="rpcNote">rpc: neo n3 testnet + neo x testnet</span>
+</div>
+
+<main class="cpage">
+  <h1 class="ctitle">swap<span class="clive">n3 &#8646; neo x &middot; atomic &middot; no bridge</span></h1>
+  <p class="csub">Move assets between FTB's homes with a hash-timelock swap. No bridge, no wrapped token, no custody &mdash; <b>a secret and two timers</b>. The solver locks on the far chain first; you commit only after you have verified that lock on-chain. If anything stalls, you refund after your own timelock. <b>Your funds are never at a counterparty's mercy.</b></p>
+
+  <section class="bsec">
+    <div class="bh"><span>// swap</span><span class="bstep" id="xDirLabel">neo n3 &rarr; neo x</span></div>
+    <div class="xlegs">
+      <div class="xleg">
+        <div>
+          <span class="side">you send</span>
+          <div class="asset"><span id="xSendSym">FTB</span><span class="chain" id="xSendChain">neo n3</span></div>
+          <div class="bal">from your connected wallet</div>
+        </div>
+        <div>
+          <input class="amt" id="xAmt" value="" placeholder="0.0000" inputmode="decimal" aria-label="amount to send">
+          <div class="bal">the amount you escrow</div>
+        </div>
+      </div>
+      <button class="xflip" id="xFlip" aria-label="flip direction">&#8645;</button>
+      <div class="xleg">
+        <div>
+          <span class="side">you receive</span>
+          <div class="asset"><span id="xRecvSym">FTB</span><span class="chain" id="xRecvChain">neo x</span></div>
+          <div class="bal">to your Neo X address</div>
+        </div>
+        <div>
+          <div class="amt" id="xRecv">0.0000</div>
+          <div class="bal">what the solver escrows for you</div>
+        </div>
+      </div>
+    </div>
+    <div class="xrate"><span>solver fee <b id="xFee">-</b> &middot; <span id="xLimits">limits -</span></span><span>settles in ~2 min &middot; non-custodial</span></div>
+    <div class="brow"><button class="bkey" id="xReview">review swap -&gt;</button><button class="bkey" id="xConnX">connect neo x -&gt;</button></div>
+    <div class="xmsg" id="xMsg"></div>
+  </section>
+
+  <section class="bsec">
+    <div class="bh"><span>// how it settles</span><span class="bstep">what you sign, in words</span></div>
+    <div class="flow">
+      <div class="phase pending" id="xp1"><span class="dot"></span><span class="pn">1</span>
+        <div><div class="pt"><b>solver locks on the far chain.</b> It escrows your output under a hashlock H, payable to you, refundable to it after T_B.</div><span class="pch">far leg, first</span></div>
+        <span class="pst s-pending">pending</span></div>
+      <div class="phase pending" id="xp2"><span class="dot"></span><span class="pn">2</span>
+        <div><div class="pt"><b>you verify, then lock your leg.</b> Your client checks the solver's lock on-chain, then you escrow your input under the same H, refundable to you after T_A.</div><span class="pch">only after verify</span></div>
+        <span class="pst s-pending">pending</span></div>
+      <div class="phase pending" id="xp3"><span class="dot"></span><span class="pn">3</span>
+        <div><div class="pt"><b>you claim your output.</b> Claiming reveals the secret that opens H, and publishes it on-chain.</div><span class="pch">reveals the secret</span></div>
+        <span class="pst s-pending">pending</span></div>
+      <div class="phase pending" id="xp4"><span class="dot"></span><span class="pn">4</span>
+        <div><div class="pt"><b>solver claims its leg.</b> It reads your revealed secret and claims the escrow. Both legs settle on one secret, or both refund.</div><span class="pch">settles the swap</span></div>
+        <span class="pst s-pending">pending</span></div>
+    </div>
+    <p class="xnote"><b>refund is a timer, not a trust.</b> T_A &gt; T_B by canon: you always hold the longer window, so you can claim or refund before the solver can touch your leg. If the swap aborts, you refund your own escrow after your timelock. No counterparty, no operator, no bridge can strand your funds.</p>
+  </section>
+
+  <section class="bsec">
+    <div class="bh"><span>// this swap</span><span class="bstep">read live from both chains</span></div>
+    <div class="lsrow"><span class="lskey">hashlock</span><span class="lsval hash" id="xsHash">-</span></div>
+    <div class="lsrow"><span class="lskey">your output (dest)</span><span class="lsval" id="xsB">-</span></div>
+    <div class="lsrow"><span class="lskey">your input (source)</span><span class="lsval" id="xsA">-</span></div>
+    <div class="lsrow"><span class="lskey">secret</span><span class="lsval muted" id="xsSecret">-</span></div>
+    <div class="lsrow"><span class="lskey">your refund window</span><span class="lsval" id="xClock">-</span></div>
+  </section>
+
+  <p class="xnote"><b>non-custodial by architecture.</b> no bridge contract holds a pooled balance; no wrapped token is minted; no shared vault stands between the chains. the largest loss family in DeFi is removed, not ring-fenced. every hash you sign is shown here and in your wallet &mdash; what you see is what you sign.</p>
+</main>
+
+<script src="config.js"></script>
+<script src="ftb-dapi.js"></script>
+<script src="js/ftb-rpc.js"></script>
+<script src="js/ftb-state.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/mod-wallet.js"></script>
+<script src="js/mod-xchain.js"></script>
+
+<footer class="foot3">
+  <span class="disp footmark">free the bird</span><br>
+  <span class="muted" id="shiftLine">// night shift</span><br>
+  Reference implementation. Internal audit lineage only &mdash; no external audit was performed. Not financial advice.
+  MIT code, public proofs - a gift to the Flamingo community.
+</footer>
+</body>
+</html>

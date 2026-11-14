@@ -394,6 +394,29 @@
   FtbDapi.prototype.loanWithdraw = function (user, tokenHash) {
     return this._w(this._need('loanbook'), 'withdraw', [A.h160(user), A.h160(tokenHash)], 'withdraw proceeds');
   };
+
+  // ---- FtbHtlc: cross-chain atomic swap (N3 side). The user locks by sending a NEP-17
+  // transfer to the HTLC with a typed ['lock', hashlock, recipient, timelock] payload the
+  // contract decodes in OnNEP17Payment; claim/refund are direct, permissionless calls. All
+  // take the HTLC + token hashes as params (configured in FTB_CONFIG.xchain), so this stays
+  // generic. hashlockHex / preimageHex are 32-byte hex; recipient is the solver's N3 address.
+  FtbDapi.prototype.xLockN3 = function (user, tokenHash, htlcHash, amountBase, hashlockHex, recipient, timelock, summary) {
+    return this._w(tokenHash, 'transfer',
+      [A.h160(user), A.h160(htlcHash), A.int(amountBase),
+       A.arr([A.str('lock'), A.bytesHex(hashlockHex), A.h160(recipient), A.int(timelock)])],
+      summary || ('lock ' + fromBaseUnits(amountBase) + ' in the cross-chain escrow'));
+  };
+  FtbDapi.prototype.xClaimN3 = function (htlcHash, hashlockHex, preimageHex, summary) {
+    return this._w(htlcHash, 'claim', [A.bytesHex(hashlockHex), A.bytesHex(preimageHex)],
+      summary || 'claim the cross-chain escrow (reveals your secret on-chain)');
+  };
+  FtbDapi.prototype.xRefundN3 = function (htlcHash, hashlockHex, summary) {
+    return this._w(htlcHash, 'refund', [A.bytesHex(hashlockHex)],
+      summary || 'refund your cross-chain escrow after the timelock');
+  };
+  FtbDapi.prototype.xSwapReadN3 = function (htlcHash, hashlockHex) {
+    return this.read(htlcHash, 'swap', [A.bytesHex(hashlockHex)]);
+  };
   FtbDapi.prototype.stakeFtb = function (user, amountBase) {
     return this._w(this._need('ftb'), 'transfer',
       [A.h160(user), A.h160(this._need('dividends')), A.int(amountBase), A.arr([A.str('stake')])],

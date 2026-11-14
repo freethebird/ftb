@@ -32,6 +32,15 @@ window.FTB_CONFIG = {
     router:   '0x6b98c58d952c804880b03acaff4dd767810641f3'
   },
 
+  // cross-chain atomic swap (x-chain page): the FtbHtlc on each home + the ftb-solver `serve`
+  // endpoint ops runs. TOKENS: the testnet HTLC demo used GAS on N3 and native on Neo X - set
+  // these to the FTB hashes on each chain once FTB-on-Neo-X is deployed. decimals are the token's.
+  xchain: {
+    solver: 'https://freethebird.co/solver',
+    n3:   { htlc: '0x3d7e6916972f550ba3405204d3f3bf328996d656', token: '0xd2a4cff31913016155e38e474a2c06d08be276cf', symbol: 'GAS', decimals: 8 },
+    neox: { htlc: '0x607FBFC1E22Dcbe152D6e8A7ffD7902f0DD7da85', token: '0x0000000000000000000000000000000000000000', rpc: 'https://testnet.rpc.banelabs.org/', chainId: '0xba9304', symbol: 'GAS', decimals: 18 }
+  },
+
   // native NEO and GAS, same on every Neo N3 network (NEO is 0 decimals, whole units)
   assets: {
     neo: '0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5',

@@ -1,0 +1,50 @@
+/* swap.css - cross-chain HTLC swap (N3 <-> Neo X) page specifics. shell (p2-shell.css) + cpage base elsewhere. */
+.xlegs{position:relative; display:grid; grid-template-columns:1fr; gap:1px; background:var(--hair); border:1px solid var(--hair); margin-top:4px}
+.xleg{background:var(--paper); padding:16px; display:flex; justify-content:space-between; align-items:flex-start; gap:14px}
+.xleg .side{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.xleg .asset{font-family:var(--disp); font-weight:700; font-size:var(--fs-lead); margin-top:6px}
+.xleg .chain{font-family:var(--mono); font-weight:400; font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--hair); color:var(--ink-2); padding:1px 6px; border-radius:2px; margin-left:8px; vertical-align:middle}
+.xleg .bal{font-size:var(--fs-meta); color:var(--faint); margin-top:6px}
+.xleg .amt{display:block; font-family:var(--disp); font-weight:700; font-size:var(--fs-num); color:var(--ink); text-align:right; width:170px; max-width:46vw; margin-left:auto}
+.xleg input.amt{background:transparent; border:0; border-bottom:1px solid var(--data-bd); padding:0 0 4px}
+.xflip{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:34px; height:34px; border-radius:50%; background:var(--keybg); color:var(--keyfg); border:1px solid var(--keyfg); cursor:pointer; z-index:2; font-size:16px; line-height:1; display:flex; align-items:center; justify-content:center}
+.xflip:hover{background:var(--keyfg); color:var(--keybg)}
+.xrate{display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 16px; color:var(--faint); font-size:var(--fs-meta); letter-spacing:.04em; margin-top:12px}
+.xrate b{color:var(--ink-2); font-weight:400}
+.flow{margin-top:4px}
+.phase{position:relative; display:grid; grid-template-columns:22px 1fr auto; gap:0 14px; align-items:start; padding:13px 0 13px 16px; border-top:1px solid var(--hair)}
+.phase:first-child{border-top:0}
+.phase .dot{position:absolute; left:0; top:17px; width:9px; height:9px; border-radius:50%; background:var(--hair); box-shadow:0 0 0 3px var(--panel)}
+.phase.done .dot{background:var(--ok)}
+.phase.active .dot{background:var(--amber); box-shadow:0 0 0 3px var(--panel), 0 0 0 6px rgba(255,177,42,.16)}
+.phase .pn{font-family:var(--disp); font-weight:700; color:var(--faint); font-size:var(--fs-small); text-align:right}
+.phase .pt{font-size:var(--fs-small); color:var(--ink-2); line-height:1.65}
+.phase .pt b{color:var(--ink)}
+.phase.pending .pt{color:var(--faint)}
+.phase.pending .pt b{color:var(--ink-2)}
+.phase .pch{display:inline-block; margin-top:7px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
+.phase .pst{align-self:center; font-size:10px; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap}
+.pst.s-done{color:var(--ok)} .pst.s-active{color:var(--amber)} .pst.s-pending{color:var(--faint)}
+.ladder{margin-top:16px; display:grid; gap:7px}
+.lbar{display:grid; grid-template-columns:104px 1fr auto; gap:12px; align-items:center; font-size:var(--fs-meta)}
+.lbar .lk{color:var(--faint); text-transform:uppercase; letter-spacing:.1em}
+.lbar .track{position:relative; height:9px; background:var(--panel); border:1px solid var(--hair)}
+.lbar .fill{position:absolute; left:0; top:0; bottom:0; background:var(--data-bd)}
+.lbar.tb .fill{width:50%}
+.lbar.ta .fill{width:82%; background:#3a5a3a}
+.lbar .lv{color:var(--ink-2); white-space:nowrap}
+.lsrow{display:flex; justify-content:space-between; align-items:baseline; gap:10px 18px; flex-wrap:wrap; border-top:1px solid var(--hair); padding:11px 0}
+.lsrow:first-child{border-top:0}
+.lskey{color:var(--faint); text-transform:uppercase; letter-spacing:.08em; font-size:var(--fs-meta); flex-shrink:0}
+.lsval{font-size:var(--fs-small); overflow-wrap:anywhere; text-align:right}
+.lsval.hash{color:var(--ink-2); font-size:12px}
+.badge{display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase; padding:1px 7px; border:1px solid currentColor; border-radius:2px; margin-left:6px}
+.badge.locked{color:var(--amber)} .badge.claimed{color:var(--ok)} .badge.refunded{color:var(--dn)}
+.xnote{color:var(--faint); font-size:var(--fs-small); line-height:1.7; margin:14px 0 0}
+.xnote b{color:var(--ink)}
+@media (max-width:620px){ .xleg .amt{font-size:var(--fs-lead); width:130px} }
+
+.xmsg{margin-top:10px; font-size:var(--fs-meta); color:var(--faint); min-height:1em; letter-spacing:.03em}
+.xmsg.ok{color:var(--ok)}
+.xmsg.err{color:var(--dn)}
+#xConnX.connected{border-color:var(--ok); color:var(--ok)}
