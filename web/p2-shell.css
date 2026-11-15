@@ -581,3 +581,5 @@ p a:hover, .csub a:hover, .sub a:hover, .advnote a:hover, .bnote a:hover, .st-b 
 /* rpc status note doubles as the "use your own node" opener (own-node button retired) */
 .statusline .rpc.is-clickable{cursor:pointer; border-bottom:1px dotted var(--faint)}
 .statusline .rpc.is-clickable:hover{color:var(--ink); border-bottom-color:var(--ink)}
+/* testnet-only nav items (neox cross-chain): hidden by default; shell.js reveals on TestNet, so never shown on MainNet */
+.testnet-only{display:none}

@@ -36,6 +36,14 @@
     tab('net-main', 'mainnet', '/' + page, isMain);
   })();
 
+  // ---------- testnet-only nav items: reveal only on TestNet ----------
+  // One bundle serves both networks; the neox cross-chain swap is TestNet-only. Its nav link ships
+  // hidden (.testnet-only) and is revealed here only when the live config is TestNet - so it never
+  // appears on MainNet, and if this script fails it stays hidden.
+  if (NET === 'TestNet') {
+    Array.prototype.forEach.call(document.querySelectorAll('.testnet-only'), function (e) { e.classList.remove('testnet-only'); });
+  }
+
   // ---------- sticky-header height -> --stick (anchor offset tracks the real bar) ----------
   // The sticky top bar changes height as the nav / controls wrap at narrow widths and when
   // the wallet state flips; publishing its measured height into --stick keeps every
